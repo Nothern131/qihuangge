@@ -184,7 +184,7 @@
     }
 
     function addRecord(profileId, type, title, data) {
-        var records = _load().records;
+        var full = _load();
         var rec = {
             id: _genId(),
             profileId: profileId,
@@ -193,8 +193,8 @@
             timestamp: _now(),
             data: data
         };
-        records.push(rec);
-        _save(_load());
+        full.records.push(rec);
+        _save(full);
         return rec;
     }
 
