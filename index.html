@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>岐黄阁 · 中医药古籍知识推理系统</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/css/style.css?v=20260806a">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <span class="logo-icon">☯</span>
+                <h1>岐黄阁</h1>
+            </div>
+            <nav class="app-nav">
+                <a href="#/home" class="nav-item">首页</a>
+                <a href="#/fangji" class="nav-item">方剂解析</a>
+                <a href="#/bencao" class="nav-item">本草查询</a>
+                <a href="#/tizhi" class="nav-item">辨证体质</a>
+                <a href="#/food" class="nav-item">药膳食谱</a>
+                <a href="#/archive" class="nav-item">用户档案</a>
+            </nav>
+        </header>
+        <main id="page-container"></main>
+        <footer class="app-footer">
+            <p>岐黄阁 · 中医药古籍知识推理系统 v1.0</p>
+            <p>仅供学习参考，不构成医疗建议</p>
+        </footer>
+    </div>
+    <script src="static/js/constants.js?v=20250806n"></script>
+    <script src="static/js/engine-registry.js?v=20250806n"></script>
+    <script src="static/js/engines/bianzheng-engine.js?v=20250806n"></script>
+    <script src="static/js/engines/fangji-engine.js?v=20250806n"></script>
+    <script src="static/js/engines/bencao-engine.js?v=20250806n"></script>
+    <script src="static/js/engines/tizhi-engine.js?v=20250806n"></script>
+    <script src="static/js/engines/masters-engine.js?v=20250806n"></script>
+    <script src="static/js/engines/archive-engine.js?v=20250806n"></script>
+    <script src="static/js/app.js?v=20250806n"></script>
+    <script src="static/js/components/bianzheng.js?v=20250806n"></script>
+    <script src="static/js/components/fangji.js?v=20250806n"></script>
+    <script src="static/js/components/bencao.js?v=20250806n"></script>
+    <script src="static/js/components/tizhi.js?v=20250806n"></script>
+    <script src="static/js/components/masters.js?v=20250806n"></script>
+    <script src="static/js/components/shipu.js?v=20250806n"></script>
+    <script src="static/js/components/archive.js?v=20250806n"></script>
+    <script>
+        // 注册路由
+        (function() {
+            var routes = QiuhuangApp.routes;
+            routes['#/home'] = function() { return QiuhuangApp._renderHome ? QiuhuangApp._renderHome() : ''; };
+            routes['#/fangji'] = function() { return FangjiComponent.render(); };
+            routes['#/bencao'] = function() { return BencaoComponent.render(); };
+            routes['#/tizhi'] = function() { return TizhiComponent.render(); };
+            routes['#/food'] = function() { return ShipuComponent.render(); };
+            routes['#/archive'] = function() { return ArchiveComponent.render(); };
+
+            // 暴露首页渲染函数
+            QiuhuangApp._renderHome = function() {
+                return `
+                    <div class="home-page">
+                        <div class="hero">
+                            <div class="hero-bg"></div>
+                            <h1>岐黄阁</h1>
+                            <p class="subtitle">中医药古籍知识推理系统</p>
+                            <p class="tagline">古籍分析 · 辨证推理 · 方剂解析 · 本草查询 · 药膳食谱</p>
+                        </div>
+                        <div class="modules">
+                            <div class="module-card" onclick="QiuhuangApp.navigate('#/tizhi')">
+                                <div class="icon">🧬</div>
+                                <h3>辨证体质</h3>
+                                <p>症状选择 · 三层辨证 · 八问辨体 · 大师解读</p>
+                            </div>
+                            <div class="module-card" onclick="QiuhuangApp.navigate('#/fangji')">
+                                <div class="icon">📜</div>
+                                <h3>方剂解析</h3>
+                                <p>君臣佐使 · 配伍规律</p>
+                            </div>
+                            <div class="module-card" onclick="QiuhuangApp.navigate('#/bencao')">
+                                <div class="icon">🌿</div>
+                                <h3>本草查询</h3>
+                                <p>四气五味 · 归经功效</p>
+                            </div>
+                            <div class="module-card" onclick="QiuhuangApp.navigate('#/food')">
+                                <div class="icon">🍲</div>
+                                <h3>药膳食谱</h3>
+                                <p>药食同源 · 养生调理</p>
+                            </div>
+                        </div>
+                        <div class="disclaimer">
+                            <p><strong>⚠️ 重要声明</strong></p>
+                            <p>本系统仅供中医药文化学习与知识科普使用，不构成任何医疗建议。</p>
+                            <p>中医辨证论治需结合四诊合参，线上系统无法替代专业医师面诊。</p>
+                            <p>所有方剂、剂量、用法仅供参考，请在执业中医师指导下使用。</p>
+                            <p>中药材食谱属于食疗范畴，不能替代药物或临床营养干预。</p>
+                            <p>本系统不对因使用本系统信息而产生的任何后果承担责任。</p>
+                            <p style="margin-top:10px; color:#b8945c;">如需医疗帮助，请及时前往正规医疗机构就诊。</p>
+                        </div>
+                    </div>
+                `;
+            };
+        })();
+    </script>
+</body>
+</html>

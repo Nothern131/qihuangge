@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>岐黄阁 · 架构可视化</title>
+    <style>
+        body { font-family: 'Noto Serif SC', serif; background: #1a1a2e; color: #e8e4dc; padding: 40px; }
+        h1 { color: #b8945c; text-align: center; margin-bottom: 40px; }
+        .layer { background: rgba(184,148,92,0.1); border: 1px solid rgba(184,148,92,0.3); border-radius: 8px; padding: 16px 24px; margin: 8px 0; display: flex; align-items: center; gap: 16px; }
+        .layer-num { background: #b8945c; color: #1a1a2e; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; }
+        .layer-content { flex: 1; }
+        .layer-title { font-size: 18px; color: #b8945c; margin-bottom: 4px; }
+        .layer-desc { font-size: 13px; color: #a09888; }
+        .arrow { text-align: center; color: #b8945c; font-size: 24px; margin: 4px 0; }
+    </style>
+</head>
+<body>
+    <h1>☯ 岐黄阁 · 7层架构</h1>
+    <div class="layer"><div class="layer-num">1</div><div class="layer-content"><div class="layer-title">用户入口</div><div class="layer-desc">index.html 首页 + 导航 · 辨证/方剂/本草/体质/大师/食谱</div></div></div>
+    <div class="arrow">↓</div>
+    <div class="layer"><div class="layer-num">2</div><div class="layer-content"><div class="layer-title">路由分发</div><div class="layer-desc">app.js · Hash 路由 #/bianzheng #/fangji #/bencao ...</div></div></div>
+    <div class="arrow">↓</div>
+    <div class="layer"><div class="layer-num">3</div><div class="layer-content"><div class="layer-title">组件层</div><div class="layer-desc">components/*.js · 辨证/方剂/本草/体质/大师/食谱 6个组件</div></div></div>
+    <div class="arrow">↓</div>
+    <div class="layer"><div class="layer-num">4</div><div class="layer-content"><div class="layer-title">引擎层</div><div class="layer-desc">EngineRegistry 统一注册 · bianzheng/fangji/bencao/tizhi/masters 5个引擎</div></div></div>
+    <div class="arrow">↓</div>
+    <div class="layer"><div class="layer-num">5</div><div class="layer-content"><div class="layer-title">古籍知识库</div><div class="layer-desc">static/data/ancient_texts.json · 黄帝内经/伤寒论/本草纲目核心条文</div></div></div>
+    <div class="arrow">↓</div>
+    <div class="layer"><div class="layer-num">6</div><div class="layer-content"><div class="layer-title">药膳食谱库</div><div class="layer-desc">九种体质·对应食疗方案 · 药食同源 · 科学声明</div></div></div>
+    <div class="arrow">↓</div>
+    <div class="layer"><div class="layer-num">7</div><div class="layer-content"><div class="layer-title">大师蒸馏 & 输出</div><div class="layer-desc">6位中医药大师风格复刻 · 五段式分析 · 纯算法本地运行</div></div></div>
+</body>
+</html>
