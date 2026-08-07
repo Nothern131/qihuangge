@@ -135,9 +135,19 @@
             name: info.name || 'unnamed',
             gender: info.gender || '',
             birthYear: info.birthYear || '',
-            phone: info.phone || '',
             notes: info.notes || '',
             uid: _getUidFromUrl() || null,
+            // 健康画像
+            healthProfile: {
+                constitution: info.constitution || '',        // 体质类型
+                symptoms: info.symptoms || [],                // 当前症状
+                supplements: info.supplements || [],          // 正在服用的保健品 [{name, brand, dosage, frequency, startDate}]
+                medications: info.medications || [],          // 用药史 [{name, dosage, reason, status:'ongoing'|'stopped'}]
+                healthGoals: info.healthGoals || [],          // 健康目标
+                diet: info.diet || '',                        // 饮食习惯
+                sleep: info.sleep || '',                      // 睡眠情况
+                exercise: info.exercise || ''                 // 运动情况
+            },
             createdAt: now,
             updatedAt: now
         };
@@ -154,8 +164,19 @@
         if (info.name !== undefined) p.name = info.name;
         if (info.gender !== undefined) p.gender = info.gender;
         if (info.birthYear !== undefined) p.birthYear = info.birthYear;
-        if (info.phone !== undefined) p.phone = info.phone;
         if (info.notes !== undefined) p.notes = info.notes;
+        // 健康画像更新
+        if (info.healthProfile !== undefined) {
+            if (!p.healthProfile) p.healthProfile = {};
+            if (info.healthProfile.constitution !== undefined) p.healthProfile.constitution = info.healthProfile.constitution;
+            if (info.healthProfile.symptoms !== undefined) p.healthProfile.symptoms = info.healthProfile.symptoms;
+            if (info.healthProfile.supplements !== undefined) p.healthProfile.supplements = info.healthProfile.supplements;
+            if (info.healthProfile.medications !== undefined) p.healthProfile.medications = info.healthProfile.medications;
+            if (info.healthProfile.healthGoals !== undefined) p.healthProfile.healthGoals = info.healthProfile.healthGoals;
+            if (info.healthProfile.diet !== undefined) p.healthProfile.diet = info.healthProfile.diet;
+            if (info.healthProfile.sleep !== undefined) p.healthProfile.sleep = info.healthProfile.sleep;
+            if (info.healthProfile.exercise !== undefined) p.healthProfile.exercise = info.healthProfile.exercise;
+        }
         p.updatedAt = _now();
         _save(data);
         return p;
@@ -256,6 +277,182 @@
         return addRecord(profileId, type, title, result);
     }
 
+    // ========== 健康画像管理 ==========
+
+    /**
+     * 更新健康画像（独立更新，不影响其他字段）
+     */
+    function updateHealthProfile(profileId, healthData) {
+        return updateProfile(profileId, { healthProfile: healthData });
+    }
+
+    /**
+     * 添加保健品记录
+     */
+    function addSupplement(profileId, supplement) {
+        var p = getProfile(profileId);
+        if (!p) return null;
+        if (!p.healthProfile) p.healthProfile = {};
+        if (!p.healthProfile.supplements) p.healthProfile.supplements = [];
+        supplement.id = _genId();
+        supplement.createdAt = _now();
+        p.healthProfile.supplements.push(supplement);
+        return updateProfile(profileId, { healthProfile: p.healthProfile });
+    }
+
+    /**
+     * 删除保健品记录
+     */
+    function removeSupplement(profileId, supplementId) {
+        var p = getProfile(profileId);
+        if (!p || !p.healthProfile) return null;
+        p.healthProfile.supplements = (p.healthProfile.supplements || []).filter(function(s) {
+            return s.id !== supplementId;
+        });
+        return updateProfile(profileId, { healthProfile: p.healthProfile });
+    }
+
+    // ========== 健康风险评估 ==========
+
+    /**
+     * 计算健康画像完整性评分
+     * @param {object} profile - 用户档案
+     * @returns {object} { score, total, items, completeness }
+     */
+    function calculateHealthCompleteness(profile) {
+        if (!profile) return { score: 0, total: 9, items: [], completeness: '0%' };
+
+        var hp = profile.healthProfile || {};
+        var items = [
+            { key: 'name', label: '姓名', filled: !!profile.name, weight: 1 },
+            { key: 'gender', label: '性别', filled: !!profile.gender, weight: 1 },
+            { key: 'birthYear', label: '出生年份', filled: !!profile.birthYear, weight: 1 },
+            { key: 'constitution', label: '中医体质', filled: !!hp.constitution, weight: 2 },
+            { key: 'symptoms', label: '当前症状', filled: hp.symptoms && hp.symptoms.length > 0, weight: 2 },
+            { key: 'supplements', label: '保健品记录', filled: hp.supplements && hp.supplements.length > 0, weight: 2 },
+            { key: 'medications', label: '用药史', filled: hp.medications && hp.medications.length > 0, weight: 2 },
+            { key: 'healthGoals', label: '健康目标', filled: hp.healthGoals && hp.healthGoals.length > 0, weight: 2 },
+            { key: 'diet', label: '饮食/睡眠/运动', filled: !!(hp.diet || hp.sleep || hp.exercise), weight: 1 }
+        ];
+
+        var totalWeight = 0;
+        var filledWeight = 0;
+        items.forEach(function(item) {
+            totalWeight += item.weight;
+            if (item.filled) filledWeight += item.weight;
+        });
+
+        var score = Math.round((filledWeight / totalWeight) * 100);
+        var completeness = score >= 80 ? '高' : score >= 50 ? '中' : '低';
+
+        return {
+            score: score,
+            total: totalWeight,
+            filled: filledWeight,
+            items: items,
+            completeness: completeness
+        };
+    }
+
+    /**
+     * 健康风险评估
+     * 基于健康画像各维度给出风险评分
+     * @param {object} profile - 用户档案
+     * @returns {object} { overallScore, riskLevel, dimensions, suggestions }
+     */
+    function assessHealthRisk(profile) {
+        if (!profile) return { overallScore: 0, riskLevel: '未知', dimensions: [], suggestions: [] };
+
+        var hp = profile.healthProfile || {};
+        var age = profile.birthYear ? new Date().getFullYear() - parseInt(profile.birthYear) : 0;
+        var dimensions = [];
+        var suggestions = [];
+
+        // 1. 睡眠风险
+        var sleepScore = 100;
+        var sleepRisk = '';
+        if (hp.sleep === '失眠') { sleepScore = 30; sleepRisk = '严重失眠，对健康影响大'; suggestions.push('建议改善睡眠质量，可考虑补充镁和B6'); }
+        else if (hp.sleep === '较差') { sleepScore = 50; sleepRisk = '睡眠质量差，长期需关注'; suggestions.push('建议改善睡眠环境，增加规律作息'); }
+        else if (hp.sleep === '一般') { sleepScore = 70; sleepRisk = '睡眠一般，有改善空间'; }
+        else if (hp.sleep === '良好') { sleepScore = 90; sleepRisk = '睡眠良好'; }
+        dimensions.push({ name: '睡眠质量', score: sleepScore, risk: sleepRisk, level: sleepScore >= 80 ? 'good' : sleepScore >= 60 ? 'medium' : 'bad' });
+
+        // 2. 运动风险
+        var exerciseScore = 100;
+        var exerciseRisk = '';
+        if (hp.exercise === '很少') { exerciseScore = 40; exerciseRisk = '久坐少动，心血管风险增加'; suggestions.push('建议每周至少进行3次30分钟以上有氧运动'); }
+        else if (hp.exercise === '偶尔') { exerciseScore = 65; exerciseRisk = '运动量不足，建议增加频率'; suggestions.push('建议将运动频率提升至每周3次以上'); }
+        else if (hp.exercise === '经常') { exerciseScore = 90; exerciseRisk = '运动习惯良好'; }
+        dimensions.push({ name: '运动习惯', score: exerciseScore, risk: exerciseRisk, level: exerciseScore >= 80 ? 'good' : exerciseScore >= 60 ? 'medium' : 'bad' });
+
+        // 3. 饮食风险
+        var dietScore = 100;
+        var dietRisk = '';
+        if (hp.diet === '生酮/低碳水') { dietScore = 60; dietRisk = '特殊饮食，需关注营养均衡'; suggestions.push('生酮/低碳水饮食建议补充B族维生素和镁'); }
+        else if (hp.diet === '偏肉食') { dietScore = 65; dietRisk = '肉食偏多，蔬果纤维不足'; suggestions.push('建议增加蔬菜水果摄入，补充维生素C和膳食纤维'); }
+        else if (hp.diet === '偏素食' || hp.diet === '素食') { dietScore = 70; dietRisk = '素食者需关注B12、铁、钙、锌'; suggestions.push('素食者建议定期检测B12、铁蛋白水平，必要时补充'); }
+        else if (hp.diet === '荤素均衡') { dietScore = 90; dietRisk = '饮食结构均衡'; }
+        dimensions.push({ name: '饮食结构', score: dietScore, risk: dietRisk, level: dietScore >= 80 ? 'good' : dietScore >= 60 ? 'medium' : 'bad' });
+
+        // 4. 症状风险（症状越多风险越高）
+        var symptomCount = (hp.symptoms || []).length;
+        var symptomScore = Math.max(100 - symptomCount * 15, 20);
+        var symptomRisk = symptomCount === 0 ? '无明显症状' : '存在 ' + symptomCount + ' 项症状，建议关注';
+        if (symptomCount >= 3) suggestions.push('您有 ' + symptomCount + ' 项症状，建议综合分析可能的营养缺乏');
+        dimensions.push({ name: '症状状况', score: symptomScore, risk: symptomRisk, level: symptomScore >= 80 ? 'good' : symptomScore >= 60 ? 'medium' : 'bad' });
+
+        // 5. 年龄风险
+        var ageScore = 100;
+        var ageRisk = '';
+        if (age >= 65) { ageScore = 50; ageRisk = '老年阶段，需重点关注骨骼、心血管'; suggestions.push('65岁以上建议定期检测维生素D、B12水平'); }
+        else if (age >= 50) { ageScore = 70; ageRisk = '中年阶段，代谢开始变化'; suggestions.push('50岁以上建议关注骨骼健康和心血管养护'); }
+        else if (age >= 35) { ageScore = 85; ageRisk = '青壮年阶段，维持健康状态'; }
+        dimensions.push({ name: '年龄因素', score: ageScore, risk: ageRisk, level: ageScore >= 80 ? 'good' : ageScore >= 60 ? 'medium' : 'bad' });
+
+        // 总体评分
+        var overallScore = Math.round(dimensions.reduce(function(sum, d) { return sum + d.score; }, 0) / dimensions.length);
+        var riskLevel = overallScore >= 85 ? '低风险' : overallScore >= 65 ? '中风险' : '高风险';
+
+        // 去重建议
+        var uniqueSuggestions = [];
+        suggestions.forEach(function(s) {
+            if (uniqueSuggestions.indexOf(s) < 0) uniqueSuggestions.push(s);
+        });
+
+        return {
+            overallScore: overallScore,
+            riskLevel: riskLevel,
+            dimensions: dimensions,
+            suggestions: uniqueSuggestions
+        };
+    }
+
+    /**
+     * 添加过敏/不耐受记录
+     */
+    var ALLERGY_STORAGE_KEY = 'qhh_allergies_v1';
+
+    function getAllergies(profileId) {
+        try {
+            var raw = localStorage.getItem(ALLERGY_STORAGE_KEY + '_' + profileId);
+            return raw ? JSON.parse(raw) : [];
+        } catch(e) { return []; }
+    }
+
+    function addAllergy(profileId, allergy) {
+        var list = getAllergies(profileId);
+        allergy.id = _genId();
+        allergy.createdAt = _now();
+        list.push(allergy);
+        localStorage.setItem(ALLERGY_STORAGE_KEY + '_' + profileId, JSON.stringify(list));
+        return allergy;
+    }
+
+    function removeAllergy(profileId, allergyId) {
+        var list = getAllergies(profileId).filter(function(a) { return a.id !== allergyId; });
+        localStorage.setItem(ALLERGY_STORAGE_KEY + '_' + profileId, JSON.stringify(list));
+    }
+
     // ========== 初始化 ==========
     function init() {
         _applyUrlData();
@@ -290,7 +487,11 @@
         generateShareLink: generateShareLink,
         generateExperienceLink: generateExperienceLink,
         getUidFromUrl: _getUidFromUrl,
-        initData: init
+        initData: init,
+        // 健康画像
+        updateHealthProfile: updateHealthProfile,
+        addSupplement: addSupplement,
+        removeSupplement: removeSupplement
     };
 
 })(typeof window !== 'undefined' ? window : this);

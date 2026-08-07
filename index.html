@@ -6,7 +6,17 @@
     <title>岐黄阁 · 中医药古籍知识推理系统</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="static/css/style.css?v=20260806a">
+    <link rel="stylesheet" href="static/css/style.css?v=20260808b">
+    <!-- PWA支持 -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#b8945c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="岐黄阁">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
+    <link rel="apple-touch-icon" href="/static/icons/icon-512x512.jpg">
+    <link rel="apple-touch-icon" sizes="192x192" href="/static/icons/icon-192x192.jpg">
 </head>
 <body>
     <div class="app-container">
@@ -39,19 +49,70 @@
     <script src="static/js/engines/bencao-engine.js?v=20250806n"></script>
     <script src="static/js/engines/tizhi-engine.js?v=20250806n"></script>
     <script src="static/js/engines/masters-engine.js?v=20250806n"></script>
-    <script src="static/js/engines/archive-engine.js?v=20250806n"></script>
+    <script src="static/js/engines/archive-engine.js?v=20250807b"></script>
     <script src="static/js/engines/symptom-engine.js?v=20250807a"></script>
-    <script src="static/js/engines/vitamin-engine.js?v=20250807a"></script>
-    <script src="static/js/app.js?v=20250807a"></script>
+    <script src="static/js/engines/vitamin-engine.js?v=20260808a"></script>
+    <script src="static/js/app.js?v=20260808a"></script>
     <script src="static/js/components/bianzheng.js?v=20250806n"></script>
     <script src="static/js/components/fangji.js?v=20250806n"></script>
     <script src="static/js/components/bencao.js?v=20250806n"></script>
     <script src="static/js/components/tizhi.js?v=20250806n"></script>
     <script src="static/js/components/masters.js?v=20250806n"></script>
     <script src="static/js/components/shipu.js?v=20250806n"></script>
-    <script src="static/js/components/archive.js?v=20250806n"></script>
+    <script src="static/js/components/archive.js?v=20250807b"></script>
     <script src="static/js/components/regimen.js?v=20250807a"></script>
-    <script src="static/js/components/vitamin.js?v=20250807a"></script>
+    <script src="static/js/components/vitamin.js?v=20260808a"></script>
+    <script>
+    /* ========== 分享引导功能 ========== */
+    function toggleShareGuide() {
+        var body = document.getElementById('shareBody');
+        var arrow = document.getElementById('shareArrow');
+        if (!body || !arrow) return;
+        var isHidden = body.style.display === 'none' || body.style.display === '';
+        body.style.display = isHidden ? 'block' : 'none';
+        arrow.textContent = isHidden ? '▲' : '▼';
+        // 记住状态
+        try { localStorage.setItem('shareGuideOpen', isHidden ? '1' : '0'); } catch(e) {}
+    }
+    function copyAppLink() {
+        var url = window.location.href.split('#')[0] || window.location.href;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(function() {
+                var btn = document.querySelector('.copy-link-btn');
+                if (btn) { btn.textContent = '✅ 已复制'; setTimeout(function() { btn.textContent = '📋 复制链接'; }, 2000); }
+            }).catch(function() { fallbackCopy(url); });
+        } else { fallbackCopy(url); }
+    }
+    function fallbackCopy(url) {
+        var ta = document.createElement('textarea');
+        ta.value = url; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); var btn = document.querySelector('.copy-link-btn'); if (btn) { btn.textContent = '✅ 已复制'; setTimeout(function() { btn.textContent = '📋 复制链接'; }, 2000); } } catch(e) { alert('复制失败，请手动复制链接：' + url); }
+        document.body.removeChild(ta);
+    }
+    /* ========== 恢复分享引导状态 ========== */
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            var saved = localStorage.getItem('shareGuideOpen');
+            if (saved === '0') {
+                var body = document.getElementById('shareBody');
+                var arrow = document.getElementById('shareArrow');
+                if (body) body.style.display = 'none';
+                if (arrow) arrow.textContent = '▼';
+            }
+        } catch(e) {}
+    });
+    /* ========== Service Worker 注册 ========== */
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('/service-worker.js').then(function(reg) {
+                console.log('[岐黄阁] SW注册成功，scope:', reg.scope);
+            }, function(err) {
+                console.log('[岐黄阁] SW注册失败:', err);
+            });
+        });
+    }
+    </script>
     <script>
         // 注册路由
         (function() {
@@ -95,6 +156,54 @@
                                 <div class="icon">🍲</div>
                                 <h3>药膳食谱</h3>
                                 <p>药食同源 · 养生调理</p>
+                            </div>
+                        </div>
+                        <!-- 分享引导 -->
+                        <div class="share-guide" id="shareGuide">
+                            <div class="share-guide-header" onclick="toggleShareGuide()">
+                                <span class="share-guide-icon">📱</span>
+                                <span>如何方便地打开岐黄阁</span>
+                                <span class="share-guide-arrow" id="shareArrow">▼</span>
+                            </div>
+                            <div class="share-guide-body" id="shareBody">
+                                <div class="share-step">
+                                    <div class="step-num">1</div>
+                                    <div class="step-content">
+                                        <strong>添加到手机桌面（推荐）</strong>
+                                        <p class="step-desc">像原生App一样，一键打开</p>
+                                        <div class="step-platform">
+                                            <div class="platform-item">
+                                                <span class="platform-icon">📱</span>
+                                                <div>
+                                                    <p class="platform-name">Android（Chrome）</p>
+                                                    <p class="platform-action">点击浏览器菜单 → "添加到主屏幕"</p>
+                                                </div>
+                                            </div>
+                                            <div class="platform-item">
+                                                <span class="platform-icon">🍎</span>
+                                                <div>
+                                                    <p class="platform-name">iPhone（Safari）</p>
+                                                    <p class="platform-action">点击分享按钮 → "添加到主屏幕"</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="share-step">
+                                    <div class="step-num">2</div>
+                                    <div class="step-content">
+                                        <strong>在微信中使用</strong>
+                                        <p class="step-desc">微信内打开后，点击右上角「···」→「收藏」，下次从微信收藏快速打开</p>
+                                    </div>
+                                </div>
+                                <div class="share-step">
+                                    <div class="step-num">3</div>
+                                    <div class="step-content">
+                                        <strong>分享给朋友</strong>
+                                        <p class="step-desc">点击右上角「···」→「发送给朋友」，或直接复制链接分享</p>
+                                        <button class="copy-link-btn" onclick="copyAppLink()">📋 复制链接</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="disclaimer">
