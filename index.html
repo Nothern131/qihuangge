@@ -22,6 +22,8 @@
                 <a href="#/tizhi" class="nav-item">辨证体质</a>
                 <a href="#/food" class="nav-item">药膳食谱</a>
                 <a href="#/archive" class="nav-item">用户档案</a>
+                <a href="#/regimen" class="nav-item">调养记录</a>
+                <a href="#/vitamin" class="nav-item">维生素</a>
             </nav>
         </header>
         <main id="page-container"></main>
@@ -38,7 +40,9 @@
     <script src="static/js/engines/tizhi-engine.js?v=20250806n"></script>
     <script src="static/js/engines/masters-engine.js?v=20250806n"></script>
     <script src="static/js/engines/archive-engine.js?v=20250806n"></script>
-    <script src="static/js/app.js?v=20250806n"></script>
+    <script src="static/js/engines/symptom-engine.js?v=20250807a"></script>
+    <script src="static/js/engines/vitamin-engine.js?v=20250807a"></script>
+    <script src="static/js/app.js?v=20250807a"></script>
     <script src="static/js/components/bianzheng.js?v=20250806n"></script>
     <script src="static/js/components/fangji.js?v=20250806n"></script>
     <script src="static/js/components/bencao.js?v=20250806n"></script>
@@ -46,6 +50,8 @@
     <script src="static/js/components/masters.js?v=20250806n"></script>
     <script src="static/js/components/shipu.js?v=20250806n"></script>
     <script src="static/js/components/archive.js?v=20250806n"></script>
+    <script src="static/js/components/regimen.js?v=20250807a"></script>
+    <script src="static/js/components/vitamin.js?v=20250807a"></script>
     <script>
         // 注册路由
         (function() {
@@ -56,6 +62,8 @@
             routes['#/tizhi'] = function() { return TizhiComponent.render(); };
             routes['#/food'] = function() { return ShipuComponent.render(); };
             routes['#/archive'] = function() { return ArchiveComponent.render(); };
+            routes['#/regimen'] = function() { return RegimenComponent.render(); };
+            routes['#/vitamin'] = function() { return VitaminComponent.render(); };
 
             // 暴露首页渲染函数
             QiuhuangApp._renderHome = function() {

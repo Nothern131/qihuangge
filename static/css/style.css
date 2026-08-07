@@ -2822,3 +2822,561 @@ button:hover {
     gap: 10px;
     margin-top: 14px;
 }
+
+/* ========== 调养记录组件 ========== */
+.regimen-page {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.back-nav {
+    margin-bottom: 12px;
+}
+
+/* 摘要卡片 */
+.summary-card {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.summary-item {
+    background: white;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+}
+
+.summary-item .label {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 6px;
+}
+
+.summary-item .value {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--cinnabar);
+    font-family: 'Noto Serif SC', serif;
+}
+
+/* 症状选择网格 */
+.symptom-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 8px;
+}
+
+.symptom-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    background: var(--paper);
+    border: 1px solid var(--border-subtle);
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.symptom-chip:hover {
+    border-color: var(--cinnabar);
+    color: var(--cinnabar);
+}
+
+.symptom-chip input[type="checkbox"] {
+    accent-color: var(--cinnabar);
+}
+
+.symptom-chip:has(input:checked) {
+    background: rgba(194, 59, 34, 0.1);
+    border-color: var(--cinnabar);
+    color: var(--cinnabar);
+    font-weight: 500;
+}
+
+/* 选项行 */
+.option-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.option-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 14px;
+    background: var(--paper);
+    border: 1px solid var(--border-subtle);
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.option-chip:hover {
+    border-color: var(--gold);
+    color: var(--gold-dark);
+}
+
+.option-chip input[type="radio"] {
+    accent-color: var(--cinnabar);
+}
+
+.option-chip:has(input:checked) {
+    background: rgba(194, 59, 34, 0.1);
+    border-color: var(--cinnabar);
+    color: var(--cinnabar);
+    font-weight: 500;
+}
+
+/* 记录列表（调养记录专用） */
+.record-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
+    background: white;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    transition: border-color 0.2s;
+}
+
+.record-item:hover {
+    border-color: var(--gold-light);
+}
+
+.record-date {
+    font-size: 12px;
+    color: var(--text-muted);
+    min-width: 70px;
+    flex-shrink: 0;
+    padding-top: 2px;
+}
+
+.record-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.record-symptoms {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 4px;
+    line-height: 1.5;
+}
+
+.record-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.record-notes {
+    font-size: 12px;
+    color: var(--gold-dark);
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: rgba(184, 148, 92, 0.06);
+    border-radius: 4px;
+}
+
+.record-time {
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    padding-top: 2px;
+}
+
+/* 趋势卡片 */
+.trend-card {
+    background: white;
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.trend-card h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 14px;
+    font-family: 'Noto Serif SC', serif;
+}
+
+.score-bar {
+    height: 10px;
+    background: var(--paper-dark);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.score-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold), var(--cinnabar));
+    border-radius: 5px;
+    transition: width 0.6s ease;
+}
+
+.score-val {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--cinnabar);
+    font-family: 'Noto Serif SC', serif;
+    margin-bottom: 4px;
+}
+
+.trend-note {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.freq-symptom {
+    display: inline-block;
+    padding: 4px 12px;
+    background: rgba(194, 59, 34, 0.08);
+    border: 1px solid rgba(194, 59, 34, 0.2);
+    border-radius: 20px;
+    font-size: 13px;
+    color: #b8432f;
+    margin: 2px 4px;
+}
+
+/* 建议卡片 */
+.advice-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.advice-card {
+    background: white;
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 20px;
+    transition: border-color 0.2s;
+}
+
+.advice-card:hover {
+    border-color: var(--gold-light);
+}
+
+.advice-icon {
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+.advice-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 8px;
+    font-family: 'Noto Serif SC', serif;
+}
+
+.advice-content {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+/* 空状态提示 */
+.empty-tip {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    font-size: 15px;
+}
+
+/* 按钮变体 */
+.btn-primary {
+    background: var(--cinnabar);
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-primary:hover {
+    background: var(--cinnabar-light);
+}
+
+.btn-secondary {
+    background: white;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+    padding: 10px 24px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+    border-color: var(--gold);
+    color: var(--gold-dark);
+}
+
+.btn-small {
+    padding: 4px 12px;
+    font-size: 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-danger {
+    background: rgba(194, 59, 34, 0.1);
+    color: var(--cinnabar);
+    border: 1px solid rgba(194, 59, 34, 0.2);
+}
+
+.btn-danger:hover {
+    background: var(--cinnabar);
+    color: white;
+}
+
+/* ========== 维生素补充建议 ========== */
+.vitamin-page {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.vitamin-nav {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 12px;
+}
+
+.vitamin-tab {
+    padding: 8px 20px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border: none;
+    background: none;
+    border-radius: 6px 6px 0 0;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.vitamin-tab:hover {
+    color: var(--cinnabar);
+    background: rgba(194, 59, 34, 0.04);
+}
+
+.vitamin-tab.active {
+    color: var(--cinnabar);
+    background: rgba(194, 59, 34, 0.08);
+    border-bottom: 2px solid var(--cinnabar);
+}
+
+.vitamin-search {
+    margin-bottom: 20px;
+}
+
+.vitamin-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.vitamin-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: white;
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.vitamin-pill:hover {
+    border-color: var(--herb-green);
+    box-shadow: 0 2px 8px rgba(90, 122, 74, 0.1);
+    transform: translateY(-2px);
+}
+
+.vitamin-pill-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.vitamin-pill-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.vitamin-pill-func {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.vitamin-detail-card {
+    background: white;
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+    animation: fadeIn 0.3s ease;
+}
+
+.vitamin-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.vitamin-detail-icon {
+    font-size: 36px;
+}
+
+.vitamin-detail-name {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.vitamin-detail-ename {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.vitamin-section {
+    margin-bottom: 16px;
+}
+
+.vitamin-section h5 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--herb-green);
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.vitamin-section p,
+.vitamin-section li {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+.vitamin-section ul {
+    padding-left: 20px;
+    margin: 0;
+}
+
+.vitamin-section li {
+    margin-bottom: 4px;
+}
+
+.vitamin-warning {
+    background: rgba(194, 59, 34, 0.05);
+    border: 1px solid rgba(194, 59, 34, 0.2);
+    border-radius: 8px;
+    padding: 14px;
+    margin-top: 12px;
+}
+
+.vitamin-warning h5 {
+    color: var(--cinnabar);
+    border-bottom-color: rgba(194, 59, 34, 0.2);
+}
+
+.vitamin-warning p {
+    color: #b8432f;
+}
+
+.vitamin-empty {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+}
+
+.vitamin-disclaimer {
+    background: var(--paper-dark);
+    border: 1px solid var(--border-gold);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+}
+
+/* 症状匹配结果 */
+.symptom-match-section {
+    background: white;
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.symptom-match-section h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 12px;
+    font-family: 'Noto Serif SC', serif;
+}
+
+.match-result {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.match-card {
+    padding: 12px 14px;
+    background: rgba(90, 122, 74, 0.06);
+    border: 1px solid rgba(90, 122, 74, 0.2);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.match-symptom {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--herb-green);
+}
+
+.match-vitamins {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
