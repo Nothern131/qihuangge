@@ -3,9 +3,8 @@
  * 十八反、十九畏、妊娠禁忌、毒性标注
  * v20260808c
  */
-(function() {
+(function(global) {
     'use strict';
-    var global = (typeof window !== 'undefined' ? window : this);
 
     // 十八反歌诀
     var ANTI_GROUP1 = ['甘草', '大戟', '甘遂', '芫花', '海藻'];
@@ -151,4 +150,4 @@
         PREGNANCY_Mild: PREGNANCY_Mild,
         FEAR_PAIRS: FEAR_PAIRS
     };
-})(typeof window !== 'undefined' ? window : this);
+})(typeof global !== 'undefined' ? global : (typeof window !== 'undefined' ? window : this));

@@ -270,4 +270,4 @@
         updateNote: updateNote
     };
 
-})(typeof window !== 'undefined' ? window : this);
+})(typeof global !== 'undefined' ? global : (typeof window !== 'undefined' ? window : this));

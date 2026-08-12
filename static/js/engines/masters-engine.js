@@ -1152,4 +1152,4 @@
         getClosings: function(masterId) { return CLOSING_TEMPLATES[masterId] || []; }
     };
 
-})(typeof window !== 'undefined' ? window : this);
+})(typeof global !== 'undefined' ? global : (typeof window !== 'undefined' ? window : this));

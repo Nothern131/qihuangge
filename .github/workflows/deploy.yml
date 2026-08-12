@@ -27,34 +27,19 @@ jobs:
         run: |
           cat > /tmp/test_runner.js << 'EOF'
           const fs = require('fs');
-
-          // Mock global for IIFE engines running in Node.js
           global.BencaoEngine = null;
           global.InteractionEngine = null;
           global.FangjiEngine = null;
           global.MastersEngine = null;
-
-          // Override eval to inject global context
-          const origEval = eval;
-          function evalWithGlobal(code) {
-            return origEval.call(null, code);
-          }
-
-          // Load engines
           const bencao = fs.readFileSync('static/js/engines/bencao-engine.js', 'utf8');
           const interaction = fs.readFileSync('static/js/engines/interaction-engine.js', 'utf8');
           const fangji = fs.readFileSync('static/js/engines/fangji-engine.js', 'utf8');
           const masters = fs.readFileSync('static/js/engines/masters-engine.js', 'utf8');
-
-          // Execute in context where this = global
-          (function() {
-            eval(bencao);
-            eval(interaction);
-            eval(fangji);
-            eval(masters);
-          }).call(global);
-
-          // Load tests
+          // Use Function to pass global as parameter (eval in strict mode doesn't inherit this)
+          new Function('global', bencao)(global);
+          new Function('global', interaction)(global);
+          new Function('global', fangji)(global);
+          new Function('global', masters)(global);
           const tests = JSON.parse(fs.readFileSync('tests/golden_set.json', 'utf8'));
           let pass = 0;
           for (const q of tests) {

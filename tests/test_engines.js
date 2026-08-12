@@ -1,0 +1,23 @@
+const fs = require('fs');
+const g = global;
+g.BencaoEngine = null;
+g.InteractionEngine = null;
+g.FangjiEngine = null;
+g.MastersEngine = null;
+const bencao = fs.readFileSync('static/js/engines/bencao-engine.js', 'utf8');
+const interaction = fs.readFileSync('static/js/engines/interaction-engine.js', 'utf8');
+const fangji = fs.readFileSync('static/js/engines/fangji-engine.js', 'utf8');
+const masters = fs.readFileSync('static/js/engines/masters-engine.js', 'utf8');
+// Use Function to pass global as parameter
+new Function('global', bencao)(g);
+new Function('global', interaction)(g);
+new Function('global', fangji)(g);
+new Function('global', masters)(g);
+console.log('BencaoEngine:', typeof g.BencaoEngine);
+console.log('InteractionEngine:', typeof g.InteractionEngine);
+console.log('FangjiEngine:', typeof g.FangjiEngine);
+console.log('MastersEngine:', typeof g.MastersEngine);
+console.log('Masters count:', g.MastersEngine ? Object.keys(g.MastersEngine.MASTERS).length : 'N/A');
+console.log('Bencao count:', g.BencaoEngine ? Object.keys(g.BencaoEngine.DB).length : 'N/A');
+console.log('Fangji count:', g.FangjiEngine ? Object.keys(g.FangjiEngine.DB).length : 'N/A');
+console.log('Ancient texts count:', (() => { try { return JSON.parse(fs.readFileSync('static/data/ancient_texts.json','utf8')).length; } catch(e) { return 'N/A'; } })());
