@@ -1158,7 +1158,87 @@
                 { source: '《本草纲目》', text: '紫贝齿，平肝潜阳，清肝明目。' },
                 { source: '《本草从新》', text: '紫贝齿，镇心平肝，清肝明目。' }
             ]
-        }
+        },
+        '荆芥': { xingwei: '辛，微温', guijing: '肺、肝经', 功效: '解表散风，透疹消疮，止血', zhuji: '感冒头痛、麻疹不透、疮疡初起、便血崩漏', jifu: '一次3-10g', jindu: '无毒', peiwu: '配防风增强解表散风功效', tabi: ['表虚自汗者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '荆芥，主寒热，鼠瘘，疮肿。久服轻身。' }] },
+        '防风': { xingwei: '辛、甘，微温', guijing: '膀胱、肝、脾经', 功效: '祛风解表，胜湿止痛，止痉', zhuji: '感冒头痛、风湿痹痛、破伤风', jifu: '一次3-10g', jindu: '无毒', peiwu: '配荆芥为祛风要药对', tabi: ['阴虚火旺者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '防风，主大风头眩痛，恶风，风邪目盲，无所见。' }] },
+        '紫苏': { xingwei: '辛，温', guijing: '肺、脾经', 功效: '解表散寒，行气宽中，安胎，解鱼蟹毒', zhuji: '感冒风寒、胸闷呕恶、胎动不安、鱼蟹中毒', jifu: '一次3-10g', jindu: '无毒', peiwu: '紫苏叶解表，紫苏梗理气，紫苏子降气化痰', tabi: ['气虚者慎用'], gujiyuanwen: [{ source: '《名医别录》', text: '紫苏，主下气，除寒中。' }] },
+        '羌活': { xingwei: '辛、苦，温', guijing: '膀胱、肾经', 功效: '解表散寒，祛风胜湿，止痛', zhuji: '感冒风寒、头痛身痛、风湿痹痛', jifu: '一次3-10g', jindu: '无毒', peiwu: '配独活为治上下肢风湿要药', tabi: ['气血亏虚者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '羌活，主风寒所击，金疮止痛。' }] },
+        '独活': { xingwei: '辛、苦，微温', guijing: '肾、膀胱经', 功效: '祛风除湿，通痹止痛，解表', zhuji: '风寒湿痹、腰膝酸痛、少阴头痛', jifu: '一次3-10g', jindu: '无毒', peiwu: '配羌活增强祛风湿止痛功效', tabi: ['阴虚火旺者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '独活，主风寒所击，金疮止痛。' }] },
+        '薄荷': { xingwei: '辛，凉', guijing: '肺、肝经', 功效: '疏散风热，清利头目，利咽，透疹，疏肝行气', zhuji: '风热感冒、头痛目赤、咽喉肿痛、麻疹不透、肝郁气滞', jifu: '一次3-6g，后下', jindu: '无毒', peiwu: '配荆芥增强疏散风热功效', tabi: ['表虚自汗者慎用'], gujiyuanwen: [{ source: '《本草纲目》', text: '薄荷，辛能散，凉能清，制风热之气。' }] },
+        '牛蒡子': { xingwei: '辛、苦，寒', guijing: '肺、胃经', 功效: '疏散风热，宣肺祛痰，利咽透疹，解毒消肿', zhuji: '风热感冒、咽喉肿痛、麻疹不透、痈肿疮毒', jifu: '一次6-12g', jindu: '无毒', peiwu: '配薄荷增强疏散风热功效', tabi: ['脾虚便溏者慎用'], gujiyuanwen: [{ source: '《名医别录》', text: '牛蒡子，主除风疮，消肿毒。' }] },
+        '蝉蜕': { xingwei: '甘，寒', guijing: '肺、肝经', 功效: '疏散风热，利咽开音，透疹，明目退翳，息风止痉', zhuji: '风热感冒、咽喉肿痛、声音嘶哑、麻疹不透、目赤翳障、小儿惊风', jifu: '一次3-6g', jindu: '无毒', peiwu: '配菊花增强清肝明目功效', tabi: ['无风热者慎用'], gujiyuanwen: [{ source: '《名医别录》', text: '蝉蜕，主小儿疳疰，惊痫，夜啼。' }] },
+        '桑叶': { xingwei: '甘、苦，寒', guijing: '肺、肝经', 功效: '疏散风热，清肺润燥，平抑肝阳，清肝明目', zhuji: '风热感冒、肺热咳嗽、肝阳眩晕、目赤昏花', jifu: '一次6-12g', jindu: '无毒', peiwu: '配菊花为桑菊饮，清肺疏风', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '桑叶，主寒热，出汗，除湿，气胀。' }] },
+        '菊花': { xingwei: '辛、甘、苦，微寒', guijing: '肺、肝经', 功效: '疏散风热，平抑肝阳，清肝明目，清热解毒', zhuji: '风热感冒、头痛眩晕、目赤昏花、疮痈肿毒', jifu: '一次6-12g', jindu: '无毒', peiwu: '配桑叶为桑菊饮；白菊花平肝，黄菊花清肝', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '菊花，主诸风头眩，肿痛，目欲脱，皮肤死肌，恶风湿痹。' }] },
+        '蔓荆子': { xingwei: '辛、苦，微寒', guijing: '肺、肝、胃经', 功效: '疏散风热，清利头目', zhuji: '风热感冒、头痛头晕、目赤多泪、齿龈肿痛', jifu: '一次6-12g', jindu: '无毒', peiwu: '配菊花增强清利头目功效', tabi: ['无风热者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '蔓荆子，主暴风寒，心腹冷痛。' }] },
+        '升麻': { xingwei: '辛、微甘，微寒', guijing: '肺、脾、胃、大肠经', 功效: '疏散风热，透疹，解毒，升举阳气', zhuji: '风热感冒、麻疹不透、咽喉肿痛、气虚下陷、脱肛', jifu: '一次3-10g', jindu: '无毒', peiwu: '配柴胡为补中益气汤，升举阳气', tabi: ['麻疹已透者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '升麻，主解百毒，辟百物。' }] },
+        '葛根': { xingwei: '辛、甘，凉', guijing: '脾、胃经', 功效: '解肌退热，透疹，生津止渴，升阳止泻', zhuji: '感冒发热、头痛项强、麻疹不透、消渴、泄泻痢疾', jifu: '一次10-15g', jindu: '无毒', peiwu: '配黄芩为葛根芩连汤，清热止利', tabi: ['胃寒呕吐者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '葛根，主消渴，身大热，呕吐，诸痹，起阴气，解诸毒。' }] },
+        '柴胡': { xingwei: '辛、苦，微寒', guijing: '肝、胆、肺经', 功效: '疏散退热，疏肝解郁，升举阳气', zhuji: '感冒发热、少阳证、肝郁气滞、子宫脱垂、脱肛', jifu: '一次3-10g', jindu: '无毒', peiwu: '配黄芩和解少阳；配升麻、黄芪升阳举陷', tabi: ['真阴亏损、肝阳亢盛者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '柴胡，主心腹肠胃中结气，饮食积聚，寒热邪气，推陈出新。' }] },
+        '黄芩': { xingwei: '苦，寒', guijing: '肺、胆、脾、大肠、小肠经', 功效: '清热燥湿，泻火解毒，止血，安胎', zhuji: '湿温暑湿、疟疾、黄疸、肺热咳嗽、高热烦渴、痈肿疮毒、胎动不安', jifu: '一次3-10g', jindu: '无毒', peiwu: '配柴胡和解少阳；配黄连清热燥湿', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '黄芩，主诸热，黄胆，肠澼泄利，逐水，下血。' }] },
+        '黄连': { xingwei: '苦，寒', guijing: '心、脾、胃、肝、胆、大肠经', 功效: '清热燥湿，泻火解毒', zhuji: '湿热痞满、呕吐吞酸、泻痢、高热神昏、心火亢盛、心烦不寐、血热吐衄、痈肿疮毒', jifu: '一次2-5g', jindu: '无毒', peiwu: '配黄芩、黄柏为黄连解毒汤', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '黄连，主热气，目痛眦伤泣出，明目，肠澼腹痛下利。' }] },
+        '黄柏': { xingwei: '苦，寒', guijing: '肾、膀胱经', 功效: '清热燥湿，泻火除蒸，解毒疗疮', zhuji: '湿热泻痢、黄疸、带下、热淋、骨蒸劳热、盗汗、遗精、疮疡肿毒', jifu: '一次3-12g', jindu: '无毒', peiwu: '配黄芩、黄连为三黄泻心汤', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '黄柏，主五脏肠胃中结热，黄疸，肠痔，止泄利，女子漏下赤白，阴伤，蚀疮。' }] },
+        '龙胆草': { xingwei: '苦，寒', guijing: '肝、胆经', 功效: '清热燥湿，泻肝胆火', zhuji: '湿热黄疸、阴肿阴痒、带下、湿疹瘙痒、胁痛口苦、惊风抽搐', jifu: '一次3-6g', jindu: '无毒', peiwu: '配黄芩、栀子为龙胆泻肝汤', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '龙胆，主骨间寒热，惊痫邪气，续绝伤，定五脏，杀虫毒。' }] },
+        '栀子': { xingwei: '苦，寒', guijing: '心、肺、三焦经', 功效: '泻火除烦，清热利湿，凉血解毒，消肿止痛', zhuji: '热病心烦、湿热黄疸、淋证涩痛、血热吐衄、目赤肿痛、扭挫伤痛', jifu: '一次6-10g', jindu: '无毒', peiwu: '配黄芩清上焦热；配黄柏清下焦热', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '栀子，主五内邪气，胃中热气。' }] },
+        '石膏': { xingwei: '甘、辛，大寒', guijing: '肺、胃经', 功效: '清热泻火，除烦止渴，敛疮生肌', zhuji: '温热病气分实热、肺热咳喘、胃火牙痛、疮疡不敛', jifu: '一次15-60g，先煎', jindu: '无毒', peiwu: '配知母清热泻火；配麻黄治表寒里热', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '石膏，主中风寒热，心下逆气，惊喘，口干舌焦，不能息。' }] },
+        '知母': { xingwei: '苦、甘，寒', guijing: '肺、胃、肾经', 功效: '清热泻火，滋阴润燥', zhuji: '温热病气分实热、肺热咳嗽、骨蒸潮热、内热消渴、肠燥便秘', jifu: '一次6-12g', jindu: '无毒', peiwu: '配石膏清肺胃实热；配黄柏滋肾降火', tabi: ['脾胃虚寒便溏者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '知母，主消渴热中，除邪气，肢体浮肿，下水，补不足，益气。' }] },
+        '板蓝根': { xingwei: '苦，寒', guijing: '心、胃经', 功效: '清热解毒，凉血利咽', zhuji: '瘟疫温毒、发热头痛、咽喉肿痛、腮腺炎、丹毒', jifu: '一次9-15g', jindu: '无毒', peiwu: '配玄参增强清热解毒功效', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《本草纲目》', text: '板蓝根，解诸药毒。' }] },
+        '大青叶': { xingwei: '苦，寒', guijing: '心、胃经', 功效: '清热解毒，凉血消斑', zhuji: '热入营血、温毒发斑、喉痹口疮', jifu: '一次9-15g', jindu: '无毒', peiwu: '配板蓝根增强清热解毒功效', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《名医别录》', text: '大青叶，主时气头痛，多热，霍乱。' }] },
+        '青黛': { xingwei: '咸，寒', guijing: '肝经', 功效: '清热解毒，凉血消斑，清肝泻火，定惊', zhuji: '温毒发斑、血热吐衄、胸痛咯血、小儿惊痫', jifu: '一次1-3g，冲服', jindu: '无毒', peiwu: '配射干为黛蛤散，清肝化痰', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《药性论》', text: '青黛，主治小儿诸热，惊风发热。' }] },
+        '蒲公英': { xingwei: '苦、甘，寒', guijing: '肝、胃经', 功效: '清热解毒，消肿散结，利湿通淋', zhuji: '痈肿疔毒、乳痈肿痛、湿热黄疸、淋证涩痛', jifu: '一次10-15g', jindu: '无毒', peiwu: '配金银花增强清热解毒功效', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《本草纲目》', text: '蒲公英，解食毒，散滞气，化热毒，消恶肿结核。' }] },
+        '紫花地丁': { xingwei: '苦、辛，寒', guijing: '肝、胃经', 功效: '清热解毒，凉血消肿', zhuji: '痈肿疔疮、乳痈肠痈、毒蛇咬伤', jifu: '一次10-15g', jindu: '无毒', peiwu: '配蒲公英、野菊花为五味消毒饮', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《名医别录》', text: '紫花地丁，主痈肿瘰疬。' }] },
+        '野菊花': { xingwei: '苦、辛，微寒', guijing: '肝经', 功效: '清热解毒，清肝明目', zhuji: '疔疮痈肿、目赤肿痛、头痛眩晕', jifu: '一次10-15g', jindu: '无毒', peiwu: '配蒲公英为治痈要药', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '野菊花，主诸疮风毒。' }] },
+        '鱼腥草': { xingwei: '辛，微温', guijing: '肺经', 功效: '清热解毒，消痈排脓，利尿通淋', zhuji: '肺痈吐脓、热痢、热淋、痈肿疮毒', jifu: '一次10-25g，后下', jindu: '无毒', peiwu: '配桔梗、薏苡仁为治肺痈要方', tabi: ['虚寒证慎用'], gujiyuanwen: [{ source: '《名医别录》', text: '鱼腥草，主痈肿疮毒，煮汁饮。' }] },
+        '穿心莲': { xingwei: '苦，寒', guijing: '心、肺、大肠、膀胱经', 功效: '清热解毒，凉血，消肿，燥湿', zhuji: '感冒发热、咽喉肿痛、湿热泻痢、痈肿疮毒', jifu: '一次6-9g', jindu: '无毒', peiwu: '配金银花增强清热解毒功效', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《广西中药志》', text: '穿心莲，清热解毒，消炎退肿。' }] },
+        '金荞麦': { xingwei: '辛、苦，凉', guijing: '肺经', 功效: '清热解毒，排脓祛瘀', zhuji: '肺痈吐脓、咽喉肿痛、痢疾', jifu: '一次15-30g', jindu: '无毒', peiwu: '配鱼腥草增强清肺排脓功效', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《民间常用草药汇编》', text: '金荞麦，治肺痈，排脓祛瘀。' }] },
+        '贯众': { xingwei: '苦，微寒；有小毒', guijing: '肝、脾经', 功效: '清热解毒，杀虫，止血', zhuji: '钩虫蛔虫、绦虫病、崩漏下血、风热感冒', jifu: '一次9-15g', jindu: '有小毒', peiwu: '配大黄为贯众散，杀虫通便', tabi: ['孕妇慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '贯众，主腹中邪热气。' }] },
+        '雷丸': { xingwei: '苦，寒；有小毒', guijing: '胃、大肠经', 功效: '杀虫消积', zhuji: '绦虫、钩虫、蛔虫病', jifu: '一次5-12g，研末服', jindu: '有小毒', peiwu: '配槟榔增强杀虫功效', tabi: ['孕妇慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '雷丸，主除虫。' }] },
+        '鹤虱': { xingwei: '苦、辛，平；有小毒', guijing: '脾、胃经', 功效: '杀虫消积', zhuji: '蛔虫、蛲虫、绦虫病', jifu: '一次3-9g', jindu: '有小毒', peiwu: '配槟榔为驱虫常用对药', tabi: ['孕妇慎用'], gujiyuanwen: [{ source: '《开宝本草》', text: '鹤虱，主杀蛔虫。' }] },
+        '苦楝皮': { xingwei: '苦，寒；有毒', guijing: '肝、脾、胃经', 功效: '杀虫，疗癣', zhuji: '蛔虫、钩虫病、疥癣', jifu: '一次3-9g', jindu: '有毒', peiwu: '配槟榔为驱虫要药对', tabi: ['孕妇禁用，肝肾功能不全者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '苦楝皮，主逐水，消渴。' }] },
+        '南瓜子': { xingwei: '甘，平', guijing: '胃、大肠经', 功效: '杀虫', zhuji: '绦虫、血吸虫', jifu: '一次30-60g，研末', jindu: '无毒', peiwu: '配槟榔同用治绦虫', tabi: ['无明显禁忌'], gujiyuanwen: [{ source: '《本草纲目》', text: '南瓜子，消除发热，治血吸虫病。' }] },
+        '鹤草芽': { xingwei: '苦、涩，凉；有小毒', guijing: '大肠经', 功效: '杀虫', zhuji: '绦虫病', jifu: '一次30-60g', jindu: '有小毒', peiwu: '配槟榔增强驱虫功效', tabi: ['孕妇慎用'], gujiyuanwen: [{ source: '《中药大辞典》', text: '鹤草芽，驱绦虫。' }] },
+        '使君子': { xingwei: '甘，温', guijing: '脾、胃经', 功效: '杀虫消积', zhuji: '蛔虫、蛲虫病、小儿疳积', jifu: '一次6-12g', jindu: '无毒', peiwu: '配苦楝皮为驱虫常用方', tabi: ['不可与浓茶同服'], gujiyuanwen: [{ source: '《开宝本草》', text: '使君子，主小儿五疳，明目。' }] },
+        '榧子': { xingwei: '甘，平', guijing: '肺、胃、大肠经', 功效: '杀虫消积，润燥', zhuji: '虫积腹痛、肠燥便秘', jifu: '一次9-15g', jindu: '无毒', peiwu: '配槟榔增强驱虫功效', tabi: ['无明显禁忌'], gujiyuanwen: [{ source: '《本草纲目》', text: '榧子，治虫注，杀虫。' }] },
+        '槟榔': { xingwei: '苦、辛，温', guijing: '胃、大肠经', 功效: '杀虫消积，行气利水，截疟', zhuji: '绦虫、蛔虫、姜片虫、食积气滞、水肿脚气、疟疾', jifu: '一次3-10g', jindu: '无毒', peiwu: '配南瓜子治绦虫；配乌梅治胆道蛔虫', tabi: ['气虚下陷者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '槟榔，主消食，去胸中邪气。' }] },
+        '鹤虱': { xingwei: '苦、辛，平；有小毒', guijing: '脾、胃经', 功效: '杀虫消积', zhuji: '蛔虫、蛲虫病、小儿疳积', jifu: '一次3-9g', jindu: '有小毒', peiwu: '配槟榔为驱虫要药对', tabi: ['孕妇慎用'], gujiyuanwen: [{ source: '《开宝本草》', text: '鹤虱，主杀蛔虫。' }] },
+        '石榴皮': { xingwei: '酸、涩，温', guijing: '大肠经', 功效: '涩肠止泻，杀虫止血', zhuji: '久泻久痢、便血、崩漏、虫积腹痛', jifu: '一次3-9g', jindu: '无毒', peiwu: '配诃子增强涩肠止泻功效', tabi: ['湿热泻痢者慎用'], gujiyuanwen: [{ source: '《名医别录》', text: '石榴皮，止泻痢，好笑不止。' }] },
+        '肉豆蔻': { xingwei: '辛，温', guijing: '脾、胃、大肠经', 功效: '温中行气，涩肠止泻', zhuji: '虚寒泄泻、久痢不止、食少呕吐', jifu: '一次3-10g', jindu: '无毒', peiwu: '配诃子为涩肠止泻要药', tabi: ['湿热泻痢者慎用'], gujiyuanwen: [{ source: '《本草纲目》', text: '肉豆蔻，温中涩肠。' }] },
+        '诃子': { xingwei: '苦、酸、涩，平', guijing: '肺、大肠经', 功效: '涩肠止泻，敛肺止咳，降火利咽', zhuji: '久泻久痢、久咳失音、咽喉肿痛', jifu: '一次3-10g', jindu: '无毒', peiwu: '配石榴皮为涩肠止泻常用对药', tabi: ['外有表邪、内有实热者慎用'], gujiyuanwen: [{ source: '《本草纲目》', text: '诃子，涩而能收，肺苦气散，急则敛之。' }] },
+        '五倍子': { xingwei: '酸、涩，寒', guijing: '肺、大肠、肾经', 功效: '敛肺降火，涩肠止泻，固精止遗，收敛止血', zhuji: '肺虚咳嗽、久泻久痢、遗精滑精、崩漏便血、自汗盗汗', jifu: '一次3-6g', jindu: '无毒', peiwu: '配诃子为涩肠止泻要药', tabi: ['外有表邪者慎用'], gujiyuanwen: [{ source: '《开宝本草》', text: '五倍子，治筋骨诸疮。' }] },
+        '乌梅': { xingwei: '酸、涩，平', guijing: '肝、脾、肺、大肠经', 功效: '敛肺止咳，涩肠止泻，安蛔止痛，生津止渴', zhuji: '肺虚久咳、久泻久痢、蛔厥呕吐、消渴', jifu: '一次6-12g', jindu: '无毒', peiwu: '配细辛、川椒为乌梅丸治蛔厥', tabi: ['外有表邪、内有实热者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '乌梅，主下气，除热烦满。' }] },
+        '椿根皮': { xingwei: '苦、涩，寒', guijing: '大肠、胃经', 功效: '清热燥湿，涩肠止泻，止血，杀虫', zhuji: '久泻久痢、崩漏带下、蛔虫腹痛', jifu: '一次6-12g', jindu: '无毒', peiwu: '配黄柏清热燥湿治带下', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '椿根皮，主泄利，崩中带下。' }] },
+        '冬瓜皮': { xingwei: '甘，凉', guijing: '脾、小肠经', 功效: '利尿消肿', zhuji: '水肿胀满、小便不利', jifu: '一次15-30g', jindu: '无毒', peiwu: '配茯苓皮、大腹皮为五皮散治水肿', tabi: ['无明显禁忌'], gujiyuanwen: [{ source: '《本草纲目》', text: '冬瓜皮，利水道，消肿满。' }] },
+        '西瓜翠衣': { xingwei: '甘，凉', guijing: '心、胃、膀胱经', 功效: '清热解暑，利尿', zhuji: '暑热烦渴、小便短赤', jifu: '一次15-30g', jindu: '无毒', peiwu: '配淡竹叶增强清暑利尿功效', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《本草纲目》', text: '西瓜翠衣，清热解暑。' }] },
+        '玉米须': { xingwei: '甘，平', guijing: '肝、胆、膀胱经', 功效: '利尿消肿，利湿退黄', zhuji: '水肿、黄疸、小便不利、高血压', jifu: '一次30-60g', jindu: '无毒', peiwu: '配车前草增强利尿功效', tabi: ['无明显禁忌'], gujiyuanwen: [{ source: '《本草纲目》', text: '玉米须，利水消肿。' }] },
+        '夏枯草': { xingwei: '辛、苦，寒', guijing: '肝、胆经', 功效: '清肝泻火，明目，散结消肿', zhuji: '目赤肿痛、头痛眩晕、瘰疬瘿瘤、乳痈肿痛', jifu: '一次9-15g', jindu: '无毒', peiwu: '配菊花增强清肝明目功效', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '夏枯草，主寒热瘰疬，鼠瘘，头疮，破癥，散瘿结气。' }] },
+        '青箱子': { xingwei: '甘，寒', guijing: '肝经', 功效: '清肝明目，退翳', zhuji: '目赤肿痛、目生翳障、高血压', jifu: '一次6-12g', jindu: '无毒', peiwu: '配菊花增强清肝明目功效', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '青箱子，主目气痛，身面目黄。' }] },
+        '决明子': { xingwei: '甘、苦、咸，微寒', guijing: '肝、大肠经', 功效: '清热明目，润肠通便', zhuji: '目赤肿痛、羞明多泪、肠燥便秘、高血压', jifu: '一次9-15g', jindu: '无毒', peiwu: '配菊花为决明子茶，清肝明目', tabi: ['脾胃虚寒便溏者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '决明子，主address肝家。' }] },
+        '密蒙花': { xingwei: '甘，微寒', guijing: '肝经', 功效: '清热养肝，明目退翳', zhuji: '目赤肿痛、多泪羞明、翳膜遮睛', jifu: '一次6-12g', jindu: '无毒', peiwu: '配菊花、车前子增强清肝明目功效', tabi: ['无明显禁忌'], gujiyuanwen: [{ source: '《神农本草经》', text: '密蒙花，主青盲，肤翳，泪出。' }] },
+        '谷精草': { xingwei: '辛、甘，平', guijing: '肝、肺经', 功效: '疏散风热，明目退翳', zhuji: '目赤肿痛、目生翳膜、头痛风热', jifu: '一次6-12g', jindu: '无毒', peiwu: '配密蒙花为治目翳要药', tabi: ['无明显禁忌'], gujiyuanwen: [{ source: '《本草纲目》', text: '谷精草，治风热目疾。' }] },
+        '石决明': { xingwei: '咸，寒', guijing: '肝经', 功效: '平肝潜阳，清肝明目', zhuji: '头痛眩晕、目赤翳障、视物昏花', jifu: '一次6-20g，先煎', jindu: '无毒', peiwu: '配珍珠母增强平肝潜阳功效', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '石决明，主目痛肌瘘，目中眵睑，止烦满，益气。' }] },
+        '羚羊角': { xingwei: '咸，寒', guijing: '肝、心经', 功效: '平肝息风，清肝明目，清热解毒', zhuji: '肝风内动、惊痫抽搐、高热神昏、肝阳眩晕', jifu: '一次1-3g，另煎兑服', jindu: '无毒', peiwu: '配钩藤为羚角钩藤汤治肝风', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '羚羊角，主明目，益气起阴，去恶血注下。' }] },
+        '牛黄': { xingwei: '甘，凉', guijing: '心、肝经', 功效: '化痰开窍，凉肝息风，清热解毒', zhuji: '热病神昏、中风痰迷、惊痫抽搐、咽喉肿痛', jifu: '一次0.15-0.35g，入丸散', jindu: '无毒', peiwu: '配麝香为安宫牛黄丸核心药', tabi: ['孕妇慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '牛黄，主惊痫瘛疭，寒热，累疾，瘀血，小儿疳虫。' }] },
+        '珍珠母': { xingwei: '咸，寒', guijing: '肝经', 功效: '平肝潜阳，清肝明目，镇心安神', zhuji: '头晕目眩、心悸失眠、目赤翳障', jifu: '一次10-25g，先煎', jindu: '无毒', peiwu: '配石决明增强平肝潜阳功效', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《本草纲目》', text: '珍珠母，平肝潜阳，清肝明目。' }] },
+        '罗布麻': { xingwei: '甘、苦，凉', guijing: '肝经', 功效: '平肝安神，清热利水', zhuji: '高血压病、头痛眩晕、水肿胀满', jifu: '一次3-9g', jindu: '无毒', peiwu: '配菊花为罗布麻茶，清肝降压', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《中华本草》', text: '罗布麻，平肝清热，利尿降压。' }] },
+        '绞股蓝': { xingwei: '苦、甘，寒', guijing: '肺、脾、胃经', 功效: '益气健脾，化痰止咳，清热解毒', zhuji: '体虚乏力、慢性支气管炎、高血脂、肿瘤的辅助治疗', jifu: '一次3-9g', jindu: '无毒', peiwu: '配山楂为绞股蓝茶，降脂降压', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《中药大辞典》', text: '绞股蓝，清热解毒，补气安神。' }] },
+        '灵芝': { xingwei: '甘，平', guijing: '心、肺、肝、肾经', 功效: '补气安神，止咳平喘', zhuji: '心悸失眠、眩晕不寐、咳嗽气喘、病后体虚', jifu: '一次6-12g', jindu: '无毒', peiwu: '配茯苓为灵芝茯苓茶，安神助眠', tabi: ['无明显禁忌'], gujiyuanwen: [{ source: '《神农本草经》', text: '灵芝，主耳聋，利关节，保神，益肺气，增智慧，好颜色。' }] },
+        '桑椹': { xingwei: '甘、酸，寒', guijing: '心、肝、肾经', 功效: '滋阴补血，生津润燥', zhuji: '肝肾阴虚、眩晕耳鸣、心悸失眠、津伤口渴、肠燥便秘', jifu: '一次9-15g', jindu: '无毒', peiwu: '配枸杞子为桑椹枸杞茶，滋阴补血', tabi: ['脾胃虚寒便溏者慎用'], gujiyuanwen: [{ source: '《滇南本草》', text: '桑椹，利五脏，关节通，行水气。' }] },
+        '莲子肉': { xingwei: '甘、涩，平', guijing: '脾、肾、心经', 功效: '补脾止泻，止带，益肾涩精，养心安神', zhuji: '脾虚泄泻、带下、遗精滑精、心悸失眠', jifu: '一次6-15g', jindu: '无毒', peiwu: '配茯苓、薏苡仁为四神汤治脾虚', tabi: ['大便秘结者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '莲子，主补中，诸不足，益气，强志，除百病。' }] },
+        '芡实': { xingwei: '甘、涩，平', guijing: '脾、肾经', 功效: '益肾固精，补脾止泻，除湿止带', zhuji: '遗精滑精、遗尿尿频、脾虚泄泻、带下', jifu: '一次9-15g', jindu: '无毒', peiwu: '配莲子为芡莲散，健脾固肾', tabi: ['大便秘结者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '芡实，主湿痹，腰脊膝痛。' }] },
+        '莲子心': { xingwei: '苦，寒', guijing: '心、肾经', 功效: '清心安神，交通心肾，涩精', zhuji: '心火亢盛、心烦不寐、高血压', jifu: '一次1.5-3g', jindu: '无毒', peiwu: '配黄连为交泰丸治心肾不交', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《本草纲目》', text: '莲子心，清心去热。' }] },
+        '莲须': { xingwei: '甘、涩，平', guijing: '肾、心经', 功效: '固肾涩精', zhuji: '遗精滑精、带下、尿频', jifu: '一次3-5g', jindu: '无毒', peiwu: '配芡实为固精止带要药', tabi: ['无明显禁忌'], gujiyuanwen: [{ source: '《本草纲目》', text: '莲须，止肾泄精。' }] },
+        '莲藕': { xingwei: '甘，寒', guijing: '心、脾、胃经', 功效: '清热生津，凉血止血，健脾开胃', zhuji: '热病烦渴、吐血衄血、便血崩漏、食欲不振', jifu: '一次100-200g', jindu: '无毒', peiwu: '配藕节为凉血止血要药', tabi: ['脾胃虚寒者慎用'], gujiyuanwen: [{ source: '《本草纲目》', text: '莲藕，开胃下食，止渴消酒。' }] },
+        '藕节': { xingwei: '甘、涩，平', guijing: '肝、肺、胃经', 功效: '收敛止血', zhuji: '吐血、咯血、尿血、便血、崩漏', jifu: '一次9-15g', jindu: '无毒', peiwu: '配茜草为十灰散治各种出血', tabi: ['无明显禁忌'], gujiyuanwen: [{ source: '《本草纲目》', text: '藕节，止吐血、衄血。' }] },
+        '桑白皮': { xingwei: '甘，寒', guijing: '肺经', 功效: '泻肺平喘，利水消肿', zhuji: '肺热咳喘、水肿胀满、小便不利', jifu: '一次9-15g', jindu: '无毒', peiwu: '配桑叶为桑白皮汤，泻肺平喘', tabi: ['肺虚喘咳者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '桑白皮，主去瘿气，风湿，皮间邪热气，气中痛。' }] },
+        '白前': { xingwei: '辛、苦，微温', guijing: '肺经', 功效: '降气化痰，止咳', zhuji: '咳嗽痰多、气喘', jifu: '一次3-9g', jindu: '无毒', peiwu: '配紫菀为降气化痰要药对', tabi: ['肺虚久咳者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '白前，主咳嗽，逆气，肠鸣。' }] },
+        '紫菀': { xingwei: '辛、苦，温', guijing: '肺经', 功效: '润肺下气，化痰止咳', zhuji: '咳嗽有痰、肺痈吐脓、劳嗽咯血', jifu: '一次5-10g', jindu: '无毒', peiwu: '配款冬花为润肺止咳要药对', tabi: ['肺虚无火者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '紫菀，主咳嗽，逆气，肠鸣。' }] },
+        '款冬花': { xingwei: '辛、微苦，温', guijing: '肺经', 功效: '润肺下气，化痰止咳', zhuji: '咳嗽气喘、咯痰不爽', jifu: '一次5-10g', jindu: '无毒', peiwu: '配紫菀为润肺止咳要药对', tabi: ['肺虚无火者慎用'], gujiyuanwen: [{ source: '《神农本草经》', text: '款冬花，主咳逆上气，喘，息贲。' }] },
+        '马兜铃': { xingwei: '苦，微寒；有毒', guijing: '肺、大肠经', 功效: '清肺化痰，止咳平喘，清肠杀虫', zhuji: '肺热咳嗽、气喘、肠痈、痔漏', jifu: '一次3-9g', jindu: '有毒', peiwu: '配紫菀、款冬花为治咳要方', tabi: ['肺虚久咳者慎用，不宜久服'], gujiyuanwen: [{ source: '《神农本草经》', text: '马兜铃，主肺痈，咳逆上气，喘息，咽喉不利。' }] },
+        '百部': { xingwei: '甘、苦，微温', guijing: '肺经', 功效: '润肺止咳，杀虫灭虱', zhuji: '新久咳嗽、百日咳、肺痨咳嗽、头癣疥疮', jifu: '一次5-10g', jindu: '无毒', peiwu: '配紫菀、款冬花为治咳三方', tabi: ['无明显禁忌'], gujiyuanwen: [{ source: '《神农本草经》', text: '百部，主咳嗽上气。' }] },
+        '白果': { xingwei: '甘、苦、涩，平；有小毒', guijing: '肺、肾经', 功效: '敛肺定喘，止带缩尿', zhuji: '哮喘痰嗽、带下白浊、遗尿尿频', jifu: '一次5-10g', jindu: '有小毒', peiwu: '配麻黄为定喘汤治哮喘', tabi: ['不宜生食，多食易中毒'], gujiyuanwen: [{ source: '《本草纲目》', text: '白果，益气，温肺，定喘嗽。' }] },
+        '胖大海': { xingwei: '甘，寒', guijing: '肺、大肠经', 功效: '清热润肺，利咽开音，润肠通便', zhuji: '肺热声哑、咽喉疼痛、干咳无痰、热结便秘', jifu: '一次1-2枚', jindu: '无毒', peiwu: '配蝉蜕为治咽喉肿痛要药', tabi: ['脾胃虚寒便溏者慎用'], gujiyuanwen: [{ source: '《本草纲目拾遗》', text: '胖大海，治用火攻邪，咽喉疼痛，热结便秘。' }] },
+        '洋金花': { xingwei: '辛，温；有毒', guijing: '肺、肝经', 功效: '平喘止咳，镇痛止痉', zhuji: '哮喘咳嗽、癓疝疼痛、风湿痹痛', jifu: '一次0.3-0.6g，入丸散', jindu: '有毒', peiwu: '配天仙子为解痉要药', tabi: ['孕妇禁用，青光眼患者禁用'], gujiyuanwen: [{ source: '《本草纲目》', text: '洋金花，治咳逆上气。' }] },
+        '甜瓜子': { xingwei: '甘，微寒', guijing: '胃、大肠经', 功效: '清肺化痰，排脓杀虫', zhuji: '肺痈咳吐脓血、肠痈、蛔虫病', jifu: '一次9-15g', jindu: '无毒', peiwu: '配薏苡仁、冬瓜仁为排脓要药', tabi: ['无明显禁忌'], gujiyuanwen: [{ source: '《神农本草经》', text: '甜瓜子，主咳逆，止渴。' }] },
+        '矮地茶': { xingwei: '辛、苦，平', guijing: '肺、肝经', 功效: '止咳化痰，活血利湿', zhuji: '咳嗽痰多、慢性支气管炎、黄疸水肿、跌打损伤', jifu: '一次15-30g', jindu: '无毒', peiwu: '配鱼腥草增强清肺化痰功效', tabi: ['无明显禁忌'], gujiyuanwen: [{ source: '《本草纲目》', text: '矮地茶，止咳祛痰，活血通络。' }] },
+        '岩白菜': { xingwei: '苦、涩，凉', guijing: '肺经', 功效: '清热解毒，化痰止咳，收敛止血', zhuji: '慢性支气管炎、咳嗽痰多、咯血、泄泻', jifu: '一次9-15g', jindu: '无毒', peiwu: '配百部为治慢性咳喘要药', tabi: ['无明显禁忌'], gujiyuanwen: [{ source: '《中华本草》', text: '岩白菜，清热化痰，止咳止血。' }] }
     };
 
     /**
@@ -1195,10 +1275,25 @@
         return null;
     }
 
+    // 功效反向索引
+    var EFFECT_INDEX = {};
+    Object.keys(BENCAO_DB).forEach(function(name) {
+        var herb = BENCAO_DB[name];
+        var effects = (herb.功效 || '').split(/[、，]/).map(function(s) { return s.trim(); });
+        effects.forEach(function(effect) {
+            if (effect) {
+                if (!EFFECT_INDEX[effect]) EFFECT_INDEX[effect] = [];
+                EFFECT_INDEX[effect].push(name);
+            }
+        });
+    });
+
     global.BencaoEngine = {
         query: query,
         search: search,
-        DB: BENCAO_DB
+        getByEffect: function(effect) { return EFFECT_INDEX[effect] || []; },
+        DB: BENCAO_DB,
+        EFFECT_INDEX: EFFECT_INDEX
     };
 
 })(typeof window !== 'undefined' ? window : this);

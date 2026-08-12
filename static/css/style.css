@@ -326,6 +326,239 @@ main {
     background: var(--gold-dark);
 }
 
+/* ========== 配伍检查 ========== */
+.interaction-check-section {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+}
+
+.interaction-check-section h3 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 18px;
+    color: var(--ink);
+    margin: 0 0 6px 0;
+}
+
+.interaction-check-section .input-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.interaction-check-input {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 15px;
+    border: 1px solid var(--border-gold);
+    border-radius: 6px;
+    background: var(--paper);
+    color: var(--ink);
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+
+.interaction-check-input:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(184, 148, 92, 0.1);
+}
+
+.interaction-check-btn {
+    margin-top: 12px;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    background: var(--gold);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.interaction-check-btn:hover {
+    background: var(--gold-dark);
+}
+
+.interaction-check-result {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+}
+
+.interaction-check-summary {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.interaction-check-summary.has-warnings {
+    background: rgba(220, 53, 69, 0.08);
+    border: 1px solid rgba(220, 53, 69, 0.2);
+    color: #c0392b;
+}
+
+.interaction-check-summary.no-warnings {
+    background: rgba(39, 174, 96, 0.08);
+    border: 1px solid rgba(39, 174, 96, 0.2);
+    color: #27ae60;
+}
+
+.interaction-check-item {
+    margin-bottom: 16px;
+}
+
+.interaction-check-item:last-child {
+    margin-bottom: 0;
+}
+
+.check-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    padding-bottom: 6px;
+}
+
+.check-section-title.danger {
+    color: #c0392b;
+    border-bottom: 2px solid #c0392b;
+}
+
+.check-section-title.caution {
+    color: #e67e22;
+    border-bottom: 2px solid #e67e22;
+}
+
+.check-section-title.warning {
+    color: #e67e22;
+    border-bottom: 2px solid #e67e22;
+}
+
+.check-warning-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(220, 53, 69, 0.06);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+
+.check-warning-type {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+    background: #c0392b;
+    padding: 2px 8px;
+    border-radius: 3px;
+}
+
+.check-warning-text {
+    color: var(--text-secondary);
+}
+
+.toxicity-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.toxicity-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.toxicity-tag.toxic-d {
+    background: rgba(220, 53, 69, 0.12);
+    color: #c0392b;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.toxicity-tag.toxic-m {
+    background: rgba(230, 126, 34, 0.12);
+    color: #d35400;
+    border: 1px solid rgba(230, 126, 34, 0.3);
+}
+
+.toxicity-tag.toxic-l {
+    background: rgba(241, 196, 15, 0.12);
+    color: #b7950b;
+    border: 1px solid rgba(241, 196, 15, 0.3);
+}
+
+.toxicity-tag.toxic-n {
+    background: rgba(39, 174, 96, 0.08);
+    color: #27ae60;
+    border: 1px solid rgba(39, 174, 96, 0.2);
+}
+
+.toxicity-level {
+    font-size: 10px;
+    opacity: 0.8;
+}
+
+.interaction-check-safe {
+    padding: 12px 16px;
+    background: rgba(39, 174, 96, 0.08);
+    border: 1px solid rgba(39, 174, 96, 0.2);
+    border-radius: 6px;
+    font-size: 14px;
+    color: #27ae60;
+}
+
+.rules-section {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: var(--shadow);
+}
+
+.rules-section h3 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 18px;
+    color: var(--ink);
+    margin: 0 0 16px 0;
+}
+
+.rule-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+.rule-card {
+    background: var(--paper);
+    border-radius: 6px;
+    padding: 14px;
+    border: 1px solid var(--border-subtle);
+}
+
+.rule-card h4 {
+    font-size: 15px;
+    color: var(--ink);
+    margin: 0 0 8px 0;
+}
+
+.rule-card p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 0;
+}
+
 /* ========== 通用页面 ========== */
 h2 {
     font-family: 'Noto Serif SC', serif;
