@@ -48,8 +48,16 @@ jobs:
               const herb = BencaoEngine.DB[q.input];
               ok = herb && herb.xingwei && herb.功效;
             } else if (q.module === 'interaction') {
-              const fans = InteractionEngine.checkShibaFan(q.input);
-              ok = fans.length > 0;
+              const exp = q.expected;
+              const herbs = Array.isArray(q.input) ? q.input : [q.input];
+              if (exp.pregnancy_warning) {
+                const preg = InteractionEngine.checkPregnancy(herbs);
+                ok = preg.length > 0;
+              } else {
+                const checkFn = exp.warning === '十九畏' ? InteractionEngine.checkShijiuWei : InteractionEngine.checkShibaFan;
+                const fans = checkFn(herbs);
+                ok = fans.length > 0;
+              }
             } else if (q.module === 'fangji') {
               ok = !!FangjiEngine.DB[q.input];
             } else if (q.module === 'master') {
