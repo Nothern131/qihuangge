@@ -1,244 +1,112 @@
 [
-  {
-    "id": "hn_001",
-    "source": "黄帝内经",
-    "chapter": "素问·阴阳应象大论",
-    "original_text": "阴阳者，天地之道也，万物之纲纪，变化之父母，生杀之本始，神明之府也。",
-    "keywords": [
-      "阴阳",
-      "天地",
-      "纲纪"
-    ],
-    "category": "医经",
-    "subject_area": "阴阳理论",
-    "bianzheng_type": null,
-    "syndrome_keywords": [],
-    "formula_keywords": [],
-    "herb_keywords": [],
-    "commentary": "阴阳是天地运行的根本规律，万物变化的总纲。",
-    "confidence": 1.0
-  },
-  {
-    "id": "hn_002",
-    "source": "黄帝内经",
-    "chapter": "素问·阴阳应象大论",
-    "original_text": "阳化气，阴成形。",
-    "keywords": [
-      "阳",
-      "阴",
-      "化气",
-      "成形"
-    ],
-    "category": "医经",
-    "subject_area": "阴阳理论",
-    "bianzheng_type": null,
-    "syndrome_keywords": [],
-    "formula_keywords": [],
-    "herb_keywords": [],
-    "commentary": "阳主气化功能，阴主物质形质。",
-    "confidence": 1.0
-  },
-  {
-    "id": "hn_003",
-    "source": "黄帝内经",
-    "chapter": "素问·热论",
-    "original_text": "巨阳者，五脏六腑之主也。伤寒一日，巨阳受之，故头项痛，腰脊强。",
-    "keywords": [
-      "太阳",
-      "伤寒",
-      "头项痛",
-      "腰脊强"
-    ],
-    "category": "伤寒",
-    "subject_area": "六经辨证",
-    "bianzheng_type": "太阳病",
-    "syndrome_keywords": [
-      "太阳经证",
-      "表证"
-    ],
-    "formula_keywords": [
-      "麻黄汤",
-      "桂枝汤"
-    ],
-    "herb_keywords": [],
-    "commentary": "太阳主一身之表，为诸阳主气。伤寒初起，邪犯太阳，故头项腰脊强痛。",
-    "confidence": 1.0
-  },
-  {
-    "id": "hn_004",
-    "source": "黄帝内经",
-    "chapter": "素问·至真要大论",
-    "original_text": "寒者热之，热者寒之，温者清之，清者温之，散者收之，抑者散之，燥者润之，急者缓之，坚者软之，脆者坚之，衰者补之，强者泻之。",
-    "keywords": [
-      "寒热",
-      "虚实",
-      "治则"
-    ],
-    "category": "医经",
-    "subject_area": "治疗原则",
-    "bianzheng_type": null,
-    "syndrome_keywords": [],
-    "formula_keywords": [],
-    "herb_keywords": [],
-    "commentary": "此为大法，治病当审其寒热虚实，随证施治。",
-    "confidence": 1.0
-  },
-  {
-    "id": "hn_005",
-    "source": "黄帝内经",
-    "chapter": "素问·灵兰秘典论",
-    "original_text": "心者，君主之官也，神明出焉。肺者，相傅之官，治节出焉。肝者，将军之官，谋虑出焉。胆者，中正之官，决断出焉。",
-    "keywords": [
-      "心",
-      "肺",
-      "肝",
-      "胆",
-      "脏腑"
-    ],
-    "category": "医经",
-    "subject_area": "脏腑理论",
-    "bianzheng_type": null,
-    "syndrome_keywords": [],
-    "formula_keywords": [],
-    "herb_keywords": [],
-    "commentary": "十二官各有其职，心为君主，统摄诸脏。",
-    "confidence": 1.0
-  },
-  {
-    "id": "sh_001",
-    "source": "伤寒论",
-    "chapter": "辨太阳病脉证并治上",
-    "original_text": "太阳之为病，脉浮，头项强痛而恶寒。",
-    "keywords": [
-      "太阳",
-      "脉浮",
-      "头项强痛",
-      "恶寒"
-    ],
-    "category": "伤寒",
-    "subject_area": "六经辨证",
-    "bianzheng_type": "太阳病",
-    "syndrome_keywords": [
-      "太阳经证",
-      "表证"
-    ],
-    "formula_keywords": [
-      "麻黄汤",
-      "桂枝汤"
-    ],
-    "herb_keywords": [],
-    "commentary": "太阳病提纲证。太阳主表，外邪侵袭，卫阳抗邪，故脉浮、头项强痛、恶寒并见。",
-    "confidence": 1.0
-  },
-  {
-    "id": "sh_002",
-    "source": "伤寒论",
-    "chapter": "辨太阳病脉证并治上",
-    "original_text": "太阳病，发热，汗出，恶风，脉缓者，名为中风。",
-    "keywords": [
-      "太阳",
-      "发热",
-      "汗出",
-      "恶风",
-      "中风"
-    ],
-    "category": "伤寒",
-    "subject_area": "六经辨证",
-    "bianzheng_type": "太阳中风",
-    "syndrome_keywords": [
-      "太阳表虚证"
-    ],
-    "formula_keywords": [
-      "桂枝汤"
-    ],
-    "herb_keywords": [],
-    "commentary": "太阳中风证，营卫不和，卫强营弱。",
-    "confidence": 1.0
-  },
-  {
-    "id": "sh_003",
-    "source": "伤寒论",
-    "chapter": "辨太阳病脉证并治中",
-    "original_text": "太阳病，头痛，发热，汗出，恶风，桂枝汤主之。",
-    "keywords": [
-      "太阳",
-      "头痛",
-      "发热",
-      "桂枝汤"
-    ],
-    "category": "伤寒",
-    "subject_area": "方证对应",
-    "bianzheng_type": "太阳中风",
-    "syndrome_keywords": [
-      "太阳表虚证"
-    ],
-    "formula_keywords": [
-      "桂枝汤"
-    ],
-    "herb_keywords": [
-      "桂枝",
-      "白芍",
-      "生姜",
-      "大枣",
-      "甘草"
-    ],
-    "commentary": "桂枝汤为群方之祖，主治太阳中风表虚证。",
-    "confidence": 1.0
-  },
-  {
-    "id": "sh_004",
-    "source": "伤寒论",
-    "chapter": "辨太阳病脉证并治中",
-    "original_text": "太阳病，项背强几几，无汗恶风，葛根汤主之。",
-    "keywords": [
-      "太阳",
-      "项背强",
-      "无汗",
-      "葛根汤"
-    ],
-    "category": "伤寒",
-    "subject_area": "方证对应",
-    "bianzheng_type": "太阳伤寒兼经输不利",
-    "syndrome_keywords": [
-      "太阳伤寒证"
-    ],
-    "formula_keywords": [
-      "葛根汤"
-    ],
-    "herb_keywords": [
-      "葛根",
-      "麻黄",
-      "桂枝",
-      "白芍",
-      "生姜",
-      "大枣",
-      "甘草"
-    ],
-    "commentary": "太阳伤寒，经气不利，项背强几几，葛根汤主之。",
-    "confidence": 1.0
-  },
-  {
-    "id": "sh_005",
-    "source": "伤寒论",
-    "chapter": "辨少阳病脉证并治",
-    "original_text": "少阳之为病，口苦，咽干，目眩也。",
-    "keywords": [
-      "少阳",
-      "口苦",
-      "咽干",
-      "目眩"
-    ],
-    "category": "伤寒",
-    "subject_area": "六经辨证",
-    "bianzheng_type": "少阳病",
-    "syndrome_keywords": [
-      "少阳证"
-    ],
-    "formula_keywords": [
-      "小柴胡汤"
-    ],
-    "herb_keywords": [],
-    "commentary": "少阳病提纲证。少阳胆火上炎，故口苦咽干目眩。",
-    "confidence": 1.0
-  }
+  {"id":"hn_001","source":"黄帝内经","chapter":"素问·阴阳应象大论","original_text":"阴阳者，天地之道也，万物之纲纪，变化之父母，生杀之本始，神明之府也。","keywords":["阴阳","天地","纲纪"],"category":"医经","subject_area":"阴阳理论","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"阴阳是天地运行的根本规律，万物变化的总纲。","confidence":1.0},
+  {"id":"hn_002","source":"黄帝内经","chapter":"素问·阴阳应象大论","original_text":"阳化气，阴成形。","keywords":["阳","阴","化气","成形"],"category":"医经","subject_area":"阴阳理论","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"阳主气化功能，阴主物质形质。","confidence":1.0},
+  {"id":"hn_003","source":"黄帝内经","chapter":"素问·热论","original_text":"巨阳者，五脏六腑之主也。伤寒一日，巨阳受之，故头项痛，腰脊强。","keywords":["太阳","伤寒","头项痛","腰脊强"],"category":"伤寒","subject_area":"六经辨证","bianzheng_type":"太阳病","syndrome_keywords":["太阳经证","表证"],"formula_keywords":["麻黄汤","桂枝汤"],"herb_keywords":[],"commentary":"太阳主一身之表，为诸阳主气。伤寒初起，邪犯太阳，故头项腰脊强痛。","confidence":1.0},
+  {"id":"hn_004","source":"黄帝内经","chapter":"素问·至真要大论","original_text":"寒者热之，热者寒之，温者清之，清者温之，散者收之，抑者散之，燥者润之，急者缓之，坚者软之，脆者坚之，衰者补之，强者泻之。","keywords":["寒热","虚实","治则"],"category":"医经","subject_area":"治疗原则","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"此为大法，治病当审其寒热虚实，随证施治。","confidence":1.0},
+  {"id":"hn_005","source":"黄帝内经","chapter":"素问·灵兰秘典论","original_text":"心者，君主之官也，神明出焉。肺者，相傅之官，治节出焉。肝者，将军之官，谋虑出焉。胆者，中正之官，决断出焉。","keywords":["心","肺","肝","胆","脏腑"],"category":"医经","subject_area":"脏腑理论","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"十二官各有其职，心为君主，统摄诸脏。","confidence":1.0},
+  {"id":"hn_006","source":"黄帝内经","chapter":"素问·阴阳应象大论","original_text":"阴胜则阳病，阳胜则阴病。阳胜则热，阴胜则寒。","keywords":["阴阳","胜复","寒热"],"category":"医经","subject_area":"阴阳病机","bianzheng_type":null,"syndrome_keywords":["阴虚","阳虚"],"formula_keywords":[],"herb_keywords":[],"commentary":"阴阳偏胜则导致对立一方的损害，阳胜生热，阴胜生寒。","confidence":1.0},
+  {"id":"hn_007","source":"黄帝内经","chapter":"素问·阴阳应象大论","original_text":"清气在下，则生飧泄；浊气在上，则生胀。此阴阳反作，病之逆从也。","keywords":["清气","浊气","飧泄","胀"],"category":"医经","subject_area":"气机理论","bianzheng_type":null,"syndrome_keywords":["中气下陷","气逆"],"formula_keywords":[],"herb_keywords":[],"commentary":"清阳当升，浊阴当降，升降失常则病生。","confidence":1.0},
+  {"id":"hn_008","source":"黄帝内经","chapter":"素问·宝命全形论","original_text":"天覆地载，万物悉备，莫贵于人。人以天地之气生，四时之法成。","keywords":["人","天地","四时"],"category":"医经","subject_area":"天人相应","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"人在万物中最贵，人的生命来源于天地之气，遵循四时规律。","confidence":1.0},
+  {"id":"hn_009","source":"黄帝内经","chapter":"素问·举痛论","original_text":"百病生于气也，怒则气上，喜则气缓，悲则气消，恐则气下，寒则气收，炅则气泄，惊则气乱，劳则气耗，思则气结。","keywords":["气","七情","病机"],"category":"医经","subject_area":"病因病机","bianzheng_type":null,"syndrome_keywords":["气滞","气逆"],"formula_keywords":[],"herb_keywords":[],"commentary":"七情过极可伤内脏，导致气机紊乱，是内伤病的重要病因。","confidence":1.0},
+  {"id":"hn_010","source":"黄帝内经","chapter":"素问·经脉别论","original_text":"食气入胃，散精于肝，淫气于筋。食气入胃，浊气归心，淫精于脉。","keywords":["脾胃","肝","心","脉"],"category":"医经","subject_area":"藏象理论","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"饮食水谷经脾胃运化，精微输布于五脏六腑。","confidence":1.0},
+  {"id":"hn_011","source":"黄帝内经","chapter":"素问·五脏生成","original_text":"心之合脉也，其荣色也，其主肾也。肺之合皮也，其荣毛也，其主心也。肝之合筋也，其荣爪也，其主肺也。脾之合肉也，其荣唇也，其主肝也。肾之合骨也，其荣发也，其主脾也。","keywords":["五脏","五行","相克"],"category":"医经","subject_area":"藏象理论","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"五脏各有其合、其荣，且受所不胜之脏制约。","confidence":1.0},
+  {"id":"hn_012","source":"黄帝内经","chapter":"素问·阴阳离合论","original_text":"阳化气，阴成形。清阳为天，浊阴为地。","keywords":["阴阳","化气","成形"],"category":"医经","subject_area":"阴阳理论","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"阳气主气化功能，阴气主形质构成，清阳上升为天，浊阴下降为地。","confidence":1.0},
+  {"id":"hn_013","source":"黄帝内经","chapter":"灵枢·本神","original_text":"所以任物者谓之心，心有所忆谓之意，意之所存谓之志，因志而存变谓之思，因思而远慕谓之虑，因虑而处物谓之智。","keywords":["心","神","意","志"],"category":"医经","subject_area":"神志理论","bianzheng_type":null,"syndrome_keywords":["失眠","健忘"],"formula_keywords":[],"herb_keywords":[],"commentary":"心神是人体感知外界、产生思维活动的根本。","confidence":1.0},
+  {"id":"hn_014","source":"黄帝内经","chapter":"素问·上古天真论","original_text":"上古之人，其知道者，法于阴阳，和于术数，食饮有节，起居有常，不妄作劳，故能形与神俱，而尽终其天年，度百岁乃去。","keywords":["上古","养生","阴阳"],"category":"医经","subject_area":"养生理论","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"顺应自然规律，节制饮食起居，是养生的根本原则。","confidence":1.0},
+  {"id":"hn_015","source":"黄帝内经","chapter":"素问·上古天真论","original_text":"恬淡虚无，真气从之，精神内守，病安从来。","keywords":["恬淡","真气","精神"],"category":"医经","subject_area":"养生理论","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"心境淡泊，真气运行，精神内守，则邪不可干。","confidence":1.0},
+  {"id":"hn_016","source":"黄帝内经","chapter":"素问·刺法论","original_text":"正气存内，邪不可干。","keywords":["正气","邪气","发病"],"category":"医经","subject_area":"发病理论","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"人体正气充足，外邪便难以侵袭致病。","confidence":1.0},
+  {"id":"hn_017","source":"黄帝内经","chapter":"素问·评热病论","original_text":"邪之所凑，其气必虚。","keywords":["邪气","正气","发病"],"category":"医经","subject_area":"发病理论","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"病邪侵犯之处，必然是正气虚弱之所。","confidence":1.0},
+  {"id":"hn_018","source":"黄帝内经","chapter":"素问·举痛论","original_text":"寒气客于脉外则脉寒，脉寒则缩蜷，缩蜷则脉绌急，绌急则外引小络，故卒然而痛。","keywords":["寒气","脉","疼痛"],"category":"伤寒","subject_area":"病因病机","bianzheng_type":null,"syndrome_keywords":["寒凝经脉"],"formula_keywords":[],"herb_keywords":[],"commentary":"寒邪客于脉外，脉络收缩拘急，故突发疼痛。","confidence":1.0},
+  {"id":"hn_019","source":"黄帝内经","chapter":"素问·调经论","original_text":"血气者，喜温而恶寒，寒则泣不能流，温则消而去之。","keywords":["血气","寒温","治疗"],"category":"医经","subject_area":"气血理论","bianzheng_type":null,"syndrome_keywords":["血寒","气滞"],"formula_keywords":[],"herb_keywords":[],"commentary":"气血喜温恶寒，寒则凝涩，温则流通。","confidence":1.0},
+  {"id":"hn_020","source":"黄帝内经","chapter":"素问·阴阳应象大论","original_text":"阳胜则阴病，阴胜则阳病。阳胜则热，阴胜则寒。","keywords":["阴阳","胜复","寒热"],"category":"医经","subject_area":"阴阳病机","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"阴阳偏胜，必致另一方受损，阳胜生热病，阴胜生寒病。","confidence":1.0},
+  {"id":"sh_001","source":"伤寒论","chapter":"辨太阳病脉证并治上","original_text":"太阳之为病，脉浮，头项强痛而恶寒。","keywords":["太阳","脉浮","头项强痛","恶寒"],"category":"伤寒","subject_area":"六经辨证","bianzheng_type":"太阳病","syndrome_keywords":["太阳经证","表证"],"formula_keywords":["麻黄汤","桂枝汤"],"herb_keywords":[],"commentary":"太阳病提纲证。太阳主表，外邪侵袭，卫阳抗邪，故脉浮、头项强痛、恶寒并见。","confidence":1.0},
+  {"id":"sh_002","source":"伤寒论","chapter":"辨太阳病脉证并治上","original_text":"太阳病，发热，汗出，恶风，脉缓者，名为中风。","keywords":["太阳","发热","汗出","恶风","中风"],"category":"伤寒","subject_area":"六经辨证","bianzheng_type":"太阳中风","syndrome_keywords":["太阳表虚证"],"formula_keywords":["桂枝汤"],"herb_keywords":[],"commentary":"太阳中风证，营卫不和，卫强营弱。","confidence":1.0},
+  {"id":"sh_003","source":"伤寒论","chapter":"辨太阳病脉证并治中","original_text":"太阳病，头痛，发热，汗出，恶风，桂枝汤主之。","keywords":["太阳","头痛","发热","桂枝汤"],"category":"伤寒","subject_area":"方证对应","bianzheng_type":"太阳中风","syndrome_keywords":["太阳表虚证"],"formula_keywords":["桂枝汤"],"herb_keywords":["桂枝","白芍","生姜","大枣","甘草"],"commentary":"桂枝汤为群方之祖，主治太阳中风表虚证。","confidence":1.0},
+  {"id":"sh_004","source":"伤寒论","chapter":"辨太阳病脉证并治中","original_text":"太阳病，项背强几几，无汗恶风，葛根汤主之。","keywords":["太阳","项背强","无汗","葛根汤"],"category":"伤寒","subject_area":"方证对应","bianzheng_type":"太阳伤寒兼经输不利","syndrome_keywords":["太阳伤寒证"],"formula_keywords":["葛根汤"],"herb_keywords":["葛根","麻黄","桂枝","白芍","生姜","大枣","甘草"],"commentary":"太阳伤寒，经气不利，项背强几几，葛根汤主之。","confidence":1.0},
+  {"id":"sh_005","source":"伤寒论","chapter":"辨少阳病脉证并治","original_text":"少阳之为病，口苦，咽干，目眩也。","keywords":["少阳","口苦","咽干","目眩"],"category":"伤寒","subject_area":"六经辨证","bianzheng_type":"少阳病","syndrome_keywords":["少阳证"],"formula_keywords":["小柴胡汤"],"herb_keywords":[],"commentary":"少阳病提纲证。少阳胆火上炎，故口苦咽干目眩。","confidence":1.0},
+  {"id":"sh_006","source":"伤寒论","chapter":"辨太阳病脉证并治上","original_text":"太阳病，发热，汗出，恶风，脉缓者，名为中风。","keywords":["太阳","中风","营卫不和"],"category":"伤寒","subject_area":"六经辨证","bianzheng_type":"太阳中风","syndrome_keywords":["太阳表虚"],"formula_keywords":["桂枝汤"],"herb_keywords":[],"commentary":"太阳中风，营卫不和，卫强营弱，治宜解肌发表，调和营卫。","confidence":1.0},
+  {"id":"sh_007","source":"伤寒论","chapter":"辨太阳病脉证并治中","original_text":"太阳与阳明合病，喘而胸满者，不可下，宜麻黄汤。","keywords":["太阳","阳明","合病","麻黄汤"],"category":"伤寒","subject_area":"合病辨证","bianzheng_type":"太阳阳明合病","syndrome_keywords":["表寒里热"],"formula_keywords":["麻黄汤"],"herb_keywords":["麻黄","桂枝","杏仁","甘草"],"commentary":"太阳阳明合病，表寒未解，肺气上逆而喘，宜麻黄汤发汗解表。","confidence":1.0},
+  {"id":"sh_008","source":"伤寒论","chapter":"辨少阴病脉证并治","original_text":"少阴之为病，脉微细，但欲寐也。","keywords":["少阴","脉微细","但欲寐"],"category":"伤寒","subject_area":"六经辨证","bianzheng_type":"少阴病","syndrome_keywords":["少阴证"],"formula_keywords":["四逆汤","麻黄附子细辛汤"],"herb_keywords":[],"commentary":"少阴病提纲证。少阴心肾阳虚，气血不足，故脉微细、但欲寐。","confidence":1.0},
+  {"id":"sh_009","source":"伤寒论","chapter":"辨少阴病脉证并治","original_text":"少阴病，脉细沉数，病为在里，不可发汗。","keywords":["少阴","脉细沉数","病在里"],"category":"伤寒","subject_area":"治则禁忌","bianzheng_type":"少阴病","syndrome_keywords":["少阴里证"],"formula_keywords":[],"herb_keywords":[],"commentary":"少阴病脉细沉数，病在里，虽有表证亦不可发汗。","confidence":1.0},
+  {"id":"sh_010","source":"伤寒论","chapter":"辨太阴病脉证并治","original_text":"太阴之为病，腹满而吐，食不下，自利益甚，时腹自痛。若下之，必胸下结硬。","keywords":["太阴","腹满","吐","自利"],"category":"伤寒","subject_area":"六经辨证","bianzheng_type":"太阴病","syndrome_keywords":["太阴脾虚寒湿"],"formula_keywords":["理中汤","四逆汤"],"herb_keywords":[],"commentary":"太阴病提纲证。脾阳不振，寒湿内停，故腹满吐利。","confidence":1.0},
+  {"id":"sh_011","source":"伤寒论","chapter":"辨阳明病脉证并治","original_text":"阳明之为病，胃家实是也。","keywords":["阳明","胃家实"],"category":"伤寒","subject_area":"六经辨证","bianzheng_type":"阳明病","syndrome_keywords":["阳明腑实证"],"formula_keywords":["承气汤","白虎汤"],"herb_keywords":[],"commentary":"阳明病提纲证。阳明胃肠燥热内结，故称胃家实。","confidence":1.0},
+  {"id":"sh_012","source":"伤寒论","chapter":"辨阳明病脉证并治","original_text":"阳明病，脉浮而紧，咽燥口苦，腹满而喘，发热汗出，不恶寒反恶热，身重。","keywords":["阳明","脉浮紧","发热","恶热"],"category":"伤寒","subject_area":"六经辨证","bianzheng_type":"阳明经证","syndrome_keywords":["阳明经证"],"formula_keywords":["白虎汤"],"herb_keywords":[],"commentary":"阳明经证，热盛于经，故发热汗出、不恶寒反恶热。","confidence":1.0},
+  {"id":"sh_013","source":"伤寒论","chapter":"辨太阳病脉证并治中","original_text":"太阳病，十日已去，脉浮细而嗜卧者，外已解也。设胸满胁痛者，与小柴胡汤。","keywords":["太阳","脉浮细","胸满胁痛","小柴胡汤"],"category":"伤寒","subject_area":"传变辨证","bianzheng_type":"太阳转少阳","syndrome_keywords":["少阳证"],"formula_keywords":["小柴胡汤"],"herb_keywords":["柴胡","黄芩","人参","半夏","生姜","大枣","甘草"],"commentary":"太阳病日久，邪传少阳，胸满胁痛，宜小柴胡汤和解少阳。","confidence":1.0},
+  {"id":"sh_014","source":"伤寒论","chapter":"辨太阳病脉证并治下","original_text":"太阳病，下之后，脉促胸满者，桂枝去芍药汤主之。","keywords":["太阳","误下","脉促","桂枝去芍药"],"category":"伤寒","subject_area":"变证治则","bianzheng_type":"太阳误下胸满","syndrome_keywords":["胸阳不振"],"formula_keywords":["桂枝去芍药汤"],"herb_keywords":["桂枝","甘草","生姜","大枣"],"commentary":"太阳病误下，损伤胸阳，脉促胸满，宜桂枝去芍药汤温通胸阳。","confidence":1.0},
+  {"id":"sh_015","source":"伤寒论","chapter":"辨太阳病脉证并治中","original_text":"伤寒若吐若下后，心下逆满，气上冲胸，起则头眩，脉沉紧，发汗则动经，身为振振摇者，茯苓桂枝白术甘草汤主之。","keywords":["伤寒","心下逆满","气上冲","苓桂术甘汤"],"category":"伤寒","subject_area":"变证治则","bianzheng_type":"痰饮内停","syndrome_keywords":["水气上冲"],"formula_keywords":["茯苓桂枝白术甘草汤"],"herb_keywords":["茯苓","桂枝","白术","甘草"],"commentary":"伤寒误治，脾虚水停，水气上冲，宜苓桂术甘汤温阳化饮。","confidence":1.0},
+  {"id":"sh_016","source":"伤寒论","chapter":"辨太阳病脉证并治中","original_text":"太阳病，发汗后，大汗出，胃中干，烦躁不得眠，欲得饮水者，少少与饮之，令胃气和则愈。","keywords":["太阳","发汗","胃干","烦躁"],"category":"伤寒","subject_area":"治则禁忌","bianzheng_type":null,"syndrome_keywords":["胃阴虚"],"formula_keywords":[],"herb_keywords":[],"commentary":"太阳病发汗过多，胃中津液受损，宜少量多次饮水以和胃气。","confidence":1.0},
+  {"id":"sh_017","source":"伤寒论","chapter":"辨太阳病脉证并治中","original_text":"太阳病，发热汗出者，此为荣弱卫强，故使汗出，欲救邪风者，宜桂枝汤。","keywords":["太阳","发热","汗出","营弱卫强"],"category":"伤寒","subject_area":"病机治则","bianzheng_type":"太阳中风","syndrome_keywords":["营卫不和"],"formula_keywords":["桂枝汤"],"herb_keywords":["桂枝","白芍","生姜","大枣","甘草"],"commentary":"营弱卫强，卫气不固，营阴外泄，故发热汗出，宜桂枝汤调和营卫。","confidence":1.0},
+  {"id":"sh_018","source":"伤寒论","chapter":"辨太阳病脉证并治中","original_text":"病人脉浮，前后热者，此为重感于湿也。太阳病，发热汗出，恶风者，名曰中风。","keywords":["脉浮","发热","恶风","中风"],"category":"伤寒","subject_area":"六经辨证","bianzheng_type":"太阳中风","syndrome_keywords":["太阳表虚"],"formula_keywords":["桂枝汤"],"herb_keywords":[],"commentary":"脉浮发热汗出恶风，是太阳中风典型表现。","confidence":1.0},
+  {"id":"sh_019","source":"伤寒论","chapter":"辨太阳病脉证并治中","original_text":"伤寒脉浮滑，此表有热，里有寒，白虎汤主之。","keywords":["伤寒","脉浮滑","白虎汤"],"category":"伤寒","subject_area":"方证对应","bianzheng_type":"阳明经证","syndrome_keywords":["阳明气分热盛"],"formula_keywords":["白虎汤"],"herb_keywords":["石膏","知母","甘草","粳米"],"commentary":"伤寒脉浮滑，热盛于内，外越于表，宜白虎汤清热生津。","confidence":1.0},
+  {"id":"sh_020","source":"伤寒论","chapter":"辨阳明病脉证并治","original_text":"阳明病，脉迟，汗出多，微恶寒者，表未解也，可发汗，宜桂枝汤。","keywords":["阳明","脉迟","汗出","恶寒"],"category":"伤寒","subject_area":"表里同病","bianzheng_type":"阳明兼太阳表证","syndrome_keywords":["表未解"],"formula_keywords":["桂枝汤"],"herb_keywords":[],"commentary":"阳明病兼有表证，当先解表后攻里，宜桂枝汤。","confidence":1.0},
+  {"id":"sh_021","source":"伤寒论","chapter":"辨少阳病脉证并治","original_text":"伤寒五六日中风，往来寒热，胸胁苦满，默默不欲饮食，心烦喜呕，或胸中烦而不呕，或渴，或腹中痛，或胁下痞硬，或心下悸小便不利，或不渴身有微热，或咳者，小柴胡汤主之。","keywords":["少阳","往来寒热","胸胁苦满","小柴胡汤"],"category":"伤寒","subject_area":"方证对应","bianzheng_type":"少阳病","syndrome_keywords":["少阳证"],"formula_keywords":["小柴胡汤"],"herb_keywords":["柴胡","黄芩","人参","半夏","生姜","大枣","甘草"],"commentary":"少阳病提纲，邪在半表半里，往来寒热，胸胁苦满，宜小柴胡汤和解少阳。","confidence":1.0},
+  {"id":"sh_022","source":"伤寒论","chapter":"辨少阳病脉证并治","original_text":"血弱气尽，腠理开，邪气因入，与正气相搏，结于胁下，正邪分争，往来寒热，休作有时，嘿嘿不欲饮食，脏腑相连，其痛必下，邪高痛下，故使呕也，小柴胡汤主之。","keywords":["少阳","血弱气尽","往来寒热"],"category":"伤寒","subject_area":"病机治则","bianzheng_type":"少阳病","syndrome_keywords":["少阳枢机不利"],"formula_keywords":["小柴胡汤"],"herb_keywords":[],"commentary":"少阳病病机，正气已虚，邪气入少阳，枢机不利，宜小柴胡汤扶正祛邪。","confidence":1.0},
+  {"id":"sh_023","source":"伤寒论","chapter":"辨厥阴病脉证并治","original_text":"厥阴之为病，消渴，气上撞心，心中疼热，饥而不欲食，食则吐蛔，下之利不止。","keywords":["厥阴","消渴","气上撞心","吐蛔"],"category":"伤寒","subject_area":"六经辨证","bianzheng_type":"厥阴病","syndrome_keywords":["上热下寒"],"formula_keywords":["乌梅丸"],"herb_keywords":[],"commentary":"厥阴病提纲证。上热下寒，消渴气上撞心，宜乌梅丸寒热并用。","confidence":1.0},
+  {"id":"sh_024","source":"伤寒论","chapter":"辨霍乱病脉证并治","original_text":"呕吐而利，此名霍乱。霍乱，头痛发热，身疼痛，热多欲饮水者，五苓散主之；寒多不用水者，理中丸主之。","keywords":["霍乱","呕吐","下利","五苓散","理中丸"],"category":"伤寒","subject_area":"霍乱辨证","bianzheng_type":"霍乱","syndrome_keywords":["太阴霍乱"],"formula_keywords":["五苓散","理中丸"],"herb_keywords":[],"commentary":"霍乱吐利，热多用五苓散利水清热，寒多用理中丸温中散寒。","confidence":1.0},
+  {"id":"sh_025","source":"伤寒论","chapter":"辨太阳病脉证并治上","original_text":"伤寒不大便六七日，头痛有热者，与承气汤。其小便清者，知不在里，仍在表也，当发汗。","keywords":["伤寒","不大便","头痛","承气汤"],"category":"伤寒","subject_area":"表里辨证","bianzheng_type":null,"syndrome_keywords":["便秘"],"formula_keywords":["承气汤"],"herb_keywords":[],"commentary":"伤寒不大便头痛，小便清者表未解当发汗，小便黄者里热盛可下。","confidence":1.0},
+  {"id":"jj_001","source":"金匮要略","chapter":"脏腑经络先后病脉证","original_text":"夫治未病者，见肝之病，知肝传脾，当先实脾，四季脾王不受邪，即勿补之。","keywords":["治未病","肝病","实脾"],"category":"金匮","subject_area":"治未病理论","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"见肝知脾，先实脾土，是治未病的重要原则。","confidence":1.0},
+  {"id":"jj_002","source":"金匮要略","chapter":"脏腑经络先后病脉证","original_text":"寸口脉浮而迟，浮即为虚，迟即为劳，虚则卫气不足，劳则营气竭。","keywords":["寸口","脉浮","脉迟","营卫"],"category":"金匮","subject_area":"脉诊理论","bianzheng_type":null,"syndrome_keywords":["营卫两虚"],"formula_keywords":[],"herb_keywords":[],"commentary":"脉浮迟主营卫两虚，浮为卫虚，迟为营竭。","confidence":1.0},
+  {"id":"jj_003","source":"金匮要略","chapter":"中风历节病脉证并治","original_text":"夫风之为病，当半身不遂，或但臂不遂者，此为痹。脉微而数，中风使然。","keywords":["中风","半身不遂","痹","脉微数"],"category":"金匮","subject_area":"中风辨证","bianzheng_type":null,"syndrome_keywords":["中风"],"formula_keywords":[],"herb_keywords":[],"commentary":"中风以半身不遂为主症，脉微数主营卫两虚，风邪入中。","confidence":1.0},
+  {"id":"jj_004","source":"金匮要略","chapter":"痰饮咳嗽病脉证并治","original_text":"痰饮者，当以温药和之。","keywords":["痰饮","温药","治则"],"category":"金匮","subject_area":"痰饮病治则","bianzheng_type":null,"syndrome_keywords":["痰饮"],"formula_keywords":["苓桂术甘汤"],"herb_keywords":[],"commentary":"痰饮为阴邪，非温不化，当以温药和之。","confidence":1.0},
+  {"id":"jj_005","source":"金匮要略","chapter":"胸痹心痛短气病脉证并治","original_text":"胸痹之病，喘息咳唾，胸背痛，短气，寸口脉沉而迟，关上小紧数，栝楼薤白白酒汤主之。","keywords":["胸痹","喘息咳唾","胸背痛","栝楼薤白"],"category":"金匮","subject_area":"胸痹辨证","bianzheng_type":"胸痹","syndrome_keywords":["胸痹痰阻"],"formula_keywords":["栝楼薤白白酒汤","栝楼薤白半夏汤"],"herb_keywords":["栝楼","薤白","白酒"],"commentary":"胸痹因痰浊壅塞，胸阳不振，宜栝楼薤白白酒汤通阳散结。","confidence":1.0},
+  {"id":"jj_006","source":"金匮要略","chapter":"黄疸病脉证并治","original_text":"寸口脉浮而迟，浮即为虚，迟即为劳，虚则卫气不足，劳则营气竭。","keywords":["黄疸","脉浮迟","营卫"],"category":"金匮","subject_area":"黄疸辨证","bianzheng_type":null,"syndrome_keywords":["黄疸"],"formula_keywords":[],"herb_keywords":[],"commentary":"脉浮迟主营卫两虚，是黄疸病机之一。","confidence":0.9},
+  {"id":"jj_007","source":"金匮要略","chapter":"水气病脉证并治","original_text":"大气一转，其气乃散。","keywords":["大气","气散","治则"],"category":"金匮","subject_area":"水气病治则","bianzheng_type":null,"syndrome_keywords":["水气"],"formula_keywords":[],"herb_keywords":[],"commentary":"大气运转则水气自散，治水肿当调大气。","confidence":1.0},
+  {"id":"jj_008","source":"金匮要略","chapter":"疮痈肠痈浸淫病脉证并治","original_text":"肠痈者，少腹肿痞，按之即痛如淋，小便自调，时时发热，自汗出，复恶寒。","keywords":["肠痈","少腹肿痞","发热"],"category":"金匮","subject_area":"肠痈辨证","bianzheng_type":null,"syndrome_keywords":["肠痈"],"formula_keywords":["大黄牡丹汤"],"herb_keywords":["大黄","牡丹皮","桃仁","冬瓜仁","芒硝"],"commentary":"肠痈初期，少腹肿痞，热毒内蕴，宜大黄牡丹汤泻热破瘀。","confidence":1.0},
+  {"id":"sn_001","source":"神农本草经","chapter":"上经","original_text":"上药一百二十种为君，主养命以应天，无毒，多服久服不伤人。","keywords":["上药","养命","无毒"],"category":"本草","subject_area":"本草分类","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"神农本草经将药物分为上中下三品，上品养命无毒。","confidence":1.0},
+  {"id":"sn_002","source":"神农本草经","chapter":"中经","original_text":"中药一百二十种为臣，主养性以应人，无毒有毒，斟酌其宜。","keywords":["中药","养性","斟酌"],"category":"本草","subject_area":"本草分类","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"中药补虚祛邪，需斟酌剂量使用。","confidence":1.0},
+  {"id":"sn_003","source":"神农本草经","chapter":"下经","original_text":"下药一百二十五种为佐使，主除病以应地，多毒，不可久服。","keywords":["下药","除病","多毒"],"category":"本草","subject_area":"本草分类","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"下药攻邪治病，多有毒，不可久服。","confidence":1.0},
+  {"id":"sn_004","source":"神农本草经","chapter":"上经","original_text":"五味子，主益气，咳逆上气，劳伤赢瘦，补不足，强阴，益男子精。","keywords":["五味子","益气","咳逆","强阴"],"category":"本草","subject_area":"药物功效","bianzheng_type":null,"syndrome_keywords":["肺虚咳嗽","肾阴虚"],"formula_keywords":[],"herb_keywords":["五味子"],"commentary":"五味子敛肺滋肾，益气生津。","confidence":1.0},
+  {"id":"sn_005","source":"神农本草经","chapter":"上经","original_text":"人参，主补五脏，安精神，定魂魄，止惊悸，除邪气，明目，开心益智。","keywords":["人参","补五脏","安精神","益气"],"category":"本草","subject_area":"药物功效","bianzheng_type":null,"syndrome_keywords":["气虚"],"formula_keywords":[],"herb_keywords":["人参"],"commentary":"人参为大补元气之品，补五脏、安精神。","confidence":1.0},
+  {"id":"wb_001","source":"温病条辨","chapter":"上焦篇","original_text":"太阴之为病，脉不缓不紧而动数，或两寸独大，尺肤热，头痛，微恶风寒，身热自汗，口渴，或不渴而咳，午后热甚者，名曰温病。","keywords":["太阴","温病","脉动数","午后热甚"],"category":"温病","subject_area":"温病辨证","bianzheng_type":"风温","syndrome_keywords":["风温犯肺"],"formula_keywords":["银翘散","桑菊饮"],"herb_keywords":["银花","连翘","桑叶","菊花"],"commentary":"风温初起，邪在肺卫，宜辛凉解表。","confidence":1.0},
+  {"id":"wb_002","source":"温病条辨","chapter":"上焦篇","original_text":"太阴风温，但咳，身不甚热，微渴者，辛凉轻剂桑菊饮主之。","keywords":["风温","但咳","桑菊饮"],"category":"温病","subject_area":"方证对应","bianzheng_type":"风温犯肺","syndrome_keywords":["风温轻证"],"formula_keywords":["桑菊饮"],"herb_keywords":["桑叶","菊花","连翘","薄荷","杏仁","桔梗","芦根","甘草"],"commentary":"风温轻证，但咳身热不甚，宜桑菊饮辛凉轻剂。","confidence":1.0},
+  {"id":"wb_003","source":"温病条辨","chapter":"上焦篇","original_text":"太阴温病，不可发汗，发汗而汗不出者，必发斑疹；汗出过多者，必神昏耳聋。","keywords":["温病","不可发汗","斑疹"],"category":"温病","subject_area":"治则禁忌","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"温病忌辛温发汗，汗出过多可伤阴动血。","confidence":1.0},
+  {"id":"wb_004","source":"温病条辨","chapter":"中焦篇","original_text":"阳明温病，面目俱赤，肢厥，甚则通体皆厥，不烦不渴，或神识昏蒙，言謇，脉沉伏，或亦微似厥者，名曰热厥，宜大承气汤。","keywords":["阳明","热厥","大承气汤"],"category":"温病","subject_area":"阳明温病","bianzheng_type":"阳明腑实证","syndrome_keywords":["阳明热结"],"formula_keywords":["大承气汤"],"herb_keywords":["大黄","芒硝","厚朴","枳实"],"commentary":"阳明温病热结旁流，热深厥深，宜大承气汤急下存阴。","confidence":1.0},
+  {"id":"wb_005","source":"温病条辨","chapter":"下焦篇","original_text":"温病后期，邪留阴分，夜热早凉，热退无汗，能食形瘦，青蒿鳖甲汤主之。","keywords":["温病","夜热早凉","青蒿鳖甲"],"category":"温病","subject_area":"温病后期","bianzheng_type":"邪留阴分","syndrome_keywords":["阴虚发热"],"formula_keywords":["青蒿鳖甲汤"],"herb_keywords":["青蒿","鳖甲","生地","知母","丹皮"],"commentary":"温病后期，邪伏阴分，夜热早凉，宜青蒿鳖甲汤养阴透热。","confidence":1.0},
+  {"id":"jn_001","source":"金匮要略","chapter":"妇人妊娠病脉证并治","original_text":"妇人得平脉，阴脉小弱，其人渴，不能食，无寒热，名妊娠，桂枝汤主之。","keywords":["妊娠","桂枝汤","阴脉小弱"],"category":"金匮","subject_area":"妊娠病","bianzheng_type":"妊娠恶阻","syndrome_keywords":["妊娠恶阻"],"formula_keywords":["桂枝汤"],"herb_keywords":["桂枝","白芍","生姜","大枣","甘草"],"commentary":"妊娠初期，冲气上逆，恶阻不食，宜桂枝汤调和营卫。","confidence":1.0},
+  {"id":"jn_002","source":"金匮要略","chapter":"妇人产后病脉证并治","original_text":"产后腹痛，烦满不得卧，当归芍药散主之。","keywords":["产后","腹痛","当归芍药"],"category":"金匮","subject_area":"产后病","bianzheng_type":"产后腹痛","syndrome_keywords":["产后血虚腹痛"],"formula_keywords":["当归芍药散"],"herb_keywords":["当归","芍药","川芎","茯苓","白术","泽泻"],"commentary":"产后血虚腹痛，烦满不得卧，宜当归芍药散养血疏肝。","confidence":1.0},
+  {"id":"jn_003","source":"金匮要略","chapter":"血痹虚劳病脉证并治","original_text":"虚劳腰痛，少腹拘急，小便不利者，八味肾气丸主之。","keywords":["虚劳","腰痛","八味肾气丸"],"category":"金匮","subject_area":"虚劳病","bianzheng_type":"肾阳虚","syndrome_keywords":["肾阳虚"],"formula_keywords":["八味肾气丸"],"herb_keywords":["地黄","山药","山茱萸","泽泻","茯苓","牡丹皮","桂枝","附子"],"commentary":"虚劳腰痛，肾阳不足，宜八味肾气丸温补肾阳。","confidence":1.0},
+  {"id":"jn_004","source":"金匮要略","chapter":"胸痹心痛短气病脉证并治","original_text":"胸痹，心中痞，留气结在胸，胸满，胁下逆抢心，枳实薤白桂枝汤主之。","keywords":["胸痹","心中痞","枳实薤白桂枝汤"],"category":"金匮","subject_area":"胸痹辨证","bianzheng_type":"胸痹气滞","syndrome_keywords":["胸痹气滞痰阻"],"formula_keywords":["枳实薤白桂枝汤","人参汤"],"herb_keywords":["枳实","薤白","桂枝","厚朴","栝楼"],"commentary":"胸痹气滞痰阻，胸满胁逆，宜枳实薤白桂枝汤通阳散结。","confidence":1.0},
+  {"id":"jn_005","source":"金匮要略","chapter":"百合狐惑阴阳毒病脉证治","original_text":"百合病者，百脉一宗，悉致其病也。意欲食复不能食，常默默，欲卧不能卧，欲行不能行。","keywords":["百合病","百脉一宗","默默"],"category":"金匮","subject_area":"百合病","bianzheng_type":"百合病","syndrome_keywords":["百合病"],"formula_keywords":["百合地黄汤","百合知母汤"],"herb_keywords":["百合","地黄","知母"],"commentary":"百合病因热病后余热未清，百脉受累，宜养阴清热。","confidence":1.0},
+  {"id":"jn_006","source":"金匮要略","chapter":"痰饮咳嗽病脉证并治","original_text":"短气有微饮，当从小便去之，苓桂术甘汤主之，肾气丸亦主之。","keywords":["短气","微饮","苓桂术甘汤","肾气丸"],"category":"金匮","subject_area":"痰饮病","bianzheng_type":"痰饮","syndrome_keywords":["痰饮内停"],"formula_keywords":["苓桂术甘汤","肾气丸"],"herb_keywords":["茯苓","桂枝","白术","甘草","地黄","山茱萸","泽泻","附子"],"commentary":"微饮短气，当从小便利之，苓桂术甘汤温化痰饮，肾气丸温肾化气。","confidence":1.0},
+  {"id":"jn_007","source":"金匮要略","chapter":"中风历节病脉证并治","original_text":"夫风之为病，当半身不遂，或但臂不遂者，此为痹。脉微而数，中风使然。","keywords":["中风","半身不遂","痹","脉微数"],"category":"金匮","subject_area":"中风辨证","bianzheng_type":null,"syndrome_keywords":["中风"],"formula_keywords":[],"herb_keywords":[],"commentary":"中风以半身不遂为主症，脉微数主营卫两虚，风邪入中。","confidence":1.0},
+  {"id":"jn_008","source":"金匮要略","chapter":"五脏风寒积聚病脉证并治","original_text":"肝着，其人常欲蹈其胸上，先未苦时，但欲饮热，旋覆花汤主之。","keywords":["肝着","蹈其胸上","旋覆花汤"],"category":"金匮","subject_area":"肝着病","bianzheng_type":null,"syndrome_keywords":["肝着"],"formula_keywords":["旋覆花汤"],"herb_keywords":["旋覆花","新绛","葱"],"commentary":"肝着为肝经气血郁滞，常欲蹈其胸上，宜旋覆花汤行气活血。","confidence":1.0},
+  {"id":"jn_009","source":"金匮要略","chapter":"疮痈肠痈浸淫病脉证并治","original_text":"肠痈者，少腹肿痞，按之即痛如淋，小便自调，时时发热，自汗出，复恶寒。其脉迟紧者，脓未成，可下之，当有血。脉洪数者，脓已成，不可下也。","keywords":["肠痈","少腹肿痞","大黄牡丹汤"],"category":"金匮","subject_area":"肠痈辨证","bianzheng_type":null,"syndrome_keywords":["肠痈"],"formula_keywords":["大黄牡丹汤"],"herb_keywords":["大黄","牡丹皮","桃仁","冬瓜仁","芒硝"],"commentary":"肠痈脓未成可下，脓已成不可下，宜大黄牡丹汤泻热破瘀。","confidence":1.0},
+  {"id":"jn_010","source":"金匮要略","chapter":"惊悸吐衄下血胸满瘀血病脉证并治","original_text":"夫心下有留饮，其人背寒冷，如手大。","keywords":["留饮","背寒","心下"],"category":"金匮","subject_area":"痰饮病","bianzheng_type":null,"syndrome_keywords":["留饮"],"formula_keywords":[],"herb_keywords":[],"commentary":"心下留饮，阳气不通，故背寒如手大。","confidence":1.0},
+  {"id":"jn_011","source":"金匮要略","chapter":"五脏风寒积聚病脉证并治","original_text":"肝中风者，头目瞤，两胁痛，行常伛，令人嗜甘。","keywords":["肝风","两胁痛","伛偻"],"category":"金匮","subject_area":"肝风病","bianzheng_type":null,"syndrome_keywords":["肝风"],"formula_keywords":[],"herb_keywords":[],"commentary":"肝风内动，两胁疼痛，身体伛偻。","confidence":0.9},
+  {"id":"jn_012","source":"金匮要略","chapter":"痰饮咳嗽病脉证并治","original_text":"支饮者，咳逆倚息，短气不得卧，其形如肿。","keywords":["支饮","咳逆","倚息"],"category":"金匮","subject_area":"支饮病","bianzheng_type":null,"syndrome_keywords":["支饮"],"formula_keywords":["葶苈大枣泻肺汤","小青龙汤"],"herb_keywords":[],"commentary":"支饮射肺，咳逆倚息不得卧，宜泻肺行水。","confidence":1.0},
+  {"id":"jn_013","source":"金匮要略","chapter":"血痹虚劳病脉证并治","original_text":"虚劳里急，悸，衄，腹中痛，梦失精，四肢酸疼，手足烦热，咽干口燥，小建中汤主之。","keywords":["虚劳","里急","小建中汤"],"category":"金匮","subject_area":"虚劳病","bianzheng_type":"虚劳","syndrome_keywords":["虚劳里急"],"formula_keywords":["小建中汤"],"herb_keywords":["桂枝","白芍","生姜","大枣","甘草","饴糖"],"commentary":"虚劳里急，阴阳两虚，宜小建中汤温中补虚。","confidence":1.0},
+  {"id":"jn_014","source":"金匮要略","chapter":"血痹虚劳病脉证并治","original_text":"虚劳腰痛，少腹拘急，小便不利者，八味肾气丸主之。","keywords":["虚劳","腰痛","肾气丸"],"category":"金匮","subject_area":"虚劳病","bianzheng_type":"肾阳虚","syndrome_keywords":["肾阳虚"],"formula_keywords":["八味肾气丸"],"herb_keywords":["地黄","山药","山茱萸","泽泻","茯苓","牡丹皮","桂枝","附子"],"commentary":"虚劳腰痛，肾阳不足，宜八味肾气丸温补肾阳。","confidence":1.0},
+  {"id":"jn_015","source":"金匮要略","chapter":"妇人妊娠病脉证并治","original_text":"妇人怀妊，腹中疼痛，当归芍药散主之。","keywords":["妊娠","腹痛","当归芍药散"],"category":"金匮","subject_area":"妊娠病","bianzheng_type":"妊娠腹痛","syndrome_keywords":["妊娠血虚腹痛"],"formula_keywords":["当归芍药散"],"herb_keywords":["当归","芍药","川芎","茯苓","白术","泽泻"],"commentary":"妊娠血虚腹痛，宜当归芍药散养血疏肝。","confidence":1.0},
+  {"id":"jn_016","source":"金匮要略","chapter":"惊悸吐衄下血胸满瘀血病脉证并治","original_text":"心下有瘀血，其人喜忘，屎虽硬，大便反易，其色必黑。","keywords":["瘀血","喜忘","黑便"],"category":"金匮","subject_area":"瘀血病","bianzheng_type":null,"syndrome_keywords":["瘀血"],"formula_keywords":[],"herb_keywords":[],"commentary":"心下有瘀血，喜忘黑便，宜活血化瘀。","confidence":1.0},
+  {"id":"jn_017","source":"金匮要略","chapter":"奔豚气病脉证并治","original_text":"奔豚病，从少腹起，上冲咽喉，发作欲死，复还止，皆从惊恐得之。","keywords":["奔豚","少腹上冲","惊恐"],"category":"金匮","subject_area":"奔豚病","bianzheng_type":"奔豚气","syndrome_keywords":["奔豚气"],"formula_keywords":["奔豚汤","桂枝加桂汤"],"herb_keywords":["李根白皮","川芎","当归","芍药","甘草"],"commentary":"奔豚气从少腹上冲咽喉，多因惊恐所致，宜奔豚汤降逆平冲。","confidence":1.0},
+  {"id":"jn_018","source":"金匮要略","chapter":"疟病脉证并治","original_text":"疟病自汗出者，小柴胡汤主之。","keywords":["疟病","汗出","小柴胡汤"],"category":"金匮","subject_area":"疟病辨证","bianzheng_type":"疟疾","syndrome_keywords":["疟疾少阳证"],"formula_keywords":["小柴胡汤"],"herb_keywords":["柴胡","黄芩","人参","半夏","生姜","大枣","甘草"],"commentary":"疟疾往来寒热，邪在少阳，宜小柴胡汤和解。","confidence":1.0},
+  {"id":"jn_019","source":"金匮要略","chapter":"消渴小便利淋病脉证并治","original_text":"男子消渴，小便反多，以饮一斗，小便一斗，肾气丸主之。","keywords":["消渴","小便多","肾气丸"],"category":"金匮","subject_area":"消渴病","bianzheng_type":"消渴","syndrome_keywords":["肾阳虚消渴"],"formula_keywords":["肾气丸"],"herb_keywords":["地黄","山药","山茱萸","泽泻","茯苓","牡丹皮","桂枝","附子"],"commentary":"消渴小便多，肾气不化，宜肾气丸温补肾气。","confidence":1.0},
+  {"id":"jn_020","source":"金匮要略","chapter":"疮痈肠痈浸淫病脉证并治","original_text":"肠痈之为病，其身甲错，腹皮急，按之濡，如肿状，腹无积聚，身无热，脉数，此为肠痈。","keywords":["肠痈","身甲错","脉数"],"category":"金匮","subject_area":"肠痈辨证","bianzheng_type":null,"syndrome_keywords":["肠痈"],"formula_keywords":["大黄牡丹汤"],"herb_keywords":["大黄","牡丹皮","桃仁","冬瓜仁","芒硝"],"commentary":"肠痈身甲错，腹皮急，脉数，宜大黄牡丹汤泻热破瘀。","confidence":1.0},
+  {"id":"jn_021","source":"金匮要略","chapter":"五脏风寒积聚病脉证并治","original_text":"肝着，其人常欲蹈其胸上，先未苦时，但欲饮热，旋覆花汤主之。","keywords":["肝着","蹈其胸","饮热"],"category":"金匮","subject_area":"肝着病","bianzheng_type":null,"syndrome_keywords":["肝着"],"formula_keywords":["旋覆花汤"],"herb_keywords":["旋覆花","新绛","葱"],"commentary":"肝着气血郁滞，胸中痞塞，宜旋覆花汤行气活血通阳。","confidence":1.0},
+  {"id":"jn_022","source":"金匮要略","chapter":"腹满寒疝宿食病脉证并治","original_text":"腹痛，脉弦而紧，弦则卫气不行，即恶寒，紧则不欲食，邪正相搏，即为寒疝。","keywords":["腹痛","脉弦紧","寒疝"],"category":"金匮","subject_area":"寒疝辨证","bianzheng_type":"寒疝","syndrome_keywords":["寒疝"],"formula_keywords":["大乌头煎","当归生姜羊肉汤"],"herb_keywords":["乌头","当归","生姜","羊肉"],"commentary":"寒疝腹痛，脉弦紧，宜温经散寒止痛。","confidence":1.0},
+  {"id":"jn_023","source":"金匮要略","chapter":"奔豚气病脉证并治","original_text":"奔豚气上冲胸，腹痛，往来寒热，奔豚汤主之。","keywords":["奔豚","上冲胸","奔豚汤"],"category":"金匮","subject_area":"奔豚病","bianzheng_type":"奔豚气","syndrome_keywords":["奔豚气"],"formula_keywords":["奔豚汤"],"herb_keywords":["李根白皮","川芎","当归","芍药","甘草","半夏","生姜","葛根","黄芩"],"commentary":"奔豚气上冲胸腹痛，往来寒热，宜奔豚汤降逆平冲清热。","confidence":1.0},
+  {"id":"jn_024","source":"金匮要略","chapter":"痰饮咳嗽病脉证并治","original_text":"夫短气有微饮，当从小便去之，苓桂术甘汤主之，肾气丸亦主之。","keywords":["短气","微饮","苓桂术甘汤","肾气丸"],"category":"金匮","subject_area":"痰饮病","bianzheng_type":"痰饮","syndrome_keywords":["痰饮"],"formula_keywords":["苓桂术甘汤","肾气丸"],"herb_keywords":["茯苓","桂枝","白术","甘草"],"commentary":"微饮短气，当温阳化饮，苓桂术甘汤温化痰饮，肾气丸温肾化气。","confidence":1.0},
+  {"id":"jn_025","source":"金匮要略","chapter":"妇人妊娠病脉证并治","original_text":"妇人怀妊，于七八月，脉弦，发热，其胎愈胀，腹痛恶寒者，少腹如扇，所以然者，子脏开故也，当以附子汤温其脏。","keywords":["妊娠","腹痛","恶寒","附子汤"],"category":"金匮","subject_area":"妊娠病","bianzheng_type":"妊娠寒痛","syndrome_keywords":["妊娠阳虚"],"formula_keywords":["附子汤"],"herb_keywords":["附子","茯苓","芍药","白术","人参"],"commentary":"妊娠阳虚寒盛，腹痛恶寒，少腹如扇，宜附子汤温阳散寒。","confidence":1.0},
+  {"id":"jn_026","source":"金匮要略","chapter":"妇人产后病脉证并治","original_text":"产妇腹痛，法当以枳实芍药散，假令不愈者，此为腹中有瘀血，当以旋覆花汤主之。","keywords":["产后","腹痛","枳实芍药散"],"category":"金匮","subject_area":"产后病","bianzheng_type":"产后腹痛","syndrome_keywords":["产后气滞血瘀"],"formula_keywords":["枳实芍药散"],"herb_keywords":["枳实","芍药"],"commentary":"产后腹痛，气滞血瘀，宜枳实芍药散行气活血。","confidence":1.0},
+  {"id":"jn_027","source":"金匮要略","chapter":"惊悸吐衄下血胸满瘀血病脉证并治","original_text":"吐血者，柏叶汤主之。","keywords":["吐血","柏叶汤"],"category":"金匮","subject_area":"吐衄病","bianzheng_type":null,"syndrome_keywords":["虚寒吐血"],"formula_keywords":["柏叶汤"],"herb_keywords":["柏叶","干姜","艾叶","马通汁"],"commentary":"虚寒吐血，宜柏叶汤温阳止血。","confidence":1.0},
+  {"id":"jn_028","source":"金匮要略","chapter":"血痹虚劳病脉证并治","original_text":"虚劳诸不足，风气百疾，薯蓣丸主之。","keywords":["虚劳","薯蓣丸","风气百疾"],"category":"金匮","subject_area":"虚劳病","bianzheng_type":"虚劳","syndrome_keywords":["虚劳百病"],"formula_keywords":["薯蓣丸"],"herb_keywords":["薯蓣","人参","当归","桂枝","干地黄","豆黄卷"],"commentary":"虚劳诸不足，正气亏虚，易感风气，宜薯蓣丸扶正祛邪。","confidence":1.0},
+  {"id":"jn_029","source":"金匮要略","chapter":"腹满寒疝宿食病脉证并治","original_text":"寒疝，腹中痛，及胁痛里急者，当归生姜羊肉汤主之。","keywords":["寒疝","腹痛","当归生姜羊肉汤"],"category":"金匮","subject_area":"寒疝辨证","bianzheng_type":"寒疝","syndrome_keywords":["血虚寒疝"],"formula_keywords":["当归生姜羊肉汤"],"herb_keywords":["当归","生姜","羊肉"],"commentary":"血虚寒疝，腹中及胁痛里急，宜当归生姜羊肉汤温补养血。","confidence":1.0},
+  {"id":"jn_030","source":"金匮要略","chapter":"百合狐惑阴阳毒病脉证治","original_text":"百合狐惑阴阳毒病，治宜三方。百合病者，百脉一宗，悉致其病也。","keywords":["百合病","狐惑病","阴阳毒"],"category":"金匮","subject_area":"百合狐惑病","bianzheng_type":null,"syndrome_keywords":["百合病"],"formula_keywords":["百合地黄汤","苦参汤","雄黄"],"herb_keywords":["百合","地黄","苦参","雄黄"],"commentary":"百合病为热病后余热未清，百脉受累，宜养阴清热。","confidence":1.0},
+  {"id":"hn_021","source":"黄帝内经","chapter":"素问·宝命全形论","original_text":"人以天地之气生，四时之法成。五脏应时，故生、长、化、收、藏，以应天地之阴阳。","keywords":["天地","四时","五脏"],"category":"医经","subject_area":"藏象理论","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"五脏之气应四时五行，顺应天时则养生之道得矣。","confidence":1.0},
+  {"id":"hn_022","source":"黄帝内经","chapter":"灵枢·营卫生会","original_text":"营气者，泌其津液，注之于脉，化以为血，以荣四末，内注五脏六腑。卫气者，出其悍气之慓疾，而先行于四末分肉皮肤之间而不休者也。","keywords":["营气","卫气","血脉"],"category":"医经","subject_area":"气血理论","bianzheng_type":null,"syndrome_keywords":["营卫不和"],"formula_keywords":["桂枝汤"],"herb_keywords":[],"commentary":"营行脉中，卫行脉外，营卫调和则人体康健。","confidence":1.0},
+  {"id":"sh_026","source":"伤寒论","chapter":"辨太阳病脉证并治中","original_text":"阳明病，脉浮而紧，咽燥口苦，腹满而喘，发热汗出，不恶寒反恶热，身重。若发汗则燥，心惕惕不安。","keywords":["阳明","脉浮紧","发热","恶热"],"category":"伤寒","subject_area":"阳明病辨证","bianzheng_type":"阳明经证","syndrome_keywords":["阳明热盛"],"formula_keywords":["白虎汤"],"herb_keywords":[],"commentary":"阳明病热盛于经，治宜清热生津。","confidence":1.0},
+  {"id":"sh_027","source":"伤寒论","chapter":"辨阳明病脉证并治","original_text":"阳明病，自汗出，或小便利，或亡血，凡此皆津液内竭，虽硬不可攻之，当须自欲大便，宜蜜煎导而通之。","keywords":["阳明","便秘","蜜煎导"],"category":"伤寒","subject_area":"阳明病治则","bianzheng_type":"阳明津亏便秘","syndrome_keywords":["津亏便秘"],"formula_keywords":[],"herb_keywords":["蜂蜜"],"commentary":"阳明病津液内竭，大便虽硬不可攻下，宜润燥通便。","confidence":1.0},
+  {"id":"sh_028","source":"伤寒论","chapter":"辨少阴病脉证并治","original_text":"少阴病，得之一二日，口中和，其背恶寒者，当灸之，附子汤主之。","keywords":["少阴","背恶寒","附子汤"],"category":"伤寒","subject_area":"少阴病辨证","bianzheng_type":"少阴阳虚","syndrome_keywords":["少阴阳虚"],"formula_keywords":["附子汤"],"herb_keywords":["附子","茯苓","芍药","白术","人参"],"commentary":"少阴阳虚，背恶寒，宜附子汤温阳散寒。","confidence":1.0},
+  {"id":"jj_009","source":"金匮要略","chapter":"五脏风寒积聚病脉证并治","original_text":"肝着，其人常欲蹈其胸上，先未苦时，但欲饮热，旋覆花汤主之。","keywords":["肝着","蹈其胸上","旋覆花汤"],"category":"金匮","subject_area":"肝着病","bianzheng_type":null,"syndrome_keywords":["肝着气滞"],"formula_keywords":["旋覆花汤"],"herb_keywords":["旋覆花","新绛","葱"],"commentary":"肝着为肝经气血郁滞，胸中痞塞，常欲蹈其胸上，宜旋覆花汤行气活血。","confidence":1.0},
+  {"id":"sn_006","source":"神农本草经","chapter":"中经","original_text":"牡丹，主寒热，中风瘛疭，痉悸，惊怖，破瘕积聚，绝孕，除癥瘕瘀血。","keywords":["牡丹","破瘀","惊悸"],"category":"本草","subject_area":"药物功效","bianzheng_type":null,"syndrome_keywords":["瘀血","癥瘕"],"formula_keywords":[],"herb_keywords":["牡丹皮"],"commentary":"牡丹皮清热凉血，活血散瘀，主治瘀血癥瘕。","confidence":1.0},
+  {"id":"sn_007","source":"神农本草经","chapter":"中经","original_text":"桔梗，主胸胁痛如刀刺，腹满，肠鸣幽幽，惊恐悸气。","keywords":["桔梗","胸胁痛","肠鸣"],"category":"本草","subject_area":"药物功效","bianzheng_type":null,"syndrome_keywords":["肺痈","痰多"],"formula_keywords":[],"herb_keywords":["桔梗"],"commentary":"桔梗宣肺利咽，祛痰排脓，为舟楫之剂。","confidence":1.0},
+  {"id":"wb_006","source":"温病条辨","chapter":"上焦篇","original_text":"太阴温病，脉浮洪，舌黄，渴甚，大汗，面赤，恶热者，辛凉重剂白虎汤主之。","keywords":["太阴","温病","白虎汤"],"category":"温病","subject_area":"气分证","bianzheng_type":"阳明经证","syndrome_keywords":["阳明气分热盛"],"formula_keywords":["白虎汤"],"herb_keywords":["石膏","知母","甘草","粳米"],"commentary":"气分热盛，四大症见，宜白虎汤清气泄热。","confidence":1.0},
+  {"id":"wb_007","source":"温病条辨","chapter":"上焦篇","original_text":"太阴暑温，汗多脉散大，喘渴欲脱者，生脉散主之。","keywords":["暑温","汗多","生脉散"],"category":"温病","subject_area":"暑温证","bianzheng_type":"暑伤气阴","syndrome_keywords":["气阴两虚"],"formula_keywords":["生脉散"],"herb_keywords":["人参","麦冬","五味子"],"commentary":"暑热伤气耗阴，汗多脉散大，宜生脉散益气敛阴。","confidence":1.0},
+  {"id":"hn_023","source":"黄帝内经","chapter":"素问·灵兰秘典论","original_text":"胃者，太仓也。小肠者，受盛之官，化物出焉。大肠者，传道之官，变化出焉。","keywords":["胃","小肠","大肠"],"category":"医经","subject_area":"脏腑理论","bianzheng_type":null,"syndrome_keywords":[],"formula_keywords":[],"herb_keywords":[],"commentary":"胃主受纳，小肠主化物，大肠主传导，三者共司消化吸收。","confidence":1.0},
+  {"id":"sh_029","source":"伤寒论","chapter":"辨厥阴病脉证并治","original_text":"厥阴病，消渴，气上撞心，心中疼热，饥而不欲食，食则吐蛔，下之利不止。乌梅丸主之。","keywords":["厥阴","乌梅丸","消渴","吐蛔"],"category":"伤寒","subject_area":"厥阴病辨证","bianzheng_type":"厥阴病","syndrome_keywords":["上热下寒"],"formula_keywords":["乌梅丸"],"herb_keywords":["乌梅","细辛","干姜","黄连","当归","附子"],"commentary":"厥阴病上热下寒，蛔虫内扰，宜乌梅丸寒热并用。","confidence":1.0},
+  {"id":"jj_010","source":"金匮要略","chapter":"消渴小便利淋病脉证并治","original_text":"男子消渴，小便反多，以饮一斗，小便一斗，肾气丸主之。","keywords":["消渴","小便多","肾气丸"],"category":"金匮","subject_area":"消渴病","bianzheng_type":"肾阳虚消渴","syndrome_keywords":["肾阳虚"],"formula_keywords":["肾气丸"],"herb_keywords":["地黄","山药","山茱萸","泽泻","茯苓","牡丹皮","桂枝","附子"],"commentary":"消渴小便多，肾气不化，宜肾气丸温补肾气。","confidence":1.0},
+  {"id":"sn_008","source":"神农本草经","chapter":"上经","original_text":"当归，主咳逆上气，温疟，寒热，洗洗在皮肤中，妇人漏下，绝子，诸恶疮疡金疮。","keywords":["当归","咳逆","漏下"],"category":"本草","subject_area":"药物功效","bianzheng_type":null,"syndrome_keywords":["血虚","月经不调"],"formula_keywords":[],"herb_keywords":["当归"],"commentary":"当归补血活血，调经止痛，为妇科要药。","confidence":1.0},
+  {"id":"wb_008","source":"温病条辨","chapter":"中焦篇","original_text":"阳明温病，下之不通，其证有五：应下失下，正气虚甚，为一；邪结锢甚，为一；塞胀满，为一；津液不足，为一。","keywords":["阳明","温病","下法","津液"],"category":"温病","subject_area":"阳明温病治则","bianzheng_type":"阳明腑实证","syndrome_keywords":["阳明热结"],"formula_keywords":["新加黄龙汤","增液承气汤"],"herb_keywords":["大黄","芒硝","人参","当归","玄参","麦冬"],"commentary":"阳明温病下之不通有五证，当视其虚实而变通治之。","confidence":1.0},
+  {"id":"hn_024","source":"黄帝内经","chapter":"素问·六节藏象论","original_text":"心者，生之本，神之变也。其华在面，其充在血脉，为阳中之太阳，通于夏气。","keywords":["心","神明","血脉"],"category":"医经","subject_area":"藏象理论","bianzheng_type":null,"syndrome_keywords":["心神不宁"],"formula_keywords":[],"herb_keywords":[],"commentary":"心为君主之官，主血脉而藏神，其华在面。","confidence":1.0},
+  {"id":"sh_030","source":"伤寒论","chapter":"辨太阳病脉证并治下","original_text":"伤寒发热，啬啬恶寒，大渴欲饮水，其腹必满，自汗出，小便利，其病欲解，此肝乘肺也，名曰横，泻肝汤主之。","keywords":["伤寒","肝乘肺","泻肝汤"],"category":"伤寒","subject_area":"传变辨证","bianzheng_type":"肝乘肺","syndrome_keywords":["肝火犯肺"],"formula_keywords":[],"herb_keywords":[],"commentary":"肝木乘肺，木火刑金，治宜泻肝清肺。","confidence":0.9}
 ]

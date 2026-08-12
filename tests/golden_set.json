@@ -1,0 +1,17 @@
+[
+  {"id":"Q001","module":"bencao","input":"麻黄","expected":{"xingwei":"辛、微苦","guijing":"肺、膀胱","功效":"发汗解表","jindu":"无毒"}},
+  {"id":"Q002","module":"interaction","input":["甘草","海藻"],"expected":{"warning":"十八反","severity":"strong","msg":"甘草反海藻"}},
+  {"id":"Q003","module":"interaction","input":["藜芦","人参"],"expected":{"warning":"十八反","severity":"strong","msg":"藜芦反人参"}},
+  {"id":"Q004","module":"interaction","input":["硫黄","朴硝"],"expected":{"warning":"十九畏","severity":"moderate","msg":"硫黄畏朴硝"}},
+  {"id":"Q005","module":"interaction","input":["附子"],"expected":{"pregnancy_warning":true,"severity":"strong"}},
+  {"id":"Q006","module":"bencao","input":"人参","expected":{"xingwei":"甘、微苦","guijing":"脾、肺","功效":"大补元气","jindu":"无毒"}},
+  {"id":"Q007","module":"bencao","input":"黄连","expected":{"xingwei":"苦","jindu":"无毒","功效":"清热燥湿"}},
+  {"id":"Q008","module":"fangji","input":"麻黄汤","expected":{"formula":"麻黄汤","action":"发汗解表","ingredients":["麻黄","桂枝","杏仁","甘草"]}},
+  {"id":"Q009","module":"fangji","input":"桂枝汤","expected":{"formula":"桂枝汤","action":"解肌发表","ingredients":["桂枝","白芍","生姜","大枣","甘草"]}},
+  {"id":"Q010","module":"master","input":"huangdi","expected":{"name":"黄帝/岐伯","title":"医道之祖"}},
+  {"id":"Q011","module":"master","input":"zhangzhongjing","expected":{"name":"张仲景","title":"医圣"}},
+  {"id":"Q012","module":"bencao","input":"半夏","expected":{"jindu":"有毒","功效":"燥湿化痰"}},
+  {"id":"Q013","module":"bencao","input":"附子","expected":{"jindu":"有毒","功效":"回阳救逆","xingwei":"辛、甘"}},
+  {"id":"Q014","module":"bencao","input":"甘草","expected":{"xingwei":"甘","功效":"补脾益气","jindu":"无毒"}},
+  {"id":"Q015","module":"interaction","input":["乌头","贝母"],"expected":{"warning":"十八反","severity":"strong","msg":"川乌反贝母"}}
+]

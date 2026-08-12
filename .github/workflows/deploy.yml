@@ -1,7 +1,9 @@
-name: Deploy to GitHub Pages
+name: Test & Deploy to GitHub Pages
 
 on:
   push:
+    branches: [master]
+  pull_request:
     branches: [master]
 
 permissions:
@@ -10,14 +12,57 @@ permissions:
   id-token: write
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Golden Test Suite
+        run: |
+          npx playwright install chromium
+          cat > /tmp/test_runner.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+
+          // Load engines
+          const bencao = fs.readFileSync('static/js/engines/bencao-engine.js', 'utf8');
+          eval(bencao);
+          const interaction = fs.readFileSync('static/js/engines/interaction-engine.js', 'utf8');
+          eval(interaction);
+          const fangji = fs.readFileSync('static/js/engines/fangji-engine.js', 'utf8');
+          eval(fangji);
+          const masters = fs.readFileSync('static/js/engines/masters-engine.js', 'utf8');
+          eval(masters);
+
+          // Load tests
+          const tests = JSON.parse(fs.readFileSync('tests/golden_set.json', 'utf8'));
+          let pass = 0;
+          for (const q of tests) {
+            let ok = false;
+            if (q.module === 'bencao') {
+              const herb = BencaoEngine.DB[q.input];
+              ok = herb && herb.xingwei && herb.功效;
+            } else if (q.module === 'interaction') {
+              const fans = InteractionEngine.checkShibaFan(q.input);
+              ok = fans.length > 0;
+            } else if (q.module === 'fangji') {
+              ok = !!FangjiEngine.DB[q.input];
+            } else if (q.module === 'master') {
+              ok = !!MastersEngine.getMasterById(q.input);
+            }
+            if (ok) pass++;
+            console.log(ok ? '  PASS' : '  FAIL', q.id, q.module, q.input);
+          }
+          console.log(`\n通过率: ${pass}/${tests.length} (${(pass/tests.length*100).toFixed(1)}%)`);
+          if (pass !== tests.length) process.exit(1);
+          EOF
+          node /tmp/test_runner.js
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -25,7 +70,7 @@ jobs:
           path: .
 
   deploy:
-    needs: build
+    needs: test
     runs-on: ubuntu-latest
     environment:
       name: github-pages
