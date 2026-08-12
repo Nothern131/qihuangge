@@ -1015,18 +1015,25 @@ button:hover {
         flex-wrap: nowrap;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        gap: 2px;
-        margin-left: 8px;
-        padding-bottom: 2px;
+        scrollbar-width: thin;
+        scrollbar-color: var(--gold) transparent;
+        gap: 0;
+        margin-left: 4px;
+        padding-bottom: 4px;
     }
     .app-nav::-webkit-scrollbar {
-        display: none;
+        height: 3px;
+    }
+    .app-nav::-webkit-scrollbar-thumb {
+        background: var(--gold);
+        border-radius: 2px;
     }
     .nav-item {
-        padding: 4px 8px;
-        font-size: 11px;
+        padding: 4px 6px;
+        font-size: 10px;
         white-space: nowrap;
+        flex-shrink: 0;
+        min-width: max-content;
     }
     main {
         padding: 12px;

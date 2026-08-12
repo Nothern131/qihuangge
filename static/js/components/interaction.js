@@ -15,16 +15,16 @@
         var html = '';
         var hasWarnings = fans.length > 0 || weis.length > 0 || pregnancy.length > 0;
 
-        html += '<div class="interaction-result">';
+        html += '<div class="interaction-check-result">';
 
         // 十八反
         if (fans.length > 0) {
-            html += '<div class="interaction-section">';
-            html += '<h4 class="section-title danger">⚠ 十八反</h4>';
+            html += '<div class="interaction-check-item">';
+            html += '<h4 class="check-section-title danger">⚠ 十八反</h4>';
             fans.forEach(function(w) {
-                html += '<div class="warning-row">';
-                html += '<span class="warning-type">禁忌</span>';
-                html += '<span class="warning-text">' + escHtml(w.msg) + '</span>';
+                html += '<div class="check-warning-row">';
+                html += '<span class="check-warning-type">禁忌</span>';
+                html += '<span class="check-warning-text">' + escHtml(w.msg) + '</span>';
                 html += '</div>';
             });
             html += '</div>';
@@ -32,12 +32,12 @@
 
         // 十九畏
         if (weis.length > 0) {
-            html += '<div class="interaction-section">';
-            html += '<h4 class="section-title caution">⚠ 十九畏</h4>';
+            html += '<div class="interaction-check-item">';
+            html += '<h4 class="check-section-title caution">⚠ 十九畏</h4>';
             weis.forEach(function(w) {
-                html += '<div class="warning-row">';
-                html += '<span class="warning-type">忌用</span>';
-                html += '<span class="warning-text">' + escHtml(w.msg) + '</span>';
+                html += '<div class="check-warning-row">';
+                html += '<span class="check-warning-type">忌用</span>';
+                html += '<span class="check-warning-text">' + escHtml(w.msg) + '</span>';
                 html += '</div>';
             });
             html += '</div>';
@@ -45,12 +45,12 @@
 
         // 妊娠禁忌
         if (pregnancy.length > 0) {
-            html += '<div class="interaction-section">';
-            html += '<h4 class="section-title warning">⚠ 妊娠禁忌</h4>';
+            html += '<div class="interaction-check-item">';
+            html += '<h4 class="check-section-title warning">⚠ 妊娠禁忌</h4>';
             pregnancy.forEach(function(w) {
-                html += '<div class="warning-row">';
-                html += '<span class="warning-type">' + (w.level === 'strong' ? '禁用' : '慎用') + '</span>';
-                html += '<span class="warning-text">' + escHtml(w.msg) + '</span>';
+                html += '<div class="check-warning-row">';
+                html += '<span class="check-warning-type">' + (w.level === 'strong' ? '禁用' : '慎用') + '</span>';
+                html += '<span class="check-warning-text">' + escHtml(w.msg) + '</span>';
                 html += '</div>';
             });
             html += '</div>';
@@ -58,8 +58,8 @@
 
         // 毒性标注
         if (toxicity.length > 0) {
-            html += '<div class="interaction-section">';
-            html += '<h4 class="section-title">☠ 毒性标注</h4>';
+            html += '<div class="interaction-check-item">';
+            html += '<h4 class="check-section-title">☠ 毒性标注</h4>';
             html += '<div class="toxicity-grid">';
             toxicity.forEach(function(t) {
                 var cls = t.toxicity === '大毒' ? 'toxic-d' : t.toxicity === '有毒' ? 'toxic-m' : t.toxicity === '小毒' ? 'toxic-l' : 'toxic-n';
@@ -70,7 +70,7 @@
 
         // 无问题
         if (!hasWarnings) {
-            html += '<div class="interaction-safe">✅ 未检出配伍禁忌</div>';
+            html += '<div class="interaction-check-safe">✅ 未检出配伍禁忌</div>';
         }
 
         html += '<div class="vitamin-disclaimer">配伍禁忌仅供参考，处方用药请遵医嘱。</div>';
