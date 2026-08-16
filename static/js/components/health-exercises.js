@@ -16,6 +16,9 @@
                 EXERCISES = data;
                 populateExerciseList();
                 return data;
+            })
+            .catch(function(e) {
+                console.error('[养生功法] 数据加载失败:', e);
             });
     }
 
@@ -37,12 +40,17 @@
         var listEl = document.getElementById('exercise-list');
         if (!listEl || EXERCISES.length === 0) return;
         listEl.innerHTML = renderExerciseList();
+        // 用事件委托绑定点击，避免onclick字符串引号嵌套问题
+        listEl.addEventListener('click', function(e) {
+            var card = e.target.closest('.exercise-card');
+            if (card) showExercise(card.dataset.id);
+        });
     }
 
     function renderExerciseList() {
         var html = '';
         EXERCISES.forEach(function(ex) {
-            html += '<div class="exercise-card" data-id="' + escHtml(ex.id) + '" onclick="showExercise('' + escHtml(ex.id) + '')">';
+            html += '<div class="exercise-card" data-id="' + escHtml(ex.id) + '">';
             html += '<div class="exercise-card-top">';
             html += '<span class="exercise-avatar">' + escHtml(ex.avatar) + '</span>';
             html += '<div class="exercise-card-info">';
@@ -76,12 +84,7 @@
         if (ex.video_url) {
             html += '<div class="detail-section video-section">';
             html += '<h3>官方演示视频</h3>';
-            html += '<p class="video-link">';
-            html += '<a href="' + escHtml(ex.video_url) + '" target="_blank" rel="noopener" class="video-link-btn">';
-            html += '&#9654; ' + escHtml(ex.video_title || '观看官方演示视频');
-            html += '</a>';
-            html += '<span class="video-hint">（点击跳转CCTV官方页面）</span>';
-            html += '</p>';
+            html += '<iframe class="video-iframe" src="' + escHtml(ex.video_url) + '" frameborder="0" allowfullscreen></iframe>';
             html += '</div>';
         }
         html += '<div class="detail-section">';
@@ -96,8 +99,8 @@
         html += '<div class="movements-list">';
         (ex.movements || []).forEach(function(m, i) {
             var expanded = expandedId === ex.id + '_' + i;
-            html += '<div class="movement-item" onclick="toggleMovement('' + escHtml(ex.id + '_' + i) + '')">';
-            html += '<div class="movement-header">';
+            html += '<div class="movement-item">';
+            html += '<div class="movement-header" data-toggle="' + escHtml(ex.id + '_' + i) + '">';
             html += '<span class="movement-number">' + escHtml(m.number || (i + 1)) + '</span>';
             html += '<div class="movement-name">' + escHtml(m.name) + '</div>';
             html += '<span class="movement-arrow">' + (expanded ? '▲' : '▼') + '</span>';
@@ -128,6 +131,8 @@
             html += '<div class="detail-section warning-section"><h3>⚠ 禁忌</h3>';
             html += '<p class="warning-text">' + escHtml(ex.contraindications) + '</p></div>';
         }
+        // 事件委托绑定动作折叠
+        html += '<script>document.getElementById("exercise-detail").addEventListener("click",function(e){var h=e.target.closest(".movement-header");if(h)toggleMovement(h.dataset.toggle);});<\/script>';
         return html;
     }
 

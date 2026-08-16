@@ -22,8 +22,8 @@
       "心",
       "肺"
     ],
-    "video_url": "https://www.cctv.com/program/TCPGK/2021053010283169.shtml",
-    "video_title": "CCTV：华佗五禽戏演示",
+    "video_url": "https://player.bilibili.com/player.html?bvid=BV1TpoMYJEQE",
+    "video_title": "国家体育总局·五禽戏2025新版",
     "movements": [
       {
         "name": "虎戏",
@@ -99,8 +99,8 @@
       "心",
       "三焦"
     ],
-    "video_url": "https://tv.cctv.com/2019/11/21/VIDEiCJZqK4Vl3YqJqY5K5Qo191121.shtml",
-    "video_title": "CCTV：八段锦标准演示",
+    "video_url": "https://player.bilibili.com/player.html?bvid=BV1h5EX6EEjZ",
+    "video_title": "国家体育总局·八段锦冠军示范1080P",
     "movements": [
       {
         "name": "双手托天理三焦",
@@ -185,7 +185,7 @@
     "category": "内家拳",
     "duration": "30-60分钟",
     "difficulty": "进阶",
-    "description": "太极拳是中国传统武术，以阴阳哲理为根基，行云流水般柔和缓慢的动作，达到内外兼修、形神合一的境界。号称『拳术本草纲目』。",
+    "description": "太极拳是中国传统武术，以阴阳哲理为根基，行云流水般柔和缓慢的动作，达到内外兼修、形神合一的境界。号称拳术本草纲目。",
     "benefits": [
       "平衡协调",
       "增强核心",
@@ -198,8 +198,8 @@
       "肝",
       "脾"
     ],
-    "video_url": "https://www.cctv.com/program/TCPGK/2018061510324245.shtml",
-    "video_title": "CCTV：太极拳入门教学",
+    "video_url": "https://player.bilibili.com/player.html?bvid=BV1kLT46aEVu",
+    "video_title": "气派太极·24式太极拳国标版",
     "movements": [
       {
         "name": "起势",
@@ -251,7 +251,7 @@
       }
     ],
     "practice_tips": [
-      "太极拳讲究『用意不用力』，以意导形",
+      "太极拳讲究用意不用力，以意导形",
       "呼吸自然，逐渐过渡到腹式呼吸",
       "动作要慢、匀、连贯，如行云流水",
       "初学宜从24式简化太极拳入门",
@@ -268,7 +268,7 @@
     "category": "内功",
     "duration": "20-30分钟",
     "difficulty": "进阶",
-    "description": "易筋经是中国传统健身功法，以『易筋』为名，意指改变筋骨、强健体魄。相传为达摩祖师所传，共十二势，是武术内功训练的重要功法。",
+    "description": "易筋经是中国传统健身功法，以易筋为名，意指改变筋骨、强健体魄。相传为达摩祖师所传，共十二势，是武术内功训练的重要功法。",
     "benefits": [
       "强筋壮骨",
       "疏通经络",
@@ -281,8 +281,8 @@
       "肝",
       "脾"
     ],
-    "video_url": "https://tv.cctv.com/2020/08/12/VIDEXyQp3KjY5VbZqK4Vl3YqJqY5K5Qo191121.shtml",
-    "video_title": "CCTV：易筋经十二式演示",
+    "video_url": "https://player.bilibili.com/player.html?bvid=BV14vuv6BEzo",
+    "video_title": "易筋经完整跟练｜12分钟镜面口令版",
     "movements": [
       {
         "name": "韦驮献杵第一势",
@@ -315,14 +315,14 @@
         "benefit": "增强腰腿力量，调理脾胃"
       },
       {
-        "name": "出神入化",
+        "name": "出爪亮翅",
         "description": "双手托天，踮脚仰身",
         "action": "双手上托，身体后仰，踮脚",
         "benefit": "伸展脊柱，强腰固肾"
       }
     ],
     "practice_tips": [
-      "易筋经讲究『紧那罗王法』，动作要刚柔相济",
+      "易筋经讲究紧那罗王法，动作要刚柔相济",
       "每个动作要保持适当时间，感受经络拉伸",
       "呼吸配合动作，伸举时吸气，收敛时呼气",
       "练习宜在安静通风处",
@@ -349,8 +349,8 @@
     "target_zangfu": [
       "五脏六腑"
     ],
-    "video_url": "https://tv.cctv.com/2021/03/15/VIDEiCJZqK4Vl3YqJqY5K5Qo191121.shtml",
-    "video_title": "CCTV：六字诀养生演示",
+    "video_url": "https://player.bilibili.com/player.html?bvid=BV1mS411w72r",
+    "video_title": "国家体育总局·六字诀全套演示版",
     "movements": [
       {
         "name": "嘘字诀·疏肝",
@@ -413,7 +413,7 @@
     "category": "内功",
     "duration": "10-30分钟",
     "difficulty": "入门",
-    "description": "站桩是中国传统内功修炼的基础功法，通过静止站立的姿势，达到『外静内动』的效果，是武术、气功、养生都离不开的基本功。",
+    "description": "站桩是中国传统内功修炼的基础功法，通过静止站立的姿势，达到外静内动的效果，是武术、气功、养生都离不开的基本功。",
     "benefits": [
       "培补元气",
       "强健筋骨",
@@ -426,8 +426,8 @@
       "脾",
       "心"
     ],
-    "video_url": "https://tv.cctv.com/2019/06/18/VIDEiCJZqK4Vl3YqJqY5K5Qo191121.shtml",
-    "video_title": "CCTV：站桩功入门教学",
+    "video_url": "https://player.bilibili.com/player.html?bvid=BV14VprzNE4D",
+    "video_title": "浑元桩｜12分钟跟练版",
     "movements": [
       {
         "name": "浑元桩",
@@ -459,7 +459,7 @@
       }
     ],
     "practice_tips": [
-      "站桩讲究『松而不懈，紧而不僵』",
+      "站桩讲究松而不懈，紧而不僵",
       "呼吸自然，以腹式呼吸为佳",
       "初学时间宜短（5分钟），逐渐延长",
       "站桩后宜散步放松，不可立即坐下",
@@ -487,8 +487,8 @@
       "肝",
       "肾"
     ],
-    "video_url": "https://tv.cctv.com/2020/03/22/VIDEXyQp3KjY5VbZqK4Vl3YqJqY5K5Qo191121.shtml",
-    "video_title": "CCTV：岳家拳养生桩演示",
+    "video_url": "https://player.bilibili.com/player.html?bvid=BV16CzpBfEWh",
+    "video_title": "站桩·真气养生疏通经络10分钟跟练",
     "movements": [
       {
         "name": "弓步桩",
@@ -516,7 +516,7 @@
       }
     ],
     "practice_tips": [
-      "站桩要求『站如松』，身正步稳",
+      "站桩要求站如松，身正步稳",
       "呼吸配合动作，发力时呼气",
       "初学宜在专业指导下进行",
       "练习后宜散步放松，不可立即休息"
