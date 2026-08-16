@@ -1,0 +1,182 @@
+import json
+
+data = [
+  {
+    "id": "wuqinxi",
+    "name": "五禽戏",
+    "origin": "东汉·华佗",
+    "avatar": "🐯",
+    "category": "导引术",
+    "duration": "15-20分钟",
+    "difficulty": "入门",
+    "description": "五禽戏是东汉名医华佗创编的养生功法，模仿虎、鹿、熊、猿、鸟五种动物的动作姿态，通过形神兼备的导引练习，达到强身健体、祛病延年的目的。已被列入国家级非物质文化遗产。",
+    "benefits": ["强筋健骨", "疏通经络", "调和气血", "安神定志", "增强免疫力"],
+    "target_zangfu": ["肝", "肾", "脾", "心", "肺"],
+    "video_url": "https://www.cctv.com/program/TCPGK/2021053010283169.shtml",
+    "video_title": "CCTV：华佗五禽戏演示",
+    "movements": [
+      { "name": "虎戏", "number": "第一式", "description": "模仿老虎威猛之势，屈伸腰背，爪按前冲", "action": "双手握拳作虎爪状，腰背屈伸，马步冲拳", "benefit": "强腰补肾，健骨强身，增强爆发力", "meridian": "肾经、膀胱经" },
+      { "name": "鹿戏", "number": "第二式", "description": "模仿鹿轻盈舒展，展臂奔跑，回首顾盼", "action": "双手上举展胸，侧身牵拉，轻盈步态", "benefit": "舒展肝气，利关节，调畅气机", "meridian": "肝经、胆经" },
+      { "name": "熊戏", "number": "第三式", "description": "模仿熊沉稳厚重，摇身晃膀，步法沉实", "action": "左右晃膀，沉稳步伐，摇腹运胯", "benefit": "健运脾胃，增强消化，培补中气", "meridian": "脾经、胃经" },
+      { "name": "猿戏", "number": "第四式", "description": "模仿猿猴灵巧敏捷，攀援摘果，躲闪灵活", "action": "提膝勾手，灵活闪转，摘物动作", "benefit": "养心安神，敏捷思维，交通心肾", "meridian": "心经、小肠经" },
+      { "name": "鸟戏", "number": "第五式", "description": "模仿飞鸟轻盈展翅，单脚独立，展翅高飞", "action": "双臂展翅，单脚独立，轻盈跳跃", "benefit": "宣肺理气，平衡协调，改善呼吸", "meridian": "肺经、大肠经" }
+    ],
+    "practice_tips": ["练习前宜排空大小便，松解衣带", "呼吸自然，不宜刻意深呼吸", "意念专注，形神兼备", "循序渐进，量力而行", "饭后一小时内不宜练习"],
+    "suitable_for": "适合各年龄段，尤其适合久坐办公族、慢性病患者康复期",
+    "contraindications": "急性疾病期、严重高血压未控制者、骨折未愈者慎用"
+  },
+  {
+    "id": "baduanjin",
+    "name": "八段锦",
+    "origin": "宋代",
+    "avatar": "🧘",
+    "category": "导引术",
+    "duration": "12-15分钟",
+    "difficulty": "入门",
+    "description": "八段锦是中国传统养生功法，因动作分八式、如锦缎般优美流畅而得名。起源于宋代，流传至今有多个流派，是国家级非物质文化遗产。",
+    "benefits": ["调理三焦", "疏通经络", "强腰健肾", "改善睡眠", "调节情绪"],
+    "target_zangfu": ["肺", "脾", "肾", "心", "三焦"],
+    "video_url": "https://tv.cctv.com/2019/11/21/VIDEiCJZqK4Vl3YqJqY5K5Qo191121.shtml",
+    "video_title": "CCTV：八段锦标准演示",
+    "movements": [
+      { "name": "双手托天理三焦", "number": "第一式", "description": "双手交叉上托，充分伸展，调理三焦气机", "action": "站立，双手交叉上托，踮脚，保持5秒后放下", "benefit": "调理三焦，舒展脊柱，改善体态", "meridian": "任脉、督脉" },
+      { "name": "左右开弓似射雕", "number": "第二式", "description": "马步拉弓，左右交替，扩胸展肺", "action": "马步，双手作拉弓状，左右交替", "benefit": "扩胸理肺，增强呼吸功能", "meridian": "肺经、大肠经" },
+      { "name": "调理脾胃须单举", "number": "第三式", "description": "一手上举一手下按，交替进行，调理脾胃", "action": "站立，一手上举掌心朝天，一手下按掌心朝地，交替", "benefit": "调理脾胃，改善消化功能", "meridian": "脾经、胃经" },
+      { "name": "五劳七伤往后瞧", "number": "第四式", "description": "身体侧转，向后看，缓解疲劳", "action": "站立，双手叉腰，头部缓慢后转向两侧", "benefit": "缓解五劳七伤，改善颈部僵硬", "meridian": "督脉、膀胱经" },
+      { "name": "摇头摆尾去心火", "number": "第五式", "description": "马步摇头摆尾，清心泻火", "action": "马步，身体前倾，头部和尾闾交替摆动", "benefit": "清心泻火，安神定志", "meridian": "心经、肾经" },
+      { "name": "双手攀足固肾腰", "number": "第六式", "description": "双手沿腿下滑至足，俯身攀足，强腰固肾", "action": "站立，双手上举后身体前俯，双手攀足", "benefit": "强腰固肾，舒展后腰和腿", "meridian": "肾经、膀胱经" },
+      { "name": "攒拳怒目增气力", "number": "第七式", "description": "马步冲拳，怒目而视，增强气力", "action": "马步，双手握拳，交替冲拳，怒目而视", "benefit": "增强气力，疏肝理气", "meridian": "肝经、胆经" },
+      { "name": "背后七颠百病消", "number": "第八式", "description": "踮脚后跟下落，轻颠七次，百病消除", "action": "站立，踮起脚尖，然后轻轻下落，重复七次", "benefit": "调理全身，疏通经络", "meridian": "全身经络" }
+    ],
+    "practice_tips": ["练习时保持呼吸自然，不要憋气", "动作要缓慢柔和，连绵不断", "意念跟随动作，心神安定", "晨起或睡前练习效果最佳", "练习环境宜安静、空气流通"],
+    "suitable_for": "适合所有人群，尤其适合亚健康人群、慢性病患者、老年人保健",
+    "contraindications": "急性传染病期、严重心脏病发作期、骨折未愈者暂停练习"
+  },
+  {
+    "id": "taijiquan",
+    "name": "太极拳",
+    "origin": "明末清初·陈王廷",
+    "avatar": "☯️",
+    "category": "内家拳",
+    "duration": "30-60分钟",
+    "difficulty": "进阶",
+    "description": "太极拳是中国传统武术，以阴阳哲理为根基，行云流水般柔和缓慢的动作，达到内外兼修、形神合一的境界。号称『拳术本草纲目』。",
+    "benefits": ["平衡协调", "增强核心", "减压安神", "改善平衡", "柔韧筋骨"],
+    "target_zangfu": ["肾", "肝", "脾"],
+    "video_url": "https://www.cctv.com/program/TCPGK/2018061510324245.shtml",
+    "video_title": "CCTV：太极拳入门教学",
+    "movements": [
+      { "name": "起势", "description": "静心定意，气沉丹田，预备式", "action": "站立，双足平行与肩同宽，双手缓缓上举后下落", "benefit": "静心定志，调和气息" },
+      { "name": "野马分鬃", "description": "如野马奔腾，分鬃之势", "action": "弓步搂手，分手推进，动作舒展", "benefit": "疏通带脉，调理肝脾" },
+      { "name": "白鹤亮翅", "description": "如白鹤展翅，轻盈优雅", "action": "虚步亮掌，分脚保持平衡", "benefit": "舒展胸肺，调理气机" },
+      { "name": "搂膝拗步", "description": "搂化推按，步步为营", "action": "搂膝化打，弓步推掌", "benefit": "强腰健肾，疏通经络" },
+      { "name": "云手", "description": "双手如行云流水，左右往返", "action": "横移步，双手交替划圆", "benefit": "调理三焦，增强平衡" },
+      { "name": "单鞭", "description": "一手勾手一手推掌，如担单鞭", "action": "勾手立掌，弓步站立", "benefit": "拉伸全身，疏通胆经" },
+      { "name": "倒卷珠", "description": "退步化打，连贯圆活", "action": "退步捋挤，连贯转换", "benefit": "调理肝肾，增强下盘" },
+      { "name": "收势", "description": "引气归元，收功", "action": "双手缓缓下落，气沉丹田", "benefit": "收摄心神，气归丹田" }
+    ],
+    "practice_tips": ["太极拳讲究『用意不用力』，以意导形", "呼吸自然，逐渐过渡到腹式呼吸", "动作要慢、匀、连贯，如行云流水", "初学宜从24式简化太极拳入门", "早晚练习为宜，饭后一小时再练"],
+    "suitable_for": "适合各年龄段，尤其适合中老年人、慢性病患者、高压人群",
+    "contraindications": "急性疾病期、严重膝关节损伤者建议在专业指导下练习"
+  },
+  {
+    "id": "yijinjing",
+    "name": "易筋经",
+    "origin": "托名达摩·梁代",
+    "avatar": "💪",
+    "category": "内功",
+    "duration": "20-30分钟",
+    "difficulty": "进阶",
+    "description": "易筋经是中国传统健身功法，以『易筋』为名，意指改变筋骨、强健体魄。相传为达摩祖师所传，共十二势，是武术内功训练的重要功法。",
+    "benefits": ["强筋壮骨", "疏通经络", "增强力量", "改善体态", "调和气血"],
+    "target_zangfu": ["肾", "肝", "脾"],
+    "video_url": "https://tv.cctv.com/2020/08/12/VIDEXyQp3KjY5VbZqK4Vl3YqJqY5K5Qo191121.shtml",
+    "video_title": "CCTV：易筋经十二式演示",
+    "movements": [
+      { "name": "韦驮献杵第一势", "description": "双手合十于胸前，立身中正", "action": "站立，双手合十平举胸前，目视前方", "benefit": "调身调息，静心定志" },
+      { "name": "韦驮献杵第二势", "description": "手臂平举，掌心向外", "action": "双手平举与肩平，掌心向前", "benefit": "舒展胸胁，开阔肺气" },
+      { "name": "韦驮献杵第三势", "description": "托天举掌，气贯全身", "action": "双手上托，踮脚，目视手上", "benefit": "拉伸全身，调理三焦" },
+      { "name": "摘星换斗", "description": "一手高举一手下按，如摘星辰", "action": "一手举过头顶，一手按于腰后，身体侧倾", "benefit": "拉伸侧身，疏通带脉" },
+      { "name": "倒拽九牛尾", "description": "马步拽绳，左右交替", "action": "马步，双手作拽绳状，左右交替", "benefit": "增强腰腿力量，调理脾胃" },
+      { "name": "出神入化", "description": "双手托天，踮脚仰身", "action": "双手上托，身体后仰，踮脚", "benefit": "伸展脊柱，强腰固肾" }
+    ],
+    "practice_tips": ["易筋经讲究『紧那罗王法』，动作要刚柔相济", "每个动作要保持适当时间，感受经络拉伸", "呼吸配合动作，伸举时吸气，收敛时呼气", "练习宜在安静通风处", "循序渐进，不可急于求成"],
+    "suitable_for": "适合有一定基础的练习者，尤宜于筋骨僵硬、体质虚弱者",
+    "contraindications": "高血压未控制、严重心脏病、急性损伤期不宜练习"
+  },
+  {
+    "id": "liuduanjin",
+    "name": "六字诀",
+    "origin": "元代·朱丹溪",
+    "avatar": "🌊",
+    "category": "导引术",
+    "duration": "10-15分钟",
+    "difficulty": "入门",
+    "description": "六字诀由元代医家朱丹溪编创，共六式，每式针对性调理特定脏腑，通过嘘、呵、呼、嘶、吹、嘻六字吐纳，达到调理脏腑的目的。",
+    "benefits": ["调理脏腑", "疏通经络", "延年益寿", "养生保健"],
+    "target_zangfu": ["五脏六腑"],
+    "video_url": "https://tv.cctv.com/2021/03/15/VIDEiCJZqK4Vl3YqJqY5K5Qo191121.shtml",
+    "video_title": "CCTV：六字诀养生演示",
+    "movements": [
+      { "name": "嘘字诀·疏肝", "description": "嘘声疏肝，条达气机", "action": "双手侧举，发声嘘字，目视指尖", "benefit": "疏肝理气，明目降火", "meridian": "肝经、胆经" },
+      { "name": "呵字诀·养心", "description": "呵声养心，补益心气", "action": "双手捧心，发声呵字，舌尖轻抵上颚", "benefit": "养心安神，补益心气", "meridian": "心经、小肠经" },
+      { "name": "呼字诀·健脾", "description": "呼声健脾，增强运化", "action": "双手叉腰，发声呼字，口唇圆缩", "benefit": "健脾和胃，增强消化", "meridian": "脾经、胃经" },
+      { "name": "嘶字诀·补肺", "description": "嘶声补肺，调理气机", "action": "双手上举，发声嘶字，口微张", "benefit": "补肺益气，增强呼吸", "meridian": "肺经、大肠经" },
+      { "name": "吹字诀·补肾", "description": "吹声补肾，固本培元", "action": "双手抱腰，发声吹字，口唇撮聚", "benefit": "补肾益精，强腰固本", "meridian": "肾经、膀胱经" },
+      { "name": "嘻字诀·理三焦", "description": "嘻声理三焦，通调全身", "action": "双手高举，发声嘻字，舒展全身", "benefit": "调理三焦，疏利气机", "meridian": "三焦经" }
+    ],
+    "practice_tips": ["六字诀配合呼吸，每个字发音要到位", "声音由弱到强，再由强到弱", "练习时意念集中于相应脏腑", "每日早晚各练一次为宜", "配合相应手势效果更佳"],
+    "suitable_for": "适合各年龄段养生保健，尤其适合脏腑功能失调者",
+    "contraindications": "孕妇慎用，急性呼吸道感染期暂停"
+  },
+  {
+    "id": "zhuangong",
+    "name": "站桩功",
+    "origin": "传统内功",
+    "avatar": "🧎",
+    "category": "内功",
+    "duration": "10-30分钟",
+    "difficulty": "入门",
+    "description": "站桩是中国传统内功修炼的基础功法，通过静止站立的姿势，达到『外静内动』的效果，是武术、气功、养生都离不开的基本功。",
+    "benefits": ["培补元气", "强健筋骨", "调节阴阳", "安神定志", "改善循环"],
+    "target_zangfu": ["肾", "脾", "心"],
+    "video_url": "https://tv.cctv.com/2019/06/18/VIDEiCJZqK4Vl3YqJqY5K5Qo191121.shtml",
+    "video_title": "CCTV：站桩功入门教学",
+    "movements": [
+      { "name": "浑元桩", "description": "基础站桩，怀抱圆球", "action": "双脚与肩同宽，膝微屈，双手环抱胸前", "benefit": "培补元气，调理全身", "duration": "5-10分钟" },
+      { "name": "托天桩", "description": "双手上托，伸展全身", "action": "一手上托一手下按，交替进行", "benefit": "拉伸筋骨，调理三焦", "duration": "3-5分钟" },
+      { "name": "撑抱桩", "description": "双手撑抱，前后交替", "action": "双手在身前撑抱，如抱大树", "benefit": "增强臂力，调理心肺", "duration": "3-5分钟" },
+      { "name": "升降桩", "description": "双手升降，气贯四肢", "action": "双手缓缓上举至头顶，再缓缓下落，配合呼吸", "benefit": "调理气血，贯通上下", "duration": "5分钟" }
+    ],
+    "practice_tips": ["站桩讲究『松而不懈，紧而不僵』", "呼吸自然，以腹式呼吸为佳", "初学时间宜短（5分钟），逐渐延长", "站桩后宜散步放松，不可立即坐下", "饭后一小时内不宜站桩"],
+    "suitable_for": "适合各年龄段，尤宜于体质虚弱、慢性病患者康复",
+    "contraindications": "严重膝关节疾病、急性发热期、精神疾病发作期不宜练习"
+  },
+  {
+    "id": "yuequan",
+    "name": "岳家拳养生桩",
+    "origin": "岳飞传武",
+    "avatar": "⚔️",
+    "category": "外家拳",
+    "duration": "15-20分钟",
+    "difficulty": "入门",
+    "description": "岳家拳养生桩源于岳飞所传武术，以外练筋骨为主，配合呼吸吐纳，达到强身健体、增强战力的目的。",
+    "benefits": ["强健筋骨", "增强爆发力", "调理气血", "提升精气神"],
+    "target_zangfu": ["肝", "肾"],
+    "video_url": "https://tv.cctv.com/2020/03/22/VIDEXyQp3KjY5VbZqK4Vl3YqJqY5K5Qo191121.shtml",
+    "video_title": "CCTV：岳家拳养生桩演示",
+    "movements": [
+      { "name": "弓步桩", "description": "前弓后箭，稳如泰山", "action": "马步弓步，双手作推掌状，保持静止", "benefit": "增强腿力，稳固下盘" },
+      { "name": "虚步桩", "description": "虚实分明，进退自如", "action": "虚步站立，双手护于胸前，重心前后移动", "benefit": "调理平衡，增强灵活性" },
+      { "name": "伏虎桩", "description": "如虎伏地，蓄势待发", "action": "低马步，双手下按，腰背挺直", "benefit": "增强核心，稳固根基" },
+      { "name": "射雕桩", "description": "拉弓射箭，气贯长虹", "action": "马步拉弓，左右交替，怒目而视", "benefit": "开阔胸肺，增强臂力" }
+    ],
+    "practice_tips": ["站桩要求『站如松』，身正步稳", "呼吸配合动作，发力时呼气", "初学宜在专业指导下进行", "练习后宜散步放松，不可立即休息"],
+    "suitable_for": "适合有一定基础的练习者，尤宜于需要增强体能者",
+    "contraindications": "膝关节损伤、严重高血压患者慎用"
+  }
+]
+
+with open(r'e:\岐黄阁\static\data\health-exercises.json', 'w', encoding='utf-8') as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+print('JSON written OK, entries:', len(data))
