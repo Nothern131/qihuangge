@@ -87,6 +87,12 @@
             html += '<iframe class="video-iframe" src="' + escHtml(ex.video_url) + '" frameborder="0" allowfullscreen></iframe>';
             if (ex.video_source) {
                 html += '<div class="video-source">📺 来源：' + escHtml(ex.video_source) + '</div>';
+
+            if (ex.video_note) {
+                html += '<div class="video-note">⚠️ ' + escHtml(ex.video_note) + '</div>';
+            }            }
+            if (ex.video_note) {
+                html += '<div class="video-note">\u26a0\ufe0f ' + escHtml(ex.video_note) + '</div>';
             }
             html += '</div>';
         }

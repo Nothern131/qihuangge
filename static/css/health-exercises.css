@@ -395,3 +395,13 @@
   background: rgba(0,0,0,0.03);
   border-radius: 6px;
 }
+.video-note {
+  font-size: 12px;
+  color: #b8860b;
+  text-align: center;
+  margin-top: 6px;
+  padding: 6px 12px;
+  background: rgba(184,134,11,0.06);
+  border-radius: 6px;
+  border-left: 3px solid #b8860b;
+}

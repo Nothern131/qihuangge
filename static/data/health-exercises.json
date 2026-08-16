@@ -431,9 +431,9 @@
       "脾",
       "心"
     ],
-    "video_url": "https://player.bilibili.com/player.html?bvid=BV14VprzNE4D",
-    "video_title": "浑元桩跟练版（传统内功标准示范）",
-    "video_source": "内证实践（传统站桩教学）",
+    "video_url": "https://player.bilibili.com/player.html?bvid=BV17mJ9zUELd",
+    "video_title": "蔡树欣·站桩详解｜抱球桩0基础教学（国家体育总局官方）",
+    "video_source": "中华健身气功馆（国家体育总局健身气功管理中心官方账号）·蔡树欣（连续三届国家级全国健身气功冠军、国培计划官方指定教练）",
     "movements": [
       {
         "name": "浑元桩",
@@ -472,7 +472,8 @@
       "饭后一小时内不宜站桩"
     ],
     "suitable_for": "适合各年龄段，尤宜于体质虚弱、慢性病患者康复",
-    "contraindications": "严重膝关节疾病、急性发热期、精神疾病发作期不宜练习"
+    "contraindications": "严重膝关节疾病、急性发热期、精神疾病发作期不宜练习",
+    "video_note": "站桩功尚无国家体育总局独立标准版，本视频选用国家体育总局健身气功官方冠军教练示范版本。"
   },
   {
     "id": "yuequan",
@@ -493,9 +494,9 @@
       "肝",
       "肾"
     ],
-    "video_url": "https://player.bilibili.com/player.html?bvid=BV16CzpBfEWh",
-    "video_title": "真气养生站桩跟练版",
-    "video_source": "（传统武术养生桩示范）",
+    "video_url": "https://player.bilibili.com/player.html?bvid=ODxGKxuOasyO5b2SsVvs4md",
+    "video_title": "CCTV·军事纪实 寻脉岳家拳（汤阴岳飞故里官方记录）",
+    "video_source": "央视网《军事纪实》栏目（2026-03-31）·记录河南汤阴精忠武校/岳飞武校岳家拳教学",
     "movements": [
       {
         "name": "弓步桩",
@@ -529,6 +530,7 @@
       "练习后宜散步放松，不可立即休息"
     ],
     "suitable_for": "适合有一定基础的练习者，尤宜于需要增强体能者",
-    "contraindications": "膝关节损伤、严重高血压患者慎用"
+    "contraindications": "膝关节损伤、严重高血压患者慎用",
+    "video_note": "岳家拳属传统武术（非遗项目），非国家体育总局健身气功标准功法，此处选用央视纪录片官方记录。"
   }
 ]
