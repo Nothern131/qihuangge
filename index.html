@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>古籍问答 Agent（规则优先 + RAG 兜底）</title>
+<style>
+  /* ============ 设计令牌（古籍·宣纸/墨主题） ============ */
+  :root{
+    --paper:#f7f3ec;
+    --paper-2:#fffdf9;
+    --ink:#35302a;
+    --ink-soft:#7a6f60;
+    --zhe:#8b4513;
+    --zhe-deep:#7d3d10;
+    --zhu:#b23a2e;
+    --qing:#3d6b7d;
+    --line:#e4d9c6;
+    --spring:cubic-bezier(0.34,1.56,0.64,1);
+    --glide:cubic-bezier(0.25,0.46,0.45,0.94);
+    --expo:cubic-bezier(0.32,0.72,0,1);
+    --font-serif:"Noto Serif SC","Source Han Serif SC","Songti SC","STSong","SimSun",serif;
+    --font-sans:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    font-family:var(--font-sans);
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.6;
+    padding:96px 0 0;
+    min-height:100dvh;
+    background-image:
+      radial-gradient(900px 420px at 12% -10%, rgba(178,58,46,.055), transparent 60%),
+      radial-gradient(820px 460px at 92% 4%, rgba(61,107,125,.06), transparent 62%);
+    background-attachment:fixed;
+  }
+  .grain{
+    position:fixed;inset:0;z-index:60;pointer-events:none;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .nav-island{
+    position:fixed;top:16px;inset-inline:0;margin-inline:auto;width:max-content;
+    z-index:30;display:flex;align-items:center;gap:14px;
+    padding:10px 18px;border-radius:999px;
+    background:rgba(255,253,249,.72);
+    backdrop-filter:blur(14px) saturate(1.15);
+    -webkit-backdrop-filter:blur(14px) saturate(1.15);
+    box-shadow:inset 0 0 0 1px rgba(139,69,19,.13), 0 12px 30px -16px rgba(90,62,30,.42);
+    animation:navIn .7s var(--expo) both;
+  }
+  @keyframes navIn{from{opacity:0;transform:translateY(-14px);}to{opacity:1;transform:none;}}
+  .brand{font-family:var(--font-serif);font-size:15px;font-weight:700;letter-spacing:.04em;color:#3a2f26;}
+  .brand em{font-style:normal;color:var(--zhe);}
+  .nav-meta{font-size:12px;color:var(--ink-soft);padding-left:14px;border-left:1px solid var(--line);}
+  .pill-badge{font-size:11px;font-weight:600;letter-spacing:.08em;color:#2f5f70;padding:3px 9px;border-radius:999px;background:rgba(61,107,125,.12);}
+  main{max-width:980px;margin:0 auto;padding:0 24px 56px;}
+  .hero{text-align:center;padding:44px 0 10px;}
+  .eyebrow{display:inline-flex;align-items:center;gap:7px;padding:5px 14px;border-radius:999px;background:rgba(139,69,19,.08);color:var(--zhe);font-size:11px;letter-spacing:.22em;text-transform:uppercase;}
+  h1{font-family:var(--font-serif);font-size:clamp(2rem,5.2vw,3.15rem);line-height:1.18;letter-spacing:.02em;font-weight:700;color:#33291f;margin:18px 0 14px;}
+  .lede{max-width:620px;margin:0 auto;color:var(--ink-soft);font-size:15px;line-height:1.85;}
+  .reveal{opacity:0;transform:translateY(16px);transition:opacity .8s var(--expo), transform .8s var(--expo);transition-delay:var(--d,0ms);}
+  .reveal.in{opacity:1;transform:none;}
+  .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:40px;}
+  .stat{padding:7px;border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(228,217,198,.34));box-shadow:inset 0 0 0 1px rgba(139,69,19,.10), 2px 0 0 rgba(178,58,46,.30), -2px 0 0 rgba(61,107,125,.30);transition:transform .3s var(--spring), box-shadow .3s ease;cursor:default;}
+  .stat:hover{transform:translateY(-8px) scale(1.03);box-shadow:inset 0 0 0 1px rgba(139,69,19,.14), 4px 0 0 rgba(178,58,46,.55), -4px 0 0 rgba(61,107,125,.55), 0 20px 34px -22px rgba(90,62,30,.6);}
+  .stat-core{border-radius:16px;background:var(--paper-2);padding:16px 18px;box-shadow:inset 0 1px 0 rgba(255,255,255,.85);}
+  .stat-mark{font-family:var(--font-serif);font-size:12px;letter-spacing:.18em;color:#a53328;text-transform:uppercase;}
+  .stat-title{font-family:var(--font-serif);font-size:19px;margin:6px 0 4px;color:#3a2f26;}
+  .stat-desc{font-size:12.5px;color:#7d7263;line-height:1.65;}
+  .stage{margin-top:44px;}
+  .chat-shell{padding:10px;border-radius:32px;background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(228,217,198,.34));box-shadow:inset 0 0 0 1px rgba(139,69,19,.10), 0 28px 60px -34px rgba(90,62,30,.42);}
+  .chat-core{border-radius:24px;background:var(--paper-2);padding:20px;box-shadow:inset 0 1px 0 rgba(255,255,255,.85), 0 1px 2px rgba(90,62,30,.05);}
+  .chat-box{height:min(56vh,520px);overflow-y:auto;display:flex;flex-direction:column;gap:16px;padding:6px 4px 6px 2px;scroll-behavior:smooth;}
+  .chat-box::-webkit-scrollbar{width:8px;}
+  .chat-box::-webkit-scrollbar-thumb{background:rgba(139,69,19,.18);border-radius:99px;}
+  .message{padding:14px 18px;border-radius:16px;max-width:82%;font-size:15px;animation:msgIn .34s var(--spring) both;}
+  @keyframes msgIn{from{opacity:0;transform:translateY(10px) scale(.97);}to{opacity:1;transform:none;}}
+  .message.user{align-self:flex-end;border-bottom-right-radius:6px;background:linear-gradient(180deg,#9a5220,#7d3d10);color:#fff8f0;box-shadow:0 10px 22px -16px rgba(125,61,16,.9);}
+  .message.bot{align-self:flex-start;border-bottom-left-radius:6px;background:var(--paper-2);border:1px solid var(--line);color:var(--ink);}
+  .ans-key{display:inline-block;font-family:var(--font-serif);color:var(--zhe);margin-right:8px;letter-spacing:.06em;}
+  .cite-head{font-size:12px;letter-spacing:.14em;color:#9c8f7c;margin:14px 0 8px;text-transform:uppercase;}
+  .cite-list{display:flex;flex-direction:column;gap:9px;}
+  .cite{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;border-radius:12px;background:#fffaf2;box-shadow:2px 0 0 rgba(178,58,46,.32), -2px 0 0 rgba(61,107,125,.32);transition:transform .3s var(--spring), box-shadow .3s ease;}
+  .cite:hover{transform:translateY(-6px) scale(1.02);box-shadow:4px 0 0 rgba(178,58,46,.55), -4px 0 0 rgba(61,107,125,.55), 0 16px 28px -20px rgba(90,62,30,.55);}
+  .cite-mark{font-family:var(--font-serif);font-size:13.5px;color:#5a3e1e;}
+  .score-chip{margin-left:auto;font-size:11px;color:#8d8477;padding:2px 8px;border-radius:999px;background:rgba(139,69,19,.08);}
+  .copy-btn{position:relative;flex:0 0 auto;width:30px;height:30px;border-radius:9px;border:1px solid rgba(139,69,19,.18);background:#fffaf2;color:var(--zhe);display:grid;place-items:center;cursor:pointer;perspective:220px;transition:background .2s ease, transform .25s var(--spring);}
+  .copy-btn:hover{background:#f6ecdc;transform:translateY(-1px);}
+  .copy-btn:active{transform:scale(.94);}
+  .flip{position:relative;width:14px;height:14px;transform-style:preserve-3d;transition:transform .3s ease-in-out;}
+  .copy-btn.done .flip{transform:rotateY(180deg);}
+  .face{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;line-height:1;backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+  .face.back{transform:rotateY(180deg);color:#2f7a4a;}
+  .mini-toast{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%) translateY(6px);padding:4px 9px;border-radius:7px;background:rgba(53,48,42,.92);color:#fff;font-size:11px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s ease, transform .2s var(--glide);}
+  .copy-btn.done .mini-toast{opacity:1;transform:translateX(-50%) translateY(0);}
+  .ink-msg{display:flex;align-items:center;gap:10px;}
+  .ink-msg .ink{display:block;flex:0 0 auto;}
+  .ink-text{font-size:13px;color:#8a7c69;letter-spacing:.04em;}
+  .trace-btn{margin-top:12px;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:#faf5ec;color:#6a4a22;font-size:13px;cursor:pointer;transition:transform .25s var(--spring), background .2s ease;}
+  .trace-btn:hover{background:#f2e9da;transform:translateY(-1px);}
+  .trace-btn .chev{display:inline-block;transition:transform .2s var(--glide);}
+  .trace-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s var(--glide);}
+  .trace-wrap.open{grid-template-rows:1fr;}
+  .trace-inner{overflow:hidden;min-height:0;}
+  .trace-panel{margin-top:2px;padding:14px 16px;border-radius:14px;background:#fdfbf6;border:1px dashed rgba(139,69,19,.25);font-size:13px;}
+  .trace-panel h4{font-family:var(--font-serif);color:var(--zhe);font-size:13.5px;margin-bottom:10px;letter-spacing:.04em;}
+  .trace-row{padding:9px 0;border-top:1px dotted var(--line);}
+  .trace-row:first-of-type{border-top:none;padding-top:0;}
+  .trace-label{display:inline-block;min-width:66px;font-family:var(--font-serif);color:#5a3e1e;font-weight:700;vertical-align:top;}
+  .trace-text{color:#5c5044;}
+  .trace-empty{color:#b0a695;}
+  .trace-snippet{margin:6px 0 0 66px;padding:8px 12px;border-radius:10px;background:#fff;border-left:3px solid rgba(201,177,138,.9);font-size:12px;line-height:1.7;color:#5c5044;}
+  .trace-snippet code{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:11.5px;color:#8b4513;}
+  .trace-snippet .score-chip{margin-left:8px;}
+  .badge{display:inline-flex;align-items:center;gap:6px;vertical-align:middle;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:600;letter-spacing:.04em;margin-right:8px;}
+  .badge i{width:5px;height:5px;border-radius:50%;background:currentColor;animation:dotPulse 1.5s ease-in-out infinite;}
+  @keyframes dotPulse{0%,100%{transform:scale(1);opacity:.9;}50%{transform:scale(1.55);opacity:.45;}}
+  .badge-precise{background:rgba(61,107,125,.12);color:#2f5f70;}
+  .badge-semantic{background:rgba(90,120,60,.14);color:#4d6b32;}
+  .badge-out{background:rgba(178,58,46,.12);color:#a53328;}
+  .input-area{display:flex;gap:12px;margin-top:18px;align-items:flex-start;}
+  .field{flex:1;position:relative;}
+  .field input{width:100%;padding:14px 18px;border-radius:999px;border:1px solid var(--line);background:var(--paper-2);font:400 15px/1.4 var(--font-sans);color:var(--ink);outline:none;transition:border-color .2s ease, box-shadow .25s ease;}
+  .field input::placeholder{color:#b3a894;}
+  .field input:focus{border-color:rgba(139,69,19,.45);box-shadow:0 0 0 4px rgba(139,69,19,.10);}
+  .field.err input{border-color:var(--zhu);box-shadow:0 0 0 4px rgba(178,58,46,.13);}
+  .field.shake{animation:shake .3s ease;}
+  @keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-4px);}40%{transform:translateX(4px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
+  .field-err{position:absolute;left:18px;top:calc(100% + 6px);font-size:12px;color:var(--zhu);white-space:nowrap;opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .2s ease, transform .25s var(--glide);}
+  .field.err .field-err{opacity:1;transform:translateY(0);}
+  .cta{display:flex;align-items:center;gap:10px;flex:0 0 auto;padding:11px 14px 11px 24px;border:none;border-radius:999px;background:linear-gradient(180deg,#9a5220,#7d3d10);color:#fff8f0;font:600 15px/1.4 var(--font-sans);cursor:pointer;box-shadow:0 12px 24px -14px rgba(125,61,16,.9), inset 0 1px 0 rgba(255,255,255,.25);transition:transform .28s var(--spring), box-shadow .28s ease;}
+  .cta:hover{transform:translateY(-2px);box-shadow:0 18px 30px -14px rgba(125,61,16,.92), inset 0 1px 0 rgba(255,255,255,.3);}
+  .cta:active{transform:scale(.98);}
+  .cta-icon{width:28px;height:28px;border-radius:999px;background:rgba(255,255,255,.16);display:grid;place-items:center;font-size:14px;transition:transform .28s var(--spring);}
+  .cta:hover .cta-icon{transform:translate(2px,-1px) scale(1.06);}
+  .cta:disabled{background:#dcd1bf;color:#8d8477;box-shadow:none;cursor:not-allowed;transform:none;}
+  .cta:disabled .cta-icon{opacity:.6;}
+  .hint{text-align:center;color:#a39885;font-size:12px;margin-top:14px;}
+  footer{text-align:center;color:#a39885;font-size:12px;padding:0 24px 44px;}
+  @media (max-width:768px){body{padding-top:84px;}.nav-island{gap:10px;padding:9px 16px;}.nav-meta{display:none;}main{padding:0 16px 40px;}.hero{padding:26px 0 6px;}.lede{font-size:14px;}.stat-row{grid-template-columns:1fr;gap:12px;margin-top:26px;}.stat:hover,.cite:hover{transform:none;}.stage{margin-top:28px;}.chat-shell{border-radius:26px;}.chat-core{padding:14px;border-radius:20px;}.chat-box{height:min(52vh,420px);}.message{max-width:94%;}.cite{flex-wrap:wrap;}.score-chip{margin-left:0;}.input-area{flex-direction:column;gap:10px;}.field,.cta{width:100%;}.cta{justify-content:center;}.trace-snippet{margin-left:0;}}
+  @media (max-width:480px){h1{font-size:1.72rem;}}
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;}.reveal{opacity:1;transform:none;}}
+</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<header class="nav-island">
+  <span class="brand">古籍问答 <em>Agent</em></span>
+  <span class="nav-meta">规则优先 · RAG 兜底</span>
+  <span class="pill-badge">v0.2</span>
+</header>
+<main>
+  <section class="hero">
+    <span class="eyebrow reveal">古医籍 · 检索增强问答</span>
+    <h1 class="reveal">以古籍为据<br>答中医之问</h1>
+    <p class="lede reveal">规则优先路由，未命中转语义检索；每条回答标注【书名·篇章】出处，推理链路可逐层展开。</p>
+    <div class="stat-row">
+      <div class="stat reveal">
+        <div class="stat-core">
+          <div class="stat-mark">Routing</div>
+          <div class="stat-title">规则路由</div>
+          <div class="stat-desc">命中预设规则直接作答，未命中才转语义检索，省算力。</div>
+        </div>
+      </div>
+      <div class="stat reveal">
+        <div class="stat-core">
+          <div class="stat-mark">Retrieval</div>
+          <div class="stat-title">混合检索</div>
+          <div class="stat-desc">关键词召回 + 向量相似度排序，每条片段附相关度分。</div>
+        </div>
+      </div>
+      <div class="stat reveal">
+        <div class="stat-core">
+          <div class="stat-mark">Trace</div>
+          <div class="stat-title">链路可查</div>
+          <div class="stat-desc">路由 → 检索 → 工具 → 生成，四段过程全部可见。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="stage reveal">
+    <div class="chat-shell">
+      <div class="chat-core">
+        <div class="chat-box" id="chatBox">
+          <div class="message bot">
+            你好！我是古籍问答 Agent。当前阶段为检索模式（未接入 LLM 生成），输入问题后我会从古籍语料库中返回最相关的片段及出处。
+          </div>
+        </div>
+        <div class="input-area">
+          <div class="field" id="field">
+            <input type="text" id="queryInput" placeholder="输入问题，例如：头痛发热恶风无汗怎么办？" autocomplete="off">
+            <span class="field-err" id="fieldErr"></span>
+          </div>
+          <button id="sendBtn" class="cta" aria-label="检索">
+            <span>检索</span><span class="cta-icon">→</span>
+          </button>
+        </div>
+        <div class="hint">每条结果带【书名·篇章】出处，支持关键词与向量混合检索。</div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>古籍问答 Agent v0.2 · 检索模式（未接入 LLM 生成）</footer>
+<script>
+const chatBox    = document.getElementById('chatBox');
+const queryInput = document.getElementById('queryInput');
+const sendBtn    = document.getElementById('sendBtn');
+const field      = document.getElementById('field');
+const fieldErr   = document.getElementById('fieldErr');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const score = v => (Number(v) || 0).toFixed(3);
+function scrollToEnd(){ chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' }); }
+function addMessage(text, isUser){
+  const div = document.createElement('div');
+  div.className = 'message ' + (isUser ? 'user' : 'bot');
+  div.textContent = text;
+  chatBox.appendChild(div);
+  scrollToEnd();
+}
+function badgeCls(route){
+  if (route === 'precise')  return 'badge-precise';
+  if (route === 'semantic') return 'badge-semantic';
+  return 'badge-out';
+}
+function createInkLoader(){
+  const size = 26, dpr = window.devicePixelRatio || 1;
+  const cv = document.createElement('canvas');
+  cv.className = 'ink';
+  cv.width = size * dpr;
+  cv.height = size * dpr;
+  cv.style.width = size + 'px';
+  cv.style.height = size + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const c = size / 2;
+  const hash = n => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+  let t = 0, raf = 0;
+  function frame(){
+    ctx.clearRect(0, 0, size, size);
+    const p  = (t % 90) / 90;
+    const r  = 3 + p * 9;
+    const a  = (1 - p) * 0.85;
+    const jx = (hash(t) - 0.5) * 2;
+    ctx.beginPath(); ctx.fillStyle = 'rgba(178,58,46,' + (a * 0.5) + ')'; ctx.arc(c + jx + 2, c, r, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.fillStyle = 'rgba(61,107,125,' + (a * 0.5) + ')'; ctx.arc(c + jx - 2, c, r, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.fillStyle = 'rgba(139,69,19,' + a + ')';          ctx.arc(c + jx, c, r, 0, Math.PI * 2); ctx.fill();
+    t++;
+    raf = requestAnimationFrame(frame);
+  }
+  frame();
+  cv.stop = () => cancelAnimationFrame(raf);
+  return cv;
+}
+function snippetRows(data){
+  if (!data.snippets || !data.snippets.length) return '<span class="trace-empty">无</span>';
+  return data.snippets.map(s =>
+    `<div class="trace-snippet">【${esc(s.book)}·${esc(s.chapter)}】<span class="score-chip">相关度 ${score(s.score)}</span><br>${esc(s.text)}</div>`
+  ).join('');
+}
+function toolRows(data){
+  if (!data.tool_calls || !data.tool_calls.length) return '<span class="trace-empty">无</span>';
+  return data.tool_calls.map(tc => {
+    const r = tc.result && tc.result.message ? tc.result.message : JSON.stringify(tc.result);
+    return `<div class="trace-snippet"><code>${esc(tc.tool)}(${esc(tc.keyword)})</code> → ${esc(r)}</div>`;
+  }).join('');
+}
+function addAskResult(data){
+  const div = document.createElement('div');
+  div.className = 'message bot';
+  let html = `<div class="ans"><strong class="ans-key">回答：</strong>${esc(data.answer)}</div>`;
+  if (data.citations && data.citations.length){
+    html += '<div class="cite-head">引用出处</div><div class="cite-list">';
+    data.citations.forEach(function(c){
+      const snip = (data.snippets || []).find(s => s.book === c.book && s.chapter === c.chapter);
+      const payload = '【' + c.book + '·' + c.chapter + '】' + (snip ? snip.text : '');
+      html += `<div class="cite">
+        <span class="cite-mark">${esc(c.book)}·${esc(c.chapter)}</span>
+        <span class="score-chip">相关度 ${score(c.score)}</span>
+        <button class="copy-btn" data-copy="${esc(payload)}" onclick="copyCite(this, this.dataset.copy)" aria-label="复制引用">
+          <span class="flip"><span class="face front">⧉</span><span class="face back">✓</span></span>
+          <span class="mini-toast">已复制</span>
+        </button>
+      </div>`;
+    });
+    html += '</div>';
+  }
+  html += `<button class="trace-btn" onclick="toggleTrace(this)" aria-expanded="false">
+      <span class="t-label">展开链路</span><span class="chev">▾</span>
+    </button>
+    <div class="trace-wrap"><div class="trace-inner"><div class="trace-panel">
+      <h4>推理链路 · 路由 → 检索 → 工具 → 生成</h4>
+      <div class="trace-row">
+        <span class="trace-label">路由</span>
+        <span class="badge ${badgeCls(data.route)}"><i></i>${esc(data.route)}</span>
+        <span class="trace-text">${esc(data.route_reason || '')}</span>
+      </div>
+      <div class="trace-row"><span class="trace-label">检索片段</span>${snippetRows(data)}</div>
+      <div class="trace-row"><span class="trace-label">工具调用</span>${toolRows(data)}</div>
+      <div class="trace-row">
+        <span class="trace-label">生成</span>
+        <span class="trace-text">LLM 基于检索片段生成，并标注 [书名·篇章] 引用</span>
+      </div>
+    </div></div></div>`;
+  div.innerHTML = html;
+  chatBox.appendChild(div);
+  scrollToEnd();
+}
+function toggleTrace(btn){
+  const wrap = btn.parentElement.querySelector('.trace-wrap');
+  if (!wrap) return;
+  const open = wrap.classList.toggle('open');
+  const chev = btn.querySelector('.chev');
+  const label = btn.querySelector('.t-label');
+  if (chev)  chev.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
+  if (label) label.textContent = open ? '收起链路' : '展开链路';
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+function writeClipboard(text){
+  return new Promise(function(resolve){
+    const legacy = function(){
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      let done = false;
+      try { done = document.execCommand('copy'); }
+      catch (e){ console.warn('复制引用失败（回退方案）：', e); }
+      ta.remove();
+      resolve(done);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(
+        () => resolve(true),
+        e => { console.warn('剪贴板 API 不可用，改用回退方案：', e); legacy(); }
+      );
+    } else {
+      legacy();
+    }
+  });
+}
+async function copyCite(btn, text){
+  const ok = await writeClipboard(text);
+  const toast = btn.querySelector('.mini-toast');
+  if (toast) toast.textContent = ok ? '已复制' : '复制失败，请手动选择';
+  if (!ok) console.warn('复制引用失败：未能写入剪贴板');
+  btn.classList.add('done');
+  clearTimeout(btn._t);
+  btn._t = setTimeout(() => btn.classList.remove('done'), ok ? 1000 : 1600);
+}
+function shakeField(){
+  fieldErr.textContent = '请输入问题后再检索';
+  field.classList.add('err');
+  field.classList.remove('shake');
+  void field.offsetWidth;
+  field.classList.add('shake');
+  clearTimeout(field._t);
+  field._t = setTimeout(() => field.classList.remove('shake'), 320);
+  queryInput.focus();
+}
+function clearFieldErr(){ field.classList.remove('err', 'shake'); clearTimeout(field._t); }
+async function handleSend(){
+  const query = queryInput.value.trim();
+  if (!query){ shakeField(); return; }
+  clearFieldErr();
+  addMessage(query, true);
+  queryInput.value = '';
+  sendBtn.disabled = true;
+  const loading = document.createElement('div');
+  loading.className = 'message bot ink-msg';
+  const ink = createInkLoader();
+  const txt = document.createElement('span');
+  txt.className = 'ink-text';
+  txt.textContent = '检索中';
+  loading.appendChild(ink);
+  loading.appendChild(txt);
+  chatBox.appendChild(loading);
+  scrollToEnd();
+  try{
+    const resp = await fetch('/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: query, top_k: 3 })
+    });
+    if (!resp.ok) throw new Error('服务错误: ' + resp.status);
+    const data = await resp.json();
+    ink.stop();
+    loading.remove();
+    addAskResult(data);
+  } catch (e){
+    console.warn('检索请求失败：', e);
+    ink.stop();
+    loading.remove();
+    addMessage('请求失败：' + e.message, false);
+  } finally {
+    sendBtn.disabled = false;
+    queryInput.focus();
+  }
+}
+sendBtn.addEventListener('click', handleSend);
+queryInput.addEventListener('keypress', function(e){
+  if (e.key === 'Enter') handleSend();
+});
+queryInput.addEventListener('input', function(){
+  if (queryInput.value.trim()) clearFieldErr();
+});
+(function(){
+  const items = document.querySelectorAll('.reveal');
+  if (!('IntersectionObserver' in window)){ items.forEach(el => el.classList.add('in')); return; }
+  const io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if (en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); }
+    });
+  }, { threshold: 0.12 });
+  items.forEach(function(el, i){
+    el.style.setProperty('--d', (i * 90) + 'ms');
+    io.observe(el);
+  });
+})();
+</script>
+</body>
+</html>
