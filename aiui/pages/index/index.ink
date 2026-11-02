@@ -109,6 +109,11 @@ export default {
 
   onKeyDown(event) {
     const code = this.readCode(event);
+    // 诊断日志：官方文档只列了 Enter/Backspace/ArrowUp/ArrowDown/GlobalHook 五个值，
+    // 但没说镜腿的「单击/双击/向前滑动/向后滑动」分别映射成哪一个。
+    // 这个不能猜——猜错的后果是「按了没反应」，而没反应和没听懂在眼镜上长得一样。
+    // 在 Studio 的日志面板点一遍四个动作，就能把映射表打出来。
+    console.info('[qihuang] keydown code=' + code);
     if (code === 'GlobalHook' || code === 'Enter') {
       if (this._listening) this.stopListen();
       else this.startListen();
@@ -117,6 +122,7 @@ export default {
 
   onKeyUp(event) {
     const code = this.readCode(event);
+    console.info('[qihuang] keyup code=' + code);
     if (code !== 'GlobalHook' && code !== 'Enter') return;
     if (!this._listening) return;
     this.stopListen();
@@ -160,8 +166,20 @@ export default {
       this.setData({ status: '在听…' });
       this._watchdog = setTimeout(() => this.stopListen(), LISTEN_TIMEOUT_MS);
     } catch (err) {
+      const msg = String((err && err.message) || err);
+      // 「单击」在 Studio 里会连发两次按键事件，第二次 start 撞上第一次还没结束的会话，
+      // 抛 SpeechRecognition is already active（实测日志 00:07:56 单击 → 同一秒 already active）。
+      // 这不是失败：用户本来就在听。当成失败会把状态改成「现在不能听」，
+      // 屏幕上写着一个错的结论，而引擎其实正在收音——比报错更糟。
+      if (/already active|already started/i.test(msg)) {
+        this._listening = true;
+        this.clearWatchdog();
+        this._watchdog = setTimeout(() => this.stopListen(), LISTEN_TIMEOUT_MS);
+        this.setData({ status: '在听…' });
+        return;
+      }
       this._listening = false;
-      console.error('[qihuang] 启动识别失败：', err && err.message);
+      console.error('[qihuang] 启动识别失败：', msg);
       this.setData({ status: '现在不能听', detail: '页面还没准备好，稍等一下再说', tone: 'warn' });
     }
   },
