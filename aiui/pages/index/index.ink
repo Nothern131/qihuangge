@@ -283,11 +283,14 @@ export default {
   color: #e6edf3;
 }
 
+/* 标题区只占自身高度，剩余的纵向空间全给正文。
+   原来这里是 flex: 1 + 居中，标题只占两行却吃掉一半屏幕，
+   正文只剩约 9 行；加上「为什么」之后实测溢出三行，出处被裁在可视区外——
+   而出处恰恰是结论的一部分。腾空间比删内容对：删掉的都是用户要的。 */
 .body {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   padding: 14px 16px;
 }
 
@@ -304,6 +307,11 @@ export default {
 }
 
 .answer {
+  flex: 1 1 auto;
+  /* flex 子项默认 min-height: auto，不归零的话内容再长也压不下去，
+     会撑破 .page 被外层裁掉。这条和下面的 overflow 是一对。 */
+  min-height: 0;
+  overflow-y: auto;
   padding: 12px 16px;
   background: #161b22;
   border-top: 1px solid #21262d;

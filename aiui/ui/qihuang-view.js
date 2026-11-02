@@ -104,6 +104,8 @@ export function createQihuangView({ engines, store = null } = {}) {
       }
 
       const r = a.result;
+      // 追问「为什么」时屏幕放宽：多给争议，少给别的都不行。
+      const wantsReason = /(为什么|为啥|凭什么|什么道理|原因|原理|道理)/.test(t);
       const same = t === lastQuery;
       lastQuery = t;
       lastAnswer = r.speech;
@@ -217,11 +219,14 @@ export function createQihuangView({ engines, store = null } = {}) {
           if (!rs.why || seen.has(rs.why)) continue;
           seen.add(rs.why);
           groups += 1;
-          // 标签写在句末括号里：用户读到「……可见损伤（现代药理研究）」，
-          // 一眼就知道这句话是谁说的。没有这个标签，古人的推断和实验结论长得一样。
-          lines.push(`原因：${rs.why}（${rs.whyKindTag}）`);
-          // 争议单独一行。它和原因是两件事：原因说为什么，争议说这条有多硬。
-          if (rs.debate) lines.push(`另：${rs.debate}`);
+          // 标签放句首，不放句末。
+          // 放句末时括号被行尾截断成「（现代药理研」+「究）」，两行都读不通；
+          // 放句首就永远跟着冒号走，不会被拆。顺带也更好扫读。
+          lines.push(`原因（${rs.whyKindTag}）：${rs.why}`);
+          // 争议只在追问时才上屏。
+          // 默认屏已经装不下（实测 274 字溢出可视区三行），而争议是次要信息：
+          // 用户先要知道「为什么」，再决定要不要听「这条有多硬」。
+          if (wantsReason && rs.debate) lines.push(`另：${rs.debate}`);
         }
         if (lines.length) {
           patch.answer = [r.screenText || r.speech, ...lines].join('\n');
