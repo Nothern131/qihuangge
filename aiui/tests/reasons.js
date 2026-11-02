@@ -223,5 +223,67 @@ check('屏幕所需的原因与标签都在', () => {
   assert.ok(q1.reasons[0].why.length > 20, '原因是空的');
 });
 
+// ── 分组：说给谁听，就只说谁 ──────────────────────────
+console.log('\n[6] 分组：屏幕上的原因只念用户问到的那几味');
+
+// 甘草「反」四味，但用户只问了海藻。
+// 原来句子里把整组名单写死（「大戟、甘遂、芫花、海藻都属利水逐饮药」），
+// 于是问海藻时屏幕上替他念了三味没问的药。这不是措辞问题——
+// 屏幕空间是定量，多念一个无关药名就少一句有用的，而用户还会去找大戟在哪。
+const onlyOne = q1.reasonGroups || [];
+truthy('屏幕原因是分组后的，不是逐对的', onlyOne.length === 1);
+check('没问到的药名不上屏', () => {
+  const why = onlyOne[0] && onlyOne[0].why;
+  for (const other of ['大戟', '甘遂', '芫花']) {
+    assert.ok(!String(why).includes(other), `${other} 没问到却被念了：${why}`);
+  }
+});
+// 反过来：问到的必须说。只删名单不补药名，原因就变成「都属利水逐饮药」，指代不明。
+truthy('问到的药名在原因里', /海藻/.test(onlyOne[0] ? onlyOne[0].why : ''));
+
+// 单数不能配「都」。模板拼出来的病句最容易被一眼看穿，
+// 「海藻都属利水逐饮药」读起来就是「这系统在套模板」。
+check('单味药不配「都」', () => {
+  assert.ok(!/海藻都属/.test(onlyOne[0] ? onlyOne[0].why : ''), onlyOne[0] && onlyOne[0].why);
+});
+// 多味时该加还得加，否则读成「大戟、甘遂属利水逐饮药」也能通，但不如「都属」清楚。
+const multi = pack.invoke('ask', { text: '甘草大戟甘遂能一起吃吗', query: '甘草大戟甘遂能一起吃吗' });
+check('多味药才加「都」', () => {
+  const why = (multi.reasonGroups || []).map((g) => g.why).join('');
+  assert.ok(/大戟、甘遂都属/.test(why), why);
+});
+
+// 藜芦这一组原来七味共用一句「人参、沙参、丹参、玄参这些是补益药」。
+// 问细辛或芍药时，那句就成了「细辛是补药」——不是说得不好，是说错了。
+const withXixin = pack.invoke('ask', { text: '细辛和藜芦能一起用吗', query: '细辛和藜芦能一起用吗' });
+check('藜芦配细辛不说细辛是补药', () => {
+  const why = (withXixin.reasonGroups || []).map((g) => g.why).join('');
+  assert.ok(/细辛/.test(why), why);
+  assert.ok(!/细辛[^。；]{0,12}(是补|补益|补药|参类)/.test(why), why);
+});
+check('藜芦配细辛走发散那一路', () => {
+  const why = (withXixin.reasonGroups || []).map((g) => g.why).join('');
+  assert.ok(/发散/.test(why), why);
+});
+
+// ── 空正文：只有提示、没有禁忌时，必须正面回答「能不能同用」 ──
+console.log('\n[7] 没有禁忌时，正文要正面回答用户问的那件事');
+
+// 细辛配芍药：两味都收录了，之间确实没有十八反/十九畏，
+// 但细辛有小毒，于是正文原来被清空，屏幕只剩「毒性：细辛（小毒）」——
+// 用户问「能同用吗」，屏幕上没有一句话回答。
+const noConflict = pack.invoke('ask', { text: '细辛和芍药能同用吗', query: '细辛和芍药能同用吗' });
+truthy('正文说了「没有查到」', /没有查到/.test(noConflict.screenText || ''), noConflict.screenText);
+truthy('毒性提示仍在', /毒性：细辛/.test(noConflict.screenText || ''), noConflict.screenText);
+
+// 但妊娠必须例外：妊娠禁忌本身就是这三类检查之一，
+// 前一句「妊娠禁用」、后一句「没查到妊娠禁忌」会自己打自己。
+const preg = pack.invoke('ask', { text: '三棱能吃不', query: '三棱能吃不' });
+check('有妊娠禁用时不套「没查到妊娠禁忌」', () => {
+  const t = preg.screenText || '';
+  if (!/妊娠/.test(t)) return; // 这条问法没命中妊娠，跳过
+  assert.ok(!/没有查到[^。]*妊娠禁忌/.test(t), t);
+});
+
 console.log(`\n通过 ${pass} / ${pass + fail}`);
 if (fail > 0) process.exit(1);

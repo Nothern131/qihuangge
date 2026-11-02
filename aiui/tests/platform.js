@@ -162,6 +162,33 @@ for (const [inkRel] of Object.entries(CONFIG.pages)) {
     }
     return 'ok';
   });
+  // 光把出处设成「不收缩」不够——整条链上只要有一环也咬死不能收缩，
+  // 谁都不会让位，出处照样被顶出去。Studio 实测过这个：
+  // .body 是 flex: 0 0 auto，.page 是 min-height: 100%（高度跟着内容长），
+  // 于是 flex-shrink 全线失效，追问模式的出处整行落在可视区外。
+  // 三件事必须同时成立，缺一条就等于没做。
+  check(`${inkRel} 的正文容器允许收缩`, () => {
+    const b = parseInk(raw);
+    const m = /\.body\s*\{[^}]*flex\s*:\s*0\s+1\s+auto/.test(b.style || '');
+    if (!m) throw new Error('.body 不是 flex: 0 1 auto，长答复时它不让位，出处会被顶出屏幕');
+    if (!/\.body\s*\{[^}]*min-height\s*:\s*0/.test(b.style || '')) {
+      throw new Error('.body 缺少 min-height: 0，flex 子项默认 min-height: auto 会让收缩失效');
+    }
+    return 'ok';
+  });
+  check(`${inkRel} 的页面容器有确定高度`, () => {
+    const b = parseInk(raw);
+    const page = /\.page\s*\{[^}]*\}/.exec(b.style || '');
+    if (!page) throw new Error('没有 .page 样式');
+    // min-height 是下限，不是高度：只有 min-height 时容器高度跟内容走，
+    // 永远不「空间不够」，flex-shrink 形同虚设。
+    // 正则前面卡一个边界：不卡的话 'min-height: 100%' 里的 'height: 100%' 也会命中，
+    // 这条断言就成了摆设（反向验证时发现的）。
+    if (!/(^|[;{\s])height\s*:\s*100%/.test(page[0])) {
+      throw new Error('.page 没有 height: 100%，容器高度随内容增长，收缩不会发生');
+    }
+    return 'ok';
+  });
 }
 
 console.log('\n【3b】多行文本必须有 pre-line');

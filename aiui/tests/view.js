@@ -8,7 +8,7 @@
 // 镜腿键上报的是 GlobalHook 还是 Enter、vendor 包装在 Ink 运行时里能否正常 import。
 
 import { loadEngines } from '../adapter/load-engines.js';
-import { createQihuangView, INITIAL_STATE, GUIDE } from '../ui/qihuang-view.js';
+import { createQihuangView, INITIAL_STATE, GUIDE, SCREEN_BUDGET } from '../ui/qihuang-view.js';
 import { speak, toBrief } from '../core/speech.js';
 
 const PASSED = [];
@@ -189,6 +189,56 @@ try {
 } catch (err) {
   truthy('空引擎被拦住并说明原因', /缺少/.test(err.message));
 }
+
+console.log('\n【12】屏幕字数预算：任何一对药都不能把出处挤出屏幕');
+
+// 这条是拿 Studio 截图倒推出来的，不是设计时想到的。
+// 原因全文上屏之后，最长的问法是「为什么乌头反瓜蒌」：结论 + 原因 + 争议
+// 一共 196 字，超出可读区，最后一行没能被裁住，
+// 直接和底部的出处行叠在一起——两行字互相压着，都读不了。
+// 所以这里不验措辞，验「长度」：一旦超过预算，出真机之前就该红。
+const I = sandbox.InteractionEngine;
+// 预算这个数字本身也要守住。
+// 上面的「在预算内」是自指的：把 SCREEN_BUDGET 改成 9999，它照样全绿——
+// 那样这条断言就成了摆设。真机可读区是实测的物理事实，不会因为改个常量而变大。
+// 所以这里钉一个上界：谁想把预算调大来让测试通过，就得先来这里改数字，
+// 而改这一行的人一定会看到这句话。
+check('预算没有被人为调大', () => {
+  assert.ok(SCREEN_BUDGET <= 170, `SCREEN_BUDGET=${SCREEN_BUDGET}，超过了实测的一屏容量`);
+});
+const ALL_PAIRS = [];
+for (const g of [I.ANTI_GROUP1, I.ANTI_GROUP2, I.ANTI_GROUP3]) {
+  for (const b of g.slice(1)) ALL_PAIRS.push([g[0], b]);
+}
+for (const p of Array.from(I.FEAR_PAIRS)) ALL_PAIRS.push([p[0], p[1]]);
+
+const overBudget = [];
+let screenLongest = { len: 0, q: '' };
+for (const [a, b] of ALL_PAIRS) {
+  for (const q of [`${a}${b}能一起吃吗`, `为什么${a}反${b}`]) {
+    const t = view.handle(q);
+    // 只算正文：出处是固定底栏，不在这份文本里，所以预算也是按正文算的。
+    const len = String(t.patch.answer || '').length;
+    if (len > screenLongest.len) screenLongest = { len, q };
+    if (len > SCREEN_BUDGET) overBudget.push([q, len]);
+  }
+}
+check(`全部 ${ALL_PAIRS.length * 2} 条问法都在 ${SCREEN_BUDGET} 字以内`, () => {
+  assert.deepEqual(overBudget, []);
+});
+console.log(`       最长 ${screenLongest.len} 字：${screenLongest.q}`);
+
+// 预算不是「随便砍」：砍的顺序必须是先争议、后第二条原因，
+// 结论和第一条原因永远留着——那是用户问的那件事本身。
+// 这一条守的是「砍对了」，不是「砍了」。
+const longestOut = view.handle('为什么乌头反瓜蒌');
+truthy('超预算时先砍争议', !/另：/.test(longestOut.patch.answer), longestOut.patch.answer);
+truthy('砍完还留着原因', /原因（/.test(longestOut.patch.answer), longestOut.patch.answer);
+truthy('砍完还留着结论', /不可同用/.test(longestOut.patch.answer), longestOut.patch.answer);
+
+// 反过来：装得下时争议不能被顺手砍掉，否则追问就白问了。
+const fitOut = view.handle('为什么甘草反海藻');
+truthy('装得下时争议要保留', /另：/.test(fitOut.patch.answer), fitOut.patch.answer);
 
 console.log('\n' + '='.repeat(60));
 console.log(`通过 ${PASSED.length} / ${PASSED.length + FAILED.length}`);

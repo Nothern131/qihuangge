@@ -20,6 +20,17 @@ import { createQihuangAgent, askQihuang } from '../adapter/qihuang-agent.js';
 
 const SAY_MAX = 32;
 
+// 屏幕正文的字数上限。160 是**实测出来的**，不是估的：
+// Studio 里注入 159 字的答复，正文和出处各就各位；
+// 注入 173 字，正文最后一行就和底部出处叠在一起了，两行字互相压着。
+// 所以真实容量在 159～173 之间，取下沿留余量。
+// 代价要认：个别追问（甘草配大戟那类，要同时装结论、原因和争议）
+// 会放不下争议——那部分照样会念出来，只是不上屏。
+// 设成常量而不是散在判断里，是为了让「内容宽度会不会撑破屏幕」成为一条
+// 可以断言的量——超过它就在出真机之前先红，而不是等到截图里才发现
+// 最后一行和出处叠在一起。
+export const SCREEN_BUDGET = 160;
+
 // 开场白只做一件事：说清它能查什么。
 //
 // 不预告「每条都告诉你出处」——那是产品的内部机制，用户要的是答案，
@@ -217,26 +228,42 @@ export function createQihuangView({ engines, store = null } = {}) {
       // 而用户往往只想知道「能不能」；但想深究的时候，屏幕上必须有全文可读。
       // 两边给不同的量，是这个界面唯一能同时满足两种需求的办法。
       if (r.intent === 'check' && r.reasons && r.reasons.length) {
+        // 用合并后的分组，不用逐对的 reasons。
+        // 逐对时同组的两对（甘草配大戟、甘遂）各占一行、说的是同一段机理，
+        // 屏幕上多花一行却不多给信息——这一行是从结论和出处的可见空间里挤出来的。
+        const groups = r.reasonGroups && r.reasonGroups.length ? r.reasonGroups : r.reasons;
         const seen = new Set();
-        const lines = [];
-        let groups = 0;
-        for (const rs of r.reasons) {
+        const whyLines = [];
+        let debate = '';
+        for (const rs of groups) {
           // 同组多对药（甘草配大戟、甘遂）机理是同一段，列两遍会挤掉别的内容。
-          if (groups >= 2) break;
+          if (whyLines.length >= 2) break;
           if (!rs.why || seen.has(rs.why)) continue;
           seen.add(rs.why);
-          groups += 1;
           // 标签放句首，不放句末。
           // 放句末时括号被行尾截断成「（现代药理研」+「究）」，两行都读不通；
           // 放句首就永远跟着冒号走，不会被拆。顺带也更好扫读。
-          lines.push(`原因（${rs.whyKindTag}）：${rs.why}`);
-          // 争议只在追问时才上屏。
-          // 默认屏已经装不下（实测 274 字溢出可视区三行），而争议是次要信息：
+          whyLines.push(`原因（${rs.whyKindTag}）：${rs.why}`);
+          // 争议只在追问时才上屏，而且只取一条。
+          // 默认屏已经装不下，而争议是次要信息：
           // 用户先要知道「为什么」，再决定要不要听「这条有多硬」。
-          if (wantsReason && rs.debate) lines.push(`另：${rs.debate}`);
+          if (wantsReason && !debate && rs.debate) debate = `另：${rs.debate}`;
         }
-        if (lines.length) {
-          patch.answer = [r.screenText || r.speech, ...lines].join('\n');
+        const base = r.screenText || r.speech;
+        // 屏幕有硬预算，这里是按实测算的：17px 字、一行约 22 字、可读区约 8 行，
+        // 大致 170 字。超了不是「挤一挤」，而是最后一行被裁掉——
+        // 实测过最难看的一种：正文最后一行和下面的出处行叠在一起，两行字互相压着。
+        //
+        // 按信息价值依次让位，而不是等它自己溢出：
+        //   ① 先去掉争议（次要，且只在追问时才有）
+        //   ② 再去掉第二条原因（多个药对时才有）
+        // 结论和第一条原因永远不砍：那是用户问的那件事本身。
+        const fits = (parts) => [base, ...parts].filter(Boolean).join('\n').length <= SCREEN_BUDGET;
+        let picked = [...whyLines, debate].filter(Boolean);
+        if (!fits(picked)) picked = [...whyLines];
+        if (!fits(picked)) picked = whyLines.slice(0, 1);
+        if (picked.length) {
+          patch.answer = [base, ...picked].join('\n');
         }
       }
 

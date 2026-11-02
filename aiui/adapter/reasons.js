@@ -37,41 +37,81 @@ export const WEI_DEFINITION =
  * 十八反按组归类：同组内原因相同，逐条重复写会漂移——
  * 改了一条忘了另一条，同一组里就出现两种说法。
  */
+// 藜芦组里「诸参」是歌诀的叫法，五味的补泻方向并不一样：
+// 人参补气、沙参养阴、丹参活血、玄参滋阴、苦参清热燥湿。
+// 原来是七味共用一句「人参、沙参、丹参、玄参这些是补益药」，
+// 用户问细辛或芍药时，屏幕上会说他问的那味是补药——这不是措辞罗嗦，是说错了药。
+// 所以这一组按「诸参」和「细辛、芍药」分两套说法。
+const CAN = ['人参', '沙参', '丹参', '玄参', '苦参'];
+// [全称, 单字（拼「一吐一X」）, 名词（拼「…的发散」）]
+const NON_CAN = { 细辛: ['辛温发散', '散', '发散'], 芍药: ['酸收敛阴', '收', '收敛'] };
+
+const splitCan = (ps) => ({
+  can: ps.filter((p) => CAN.includes(p)),
+  rest: ps.filter((p) => !CAN.includes(p)),
+});
+
 const FAN_GROUPS = {
   甘草: {
     partners: ['大戟', '甘遂', '芫花', '海藻'],
     whyKind: 'modern',
-    why: '甘草含甘草酸，有类似盐皮质激素的作用，会让身体潴留水钠、排钾增加；'
-      + '大戟、甘遂、芫花、海藻都属利水逐饮药，作用方向正好相反。'
+    // 「why」原来是整组名单写死在句子里（「大戟、甘遂、芫花、海藻都属利水逐饮药」）。
+    // 后果是问「甘草海藻」时，屏幕上替他念了三味他没问的药，
+    // 而这些字是拿屏幕空间换来的——屏幕只有那么大，多念一个无关药名就少一句有用的。
+    // 改成只填用户真正问到的那几味，脚本由 mergeReasons 负责合并。
+    // 「都」只在真的有两味以上时才加：问「甘草海藻」念成「海藻都属利水逐饮药」，
+    // 单数配「都」是病句，一眼看得出是模板拼出来的。
+    whyOf: (ps) => '甘草含甘草酸，有类似盐皮质激素的作用，会让身体潴留水钠、排钾增加；'
+      + `${ps.join('、')}${ps.length > 1 ? '都' : ''}属利水逐饮药，作用方向正好相反。`
       + '动物实验里，甘草用量越大，合用后的毒性越强，肝、肾、心肌都可见损伤。',
-    brief: '甘草会让身体潴留水钠，{partner}要利水排出去，方向正好相反',
+    brief: '甘草会让身体潴留水钠，{partners}要利水排出去，方向正好相反',
     // 按对手分开写。原来这一组共用一句「古方有海藻玉壶汤」，
     // 可那张方子里只有海藻和甘草，没有大戟、甘遂、芫花——
     // 用户问大戟，回答里举一个不含大戟的方子，等于用错误的例子证明观点。
-    debateFor: (p) => (p === '海藻'
-      ? '这一条流传最广，争议也最大。古方里确有同用者，'
-        + '比如治瘿瘤的《外科正宗》海藻玉壶汤，海藻和甘草就在同一张方子里。'
-      : '这一条流传得广，但不是从没有人试过：历代医书里确实有反药同用的方子，'
-        + '所以它更像一条严厉的告诫，不是一条被普遍验证的禁令。'),
+    //
+    // 争议段是整屏里信息密度最低的一块，也是唯一可以压的地方：
+    // 眼镜一屏约 8 行、170 字，追问模式要同时装结论、原因全文和争议，
+    // 原来那版 56 字压到 40 字以内，才留得下出处那一行。
+    debateFor: (ps) => (ps.includes('海藻')
+      ? '这一条争议最大：古方确有同用者，如治瘿瘤的《外科正宗》海藻玉壶汤，海藻与甘草同方。'
+      : '这一条更像严厉的告诫：历代医书里确有反药同用的方子，不是没人试过。'),
   },
   乌头: {
     partners: ['贝母', '瓜蒌', '半夏', '白蔹', '白及'],
     whyKind: 'modern',
     why: '乌头类（川乌、草乌、附子）含乌头碱，本身就是大毒之品，治疗量和中毒量很接近。'
-      + '这几味与它同用，历代都认为会使毒性增强；现代研究也观察到合用后毒性成分在体内蓄积、'
+      + '{partners}与它同用，历代都认为会使毒性增强；现代研究也观察到合用后毒性成分在体内蓄积、'
       + '排出变慢，但具体到每一味药的机制，各家结论并不完全一致。',
-    brief: '乌头类含乌头碱、毒性大，和{partner}同用会让毒性成分蓄积',
-    debate: '这一组是所有反药里风险最高的，乌头碱本身就能致命，不是只在理论上相冲。'
-      + '是否绝对禁忌学界仍有讨论，但讨论的前提是有医生在控量。',
+    brief: '乌头类含乌头碱、毒性大，和{partners}同用会让毒性成分蓄积',
+    debateFor: () => '这一组风险最高，乌头碱本身就能致命；是否绝对禁忌仍有讨论，但前提是有医生控量。',
   },
   藜芦: {
     partners: ['人参', '沙参', '丹参', '玄参', '苦参', '细辛', '芍药'],
     whyKind: 'classic',
-    why: '藜芦有毒，涌吐之力很强，是用来催吐、杀虫的药；人参、沙参、丹参、玄参这些是补益药。'
-      + '一补一吐，药性相悖——补进去的要被吐出来，还要一并承受藜芦的毒。',
-    brief: '藜芦涌吐，{partner}是补药，一补一吐药性相悖',
-    debate: '这一组的原因，古籍没有明写，上面这段是后世医家按药性推的；'
-      + '现代研究也没有给出统一结论。禁忌本身来自歌诀，不是这条推理。',
+    whyOf: (ps) => {
+      const { can, rest } = splitCan(ps);
+      const segs = [];
+      if (can.length) {
+        segs.push(`${can.join('、')}属歌诀里的「诸参」。这一组有补气、养阴、活血之分，`
+          + '但传统都认为它们的药性与藜芦的涌吐之性相反：想补进去的被吐出来，毒却留在身上。');
+      }
+      if (rest.length) {
+        segs.push(`${rest.join('、')}走的是${rest.map((p) => NON_CAN[p][0]).join('、')}的路子，`
+          + '跟涌吐之性正相反。'
+          + `一吐${rest.map((p) => `一${NON_CAN[p][1]}`).join('')}，药性相悖，同用会加重毒副反应。`);
+      }
+      return `藜芦有毒，涌吐之力很强，专用来催吐、杀虫。${segs.join('')}`;
+    },
+    briefOf: (ps) => {
+      const { can, rest } = splitCan(ps);
+      const segs = [];
+      if (can.length) segs.push(`藜芦涌吐力猛，${can.join('、')}是参类，药性相反`);
+      if (rest.length) {
+        segs.push(`藜芦涌吐，${rest.join('、')}的${rest.map((p) => NON_CAN[p][2]).join('、')}跟它相悖`);
+      }
+      return segs.join('；');
+    },
+    debateFor: () => '这段解释是后世医家按药性推的，古籍没明写，现代研究也没定论；禁忌本身来自歌诀。',
   },
 };
 
@@ -156,6 +196,8 @@ export const WHY_KIND_TAG = {
 };
 
 const EMPTY = {
+  key: '',
+  partner: '',
   why: '',
   brief: '',
   whyKind: 'none',
@@ -163,13 +205,29 @@ const EMPTY = {
   debate: '',
 };
 
+// 组内的句子是模板：{partners} 由合并层填成「用户真正问到的那几味」。
+// 不填整组名单的理由见 FAN_GROUPS 里甘草那一条的注释。
+function buildWhy(def, partners) {
+  if (!def) return '';
+  if (def.whyOf) return def.whyOf(partners);
+  return String(def.why || '').replace(/\{partners\}/g, partners.join('、'));
+}
+
+function buildBrief(def, partners) {
+  if (!def) return '';
+  if (def.briefOf) return def.briefOf(partners);
+  return String(def.brief || '').replace(/\{partners\}/g, partners.join('、'));
+}
+
+const groupOf = (key) => (key && Object.prototype.hasOwnProperty.call(FAN_GROUPS, key) ? FAN_GROUPS[key] : null);
+
 /**
  * 查一对药为什么不能同用。
  *
  * @param {string} a
  * @param {string} b
  * @param {'十八反'|'十九畏'} type 引擎给出的分类，用它决定去哪张表查
- * @returns {{why:string, brief:string, whyKind:string, whyKindTag:string, debate:string}}
+ * @returns {{key:string, partner:string, why:string, brief:string, whyKind:string, whyKindTag:string, debate:string}}
  */
 export function reasonFor(a, b, type) {
   // 引擎里乌头组会按实际出现的药改名（川乌/草乌），查表时归回「乌头」。
@@ -180,61 +238,111 @@ export function reasonFor(a, b, type) {
       const inGroup = (h) => (head === '乌头' ? norm(h) === '乌头' : h === head);
       // 原因句里要说出「谁和谁」，所以得把对手药名带进去。
       // 只说「和它同用」的话，用户听完不知道说的是哪一味——尤其是三味药的问法。
-      if (inGroup(a) && g.partners.includes(b)) return pack(g, b);
-      if (inGroup(b) && g.partners.includes(a)) return pack(g, a);
+      if (inGroup(a) && g.partners.includes(b)) return pack(head, g, b);
+      if (inGroup(b) && g.partners.includes(a)) return pack(head, g, a);
     }
   } else if (type === '十九畏') {
     const hit = WEI_PAIRS.find((w) => (w.pair[0] === a && w.pair[1] === b) || (w.pair[0] === b && w.pair[1] === a));
-    if (hit) return pack(hit, '');
+    // 十九畏句子里没有药名占位，key 只用来分组，不必回表。
+    if (hit) return pack(hit.pair.join('+'), hit, '');
   }
 
   // 表里没有这一对时不能编，也不能沉默。
   // 沉默会让「没有解释」和「没有这条禁忌」听起来一样。
+  // key 取这一对本身，避免两个互不相干的未知组合被并成一组。
   return {
     ...EMPTY,
+    key: `${a}|${b}`,
     why: '这一对书里只列了禁忌，没有给解释。',
-    brief: '',
   };
 }
 
-function pack(g, partner) {
+function pack(key, def, partner) {
+  const partners = partner ? [partner] : [];
   return {
-    // partner 单独回传，不只是在 brief 里替换一次：
-    // 三味药同属一组时（甘草配大戟、甘遂），两组原因其实是同一句话，
-    // 调用方要按 why 去重、把对手药名合并起来，才能说出「大戟、甘遂是利水药」。
-    // 只替换不合并的话，播报会说两遍同一段原因，或者只说其中一味。
+    // key 是分组的唯一依据，不是 why。
+    // 原来按 why 归并，在有 {partners} 占位之前是对的；现在 why 里带着药名，
+    // 甘草配大戟和甘草配甘遂的 why 不再相等，按 why 归并就失效了——
+    // 症状是播报把同一段机理念两遍，屏幕上还占了两个名额把别的内容挤掉。
+    key,
+    // partner 单独回传，不只是拼进句子一次：
+    // 三味药同属一组时（甘草配大戟、甘遂），调用方要把对手药名合并起来，
+    // 才能说出「大戟、甘遂是利水药」，而不是只说其中一味。
     partner: partner || '',
-    why: g.why,
-    brief: g.brief || '',
-    whyKind: g.whyKind,
-    whyKindTag: WHY_KIND_TAG[g.whyKind] || WHY_KIND_TAG.none,
-    debate: g.debateFor ? g.debateFor(partner) : (g.debate || ''),
+    why: buildWhy(def, partners),
+    brief: buildBrief(def, partners),
+    whyKind: def.whyKind,
+    whyKindTag: WHY_KIND_TAG[def.whyKind] || WHY_KIND_TAG.none,
+    debate: def.debateFor ? def.debateFor(partners) : (def.debate || ''),
   };
 }
 
 /**
- * 把多条原因合并成「一句原因」。
+ * 把逐对的原因按组折起来，组内把对手药名并齐。
+ * 播报与屏幕共用这一步：分开算的话，两边对「哪些算同组」会有两套理解，
+ * 一处改了另一处忘了，就会出现「播报合并了、屏幕没合并」。
+ */
+function foldByGroup(reasons) {
+  const folded = [];
+  for (const r of reasons || []) {
+    if (!r) continue;
+    const key = r.key || r.why || '';
+    const hit = folded.find((g) => g.key === key);
+    if (hit) {
+      if (r.partner && !hit.partners.includes(r.partner)) hit.partners.push(r.partner);
+      continue;
+    }
+    folded.push({ key, partners: r.partner ? [r.partner] : [], sample: r });
+  }
+  return folded.map((g) => {
+    const def = groupOf(g.key);
+    return {
+      ...g,
+      why: def ? buildWhy(def, g.partners) : g.sample.why,
+      brief: def ? buildBrief(def, g.partners) : g.sample.brief,
+    };
+  });
+}
+
+/**
+ * 把多条原因合并成「一句原因」（播报用）。
  *
  * 同一组内的原因本来就是一句话（甘草反对四味，理是同一个理），
  * 逐条念会变成复读；只取第一条又会让用户以为只解释了其中一对。
- * 所以按 why 归并，把对手药名合起来。
+ * 所以按组归并，把对手药名合起来。
  *
  * @param {Array} reasons 已收集的原因
  * @returns {string[]} 去重后的短原因
  */
 export function mergeBriefs(reasons) {
-  const groups = [];
-  for (const r of reasons || []) {
-    if (!r || !r.brief) continue;
-    // 十九畏逐对独立，没有 {partner} 占位，按 why 归并天然不会误合并。
-    const hit = groups.find((g) => g.why === r.why);
-    if (hit) {
-      if (r.partner && !hit.partners.includes(r.partner)) hit.partners.push(r.partner);
-    } else {
-      groups.push({ why: r.why, brief: r.brief, partners: r.partner ? [r.partner] : [] });
-    }
-  }
-  return groups.map((g) => g.brief.replace(/\{partner\}/g, g.partners.join('、')));
+  return foldByGroup(reasons).filter((g) => g.brief).map((g) => g.brief);
+}
+
+/**
+ * 把多条原因合并成屏幕上的全文条目（每组一条）。
+ *
+ * 屏幕用这个而不是直接用逐对的 reasons：逐对的话，甘草配大戟、甘遂会出两行，
+ * 每行都说一遍同一段机理，把别的内容挤出可视区；而用户读到的信息量并没增加。
+ *
+ * @param {Array} reasons
+ * @returns {Array<{key:string, partners:string[], why:string, whyKind:string, whyKindTag:string, debate:string}>}
+ */
+export function mergeReasons(reasons) {
+  return foldByGroup(reasons)
+    .filter((g) => g.why)
+    .map((g) => {
+      const def = groupOf(g.key);
+      return {
+        key: g.key,
+        partners: g.partners,
+        why: g.why,
+        whyKind: g.sample.whyKind,
+        whyKindTag: g.sample.whyKindTag,
+        // 合并之后的争议要按整组的药名重新取：
+        // 甘草组里只有问到海藻才该举海藻玉壶汤，否则例子和问题对不上。
+        debate: def && def.debateFor ? def.debateFor(g.partners) : g.sample.debate,
+      };
+    });
 }
 
 /** 屏幕上的机理标签：`机理（现代药理研究）` / `机理（传统医家解释）` */

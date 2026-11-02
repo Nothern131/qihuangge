@@ -15,7 +15,7 @@ import { ANCIENT_TEXTS } from '../vendor/ancient-texts.js';
 import { citeLine, citeTag, citeLong, citeScope, ancientLine, NOT_RECORDED } from './sources.js';
 // 原因库：为什么这两味不能同用。古籍只给口诀不给解释，所以每条原因都标来源
 // （现代药理研究 / 传统医家解释 / 古籍未给解释），不混着写。
-import { reasonFor, mergeBriefs, whyLabel, reasonSource, WEI_DEFINITION } from './reasons.js';
+import { reasonFor, mergeBriefs, mergeReasons, whyLabel, reasonSource, WEI_DEFINITION } from './reasons.js';
 
 // 出处不再手写在每个分支里，而是作为 source 字段回传，由页面挂到播报尾巴上。
 // 这么改是因为手写 19 处的结果必然是「改了 18 处，漏掉的那处静默地说了一句
@@ -376,17 +376,23 @@ export function createQihuangPack(engines) {
     // 结论只针对「认出来的药」说。把「乱说的东西」也念进结论里，
     // 用户会以为自己那味药查过了——那是另一种形式的假阴性。
     const known = r.herbs.filter((h) => !unrecognized.includes(h));
-    // 只有妊娠或毒性提示、没有配伍禁忌时，body 留空。
-    // 这种情况不能套用下面那句「没有查到…禁忌」——那会自相矛盾：
-    // 前一句刚说「妊娠禁忌（禁用）」，后一句说「没有查到禁忌」。
+    // 没有配伍禁忌时，正文要正面回答「能不能同用」——这是用户问的那件事。
+    //
+    // 原来只要 noticeParts 非空就留空正文，判据太宽：细辛配芍药之间有毒性提示
+    // （细辛小毒）但确实没有配伍禁忌，屏幕就只剩「毒性：细辛（小毒）」一行，
+    // 用户问的是「能同用吗」，屏幕上没人回答。
+    //
+    // 真正会自相矛盾的只有妊娠：妊娠禁忌本身就是这三类检查之一，
+    // 前一句「妊娠禁用：大戟」、后一句「没查到妊娠禁忌」，自己打自己。
+    // 毒性不在这三类里——一味药有毒，不等于两味药之间有配伍禁忌，两句可以并存。
     const body = speechParts.length > 0
       ? speechParts.join('。')
-      : (noticeParts.length === 0
-        ? (known.length === 1
+      : (pregnancy.length > 0
+        ? ''
+        : (known.length === 1
           // 单味药说「之间」是病句，质检最容易挑出来的那种
           ? `没有查到${known[0]}相关的十八反、十九畏或妊娠禁忌`
-          : `${known.join('、')}之间没有查到十八反、十九畏或妊娠禁忌`)
-        : '');
+          : `${known.join('、')}之间没有查到十八反、十九畏或妊娠禁忌`));
     // 一条都没命中时也要交代「拿什么核的」，否则「没查到」等于没依据的安静。
     // 这不是免责，是让用户知道这次是翻了三本书没翻到，不是我没查。
     // 有结论走 citeLine（说「出处」），没结论走 citeScope（说「按…核对」）——
@@ -427,9 +433,13 @@ export function createQihuangPack(engines) {
       weis: r.weis,
       pregnancy,
       toxicity: r.toxicity,
-      // 屏幕用：每对药一条完整原因。播报只念浓缩的一句，屏幕给全文，
-      // 因为语音听完就过去了，而「为什么」这件事用户往往要停下来读。
+      // 逐对的原因，保留给需要追溯「哪一对」的调用方与测试。
       reasons,
+      // 屏幕真正要渲染的是这一份：同组的几对折成一条，药名只留用户问到的那几味。
+      // 直接用 reasons 的话，甘草配大戟、甘遂会出两行同一段机理
+      //（屏幕上没有新信息，只把别的内容挤出可视区），
+      // 而甘草配海藻时又会替他念大戟、甘遂、芫花三个没问的药名。
+      reasonGroups: mergeReasons(reasons),
       // 屏幕正文：结论 + 附带提示，**不含**播报里那句浓缩原因。
       // 屏幕下面紧接着就是原因的全文，第一行再带一句浓缩版
       // 会变成「原因：…」然后又是「原因：…」，同一件事说两遍。

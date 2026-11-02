@@ -266,7 +266,14 @@ export default {
 <style>
 .page {
   width: 100%;
+  /* height 而不是只有 min-height：flex 子项能不能收缩，取决于容器有没有**确定高度**。
+     只有 min-height: 100% 时，容器高度会跟着内容长，永远没有「空间不够」这回事，
+     于是 flex-shrink 全都不生效，长答复直接把底部出处推出屏幕。
+     Studio 实测过：追问模式下正文最后两行和出处整行都落在可视区外。
+     min-height 保留作保险，父级高度不确定时仍然撑满。 */
+  height: 100%;
   min-height: 100%;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -295,18 +302,26 @@ export default {
    正文只剩约 9 行；加上「为什么」之后实测溢出三行，出处被裁在可视区外——
    而出处恰恰是结论的一部分。腾空间比删内容对：删掉的都是用户要的。 */
 .body {
-  flex: 0 0 auto;
+  /* 0 1 auto：默认吃内容高度，**空间不够时允许收缩**。
+     原来是 0 0 auto（禁止收缩），配上 min-height 容器就是「谁都不能压」，
+     长答复只能把后面的出处顶到屏幕外——出处是结论的一部分，看不见等于没有。
+     收缩的那部分由 .answer 自己的滚动条承担。 */
+  flex: 0 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   padding: 14px 16px;
 }
 
 .head {
+  /* 标题和档位行不参与收缩：它们只有两三行，被压掉就是内容丢失。 */
+  flex: 0 0 auto;
   font-size: 26px;
   line-height: 1.4;
 }
 
 .detail {
+  flex: 0 0 auto;
   margin-top: 10px;
   font-size: 15px;
   line-height: 1.6;
@@ -318,6 +333,13 @@ export default {
   /* flex 子项默认 min-height: auto，不归零的话内容再长也压不下去，
      会撑破 .page 被外层裁掉。这条和下面的 overflow 是一对。 */
   min-height: 0;
+  /* overflow-y 单独写，InkView 不认——实测过：设了 overflow-y: auto 之后
+     超长正文没有被裁住，反而和下面的出处行叠在一起，两行字互相压着，都读不了。
+     所以先用 overflow: hidden 兜住（结构上保证不重叠），再叠 overflow-y: auto
+     争取能滚。两者都写上，认哪个用哪个。
+     真正的解法不是靠这里，是把内容压进一屏：可读区约 8 行、170 字，
+     超过这个长度，用户看到的永远是半句话。 */
+  overflow: hidden;
   overflow-y: auto;
   padding: 12px 16px;
   background: #161b22;
