@@ -32,7 +32,12 @@
 **每条结论后标注出处，并且不挂免责话术**：标注走播报尾巴（tail），由播报层
 强制保留，压长度也不会被截掉；测试里逐条断言「有出处」且「无免责话术」，漏一条就红。
 
-标注只有一种形态：`出处：《儒门事亲》十八反歌诀。`，紧跟在结论句之后。
+标注只有一种形态：`出处：《儒门事亲》十八反歌诀`，**独立成行，紧跟在结论句之后**。
+位置不能挪到上方（页面是 title → detail → answer，塞进 detail 就成了「先看出处、
+后看结论」，Studio 实测过），也不能靠拼进 speech 末尾（播报会被截断）。
+`.answer` 必须设 `white-space: pre-line`，否则 `\n` 被折叠，出处接在结论句屁股后面——
+页面不报错、不白屏，只有看屏幕才发现，`platform.js` 里有一条专门守这个。
+
 不写「这条出自…」这种替用户解释的句子，也不在开场白里预告「每条都会告诉你出处」——
 后者是使用说明，用户开屏要的是能查什么，不是系统怎么实现。
 命中与未命中也分两种说法：有结论才叫「出处」，没结论叫「按…核对」。
@@ -195,18 +200,38 @@ node tests/smoke.js          # 63 条：适配层 + 合规边界 + 零改动证�
 node tests/agent.js          # 73 条：听懂层（三分档 + 危险结论一致性 + 营养素 + 搭配 + 原文 + 拒答边界 + 出处自检）
 node tests/memo.js           # 13 条：记住常吃的东西、下次主动提醒、存不上要说没记上
 node tests/profile-store.js  # 18 条：档案读写、按人隔离、写失败必抛、怪数据不崩
-node tests/view.js           # 30 条：视图模型 + 播报出处 + 引擎缺失要报错
+node tests/view.js           # 31 条：视图模型 + 播报出处 + 结论后标出处 + 引擎缺失要报错
 node tests/vendor-parity.js  # 29 条：包装副本与原始引擎一致 + 经典数据未漂移
 node tests/parity.js         # 1 条：core/pipeline.js 与麻将那份一致
-node tests/platform.js       # 27 条：AIUI 平台合规
+node tests/platform.js       # 28 条：AIUI 平台合规（含 .answer 必须有 pre-line）
 ```
 
-六套全绿 ≠ 能上架。还没验证的是**运行时行为**：`.ink` 四块能否被装上、
-`SpeechRecognition` 的真实 `result` 事件形状、镜腿键上报 `GlobalHook` 还是 `Enter`、
-`vendor/` 里的包装在 Ink 运行时里能否正常 import。只能靠 AIUI Studio 模拟器，跑一次。
+## AIUI Studio 实测结果（2026-11-03）
 
-在此之前，`static/` 的零改动有证据（`git status --porcelain -- static/` 为空，
-且 `smoke.js` 里有断言）。
+已经跑过的，都有截图/日志：
+
+| 项 | 结果 |
+|---|---|
+| `.ink` 四块结构 | ✅ 装得上，四块都被识别 |
+| 路由 `pages/index/index.ink` | ✅ 下拉框能选中页面 |
+| `vendor/` 的 ESM 包装在 Ink 运行时 import | ✅ 引擎加载成功（失败会直接报「资料库没加载起来」） |
+| `setData` 渲染中文/长文本 | ✅ 正常，字体不缺失 |
+| 镜腿「单击」 | `keydown` + `keyup` 同一刻，`code=Enter` |
+| 镜腿「向后滑动」 | `code=ArrowDown` |
+| `answer` 里的 `\n` | ❌ 被折叠成空白，必须给 `.answer` 加 `white-space: pre-line` |
+| 麦克风（`getUserMedia`） | ❌ Studio Web 版拿不到，报 `network Failed to open browser media stream` |
+
+两个待解决的推论：
+
+1. **镜腿键是 `Enter`，不是 `GlobalHook`。** 官方文档把两个都列为合法值，但实际下发的
+   是 `Enter`。页面已经两个都认，不用改。
+2. **「按住说话」在 Studio 里测不了。** 因为 `keydown` 和 `keyup` 在同一刻到达，
+   等于按了就放；真机是不是分开发，这里验不出来。
+   风险：若真机只发 `keydown` 不发 `keyup`，页面会一直听到 12 秒 watchdog 超时。
+   这条必须上真机才能定，不能靠模拟器下结论。
+
+`SpeechRecognition` 的 `result` 事件形状仍未验证（麦克风打不开，ASR 链路根本没跑起来）。
+这条要从真机日志拿，不能猜。
 
 ## 听懂层（adapter/qihuang-agent.mjs）
 
