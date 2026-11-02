@@ -125,7 +125,11 @@ export function createQihuangView({ engines, store = null } = {}) {
           tone = r.hasWarning ? 'warn' : 'ok';
         } else {
           patch.title = r.herbs.join(' + ');
-          patch.detail = r.hasWarning ? `共 ${r.totalWarnings} 条提示` : '未查到禁忌';
+          // 「配伍禁忌」这个标签从正文里挪到这一行。
+          // 正文里留着它会把「出处：」顶出本行，书名断到下一行。
+          // 不写「配伍禁忌 N 条」：totalWarnings 把十九畏和妊娠也算了进去，
+          // 用「配伍禁忌」概括会把妊娠禁忌说成配伍问题。
+          patch.detail = r.hasWarning ? `禁忌 ${r.totalWarnings} 条` : '未查到禁忌';
           patch.status = '已查询';
           const strong = (r.fans || []).some((f) => f.level === 'strong');
           tone = strong ? 'bad' : (r.hasWarning ? 'warn' : 'ok');

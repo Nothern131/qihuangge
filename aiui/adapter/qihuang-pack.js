@@ -259,13 +259,17 @@ export function createQihuangPack(engines) {
     const speechParts = [];
     const cites = [];
     if (r.fans && r.fans.length) {
+      // 不写「配伍禁忌：」这个前缀。理由不是字数，是它挤掉了出处的位置：
+      // 屏幕一行 20 字左右，加上这四个字正好把「出处：」顶到行尾、书名断到下一行，
+      // 看上去像「出处」后面什么都没有。这个标签改由屏幕上方那行承担。
+      // 「十九畏」那种前缀不能省——不说名字，用户听到「巴豆畏牵牛」不知道是哪一类规则。
+      //
       // 「两药」只在真的只涉及两味药时才对。三味药同时出现两对反，
-      // 说「两药不可同用」会让用户以为只有其中一对有问题；那种时候用「均」，
-      // 覆盖全部涉及的药。语体上也更书：播报里「这两味属于」口语味太重。
+      // 说「两药不可同用」会让用户以为只有其中一对有问题，那种时候用「均」覆盖全部。
       const involved = new Set();
       for (const f of r.fans) for (const h of f.herbs || []) involved.add(h);
       const which = involved.size <= 2 ? '两药' : '均';
-      speechParts.push(`配伍禁忌：${r.fans.map((f) => f.msg).join('；')}。${which}属十八反，不可同用`);
+      speechParts.push(`${r.fans.map((f) => f.msg).join('；')}。${which}属十八反，不可同用`);
       cites.push('shibaFan');
     }
     if (r.weis && r.weis.length) {
