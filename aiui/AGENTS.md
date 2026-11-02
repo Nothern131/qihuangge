@@ -141,7 +141,7 @@ aiui/                        ← AIUI 工程根，打包成 .aix 只收这个目
     ├── vendor-parity.js     29 条：包装副本与原始引擎一致 + 经典数据未漂移
     ├── parity.js            1 条：core/pipeline.js 与麻将那份是否一致
     ├── platform.js          32 条：AIUI 平台合规（结构 / 权限 / 绑定 / 清理）
-    ├── reasons.js           64 条：原因库覆盖与归属
+    ├── reasons.js           66 条：原因库覆盖与归属
     └── toxicity.js          21 条：药典 83 种名单完整 + 名单外不说「无毒」
 ```
 
@@ -287,9 +287,9 @@ node tests/view.js           # 45 条：视图模型 + 播报出处 + 结论后�
 node tests/vendor-parity.js  # 29 条：包装副本与原始引擎一致 + 经典数据未漂移
 node tests/parity.js         # 1 条：core/pipeline.js 与麻将那份一致
 node tests/platform.js       # 32 条：AIUI 平台合规（含 .answer 必须有 pre-line、收缩链三件套）
-node tests/reasons.js        # 64 条：十八反 16 对 + 十九畏 10 对都有原因 + 说了「研究」必须给文献 + 药名不外溢
+node tests/reasons.js        # 66 条：十八反 16 对 + 十九畏 10 对都有原因 + 说了「研究」必须给文献 + 药名不外溢
 node tests/toxicity.js       # 21 条：药典 83 种名单完整 + 穷举查得到等级 + 名单外不说「无毒」
-# 合计 362 条
+# 合计 364 条
 ```
 
 ## AIUI Studio 实测结果（2026-11-03）
