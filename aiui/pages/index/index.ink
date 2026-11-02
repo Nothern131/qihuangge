@@ -309,6 +309,10 @@ export default {
   border-top: 1px solid #21262d;
   font-size: 17px;
   line-height: 1.45;
+  /* 结论和出处之间是 \n 分行（视图模型给的是两行文本）。
+     不设 pre-line，\n 会被当成普通空白折叠，出处就接在结论句屁股后面挤成一段，
+     而「出处是跟在结论后的一行标注」正是它存在的意义。 */
+  white-space: pre-line;
 }
 
 /* 颜色只是第二通道。真正的区分靠状态文字：

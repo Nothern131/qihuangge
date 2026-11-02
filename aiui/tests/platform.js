@@ -142,6 +142,24 @@ for (const inkRel of Object.keys(CONFIG.pages)) {
   check(`${inkRel} 用 export default 导出逻辑`, () => /\bexport\s+default\s*\{/.test(b.setup));
 }
 
+console.log('\n【3b】多行文本必须有 pre-line');
+// answer 里带 \n 的地方（结论 + 出处、正文 + 经典原文）靠换行分层。
+// 漏掉 white-space: pre-line 时页面不报错、不白屏，只是 \n 被折叠成空格，
+// 出处挤在结论句屁股后面——从代码看不出问题，只有看屏幕才发现。实测踩过一次。
+//
+// 不做「answer 里有没有 \n」的条件判断：判断本身要实例化视图模型、
+// 要按工程传不同的引擎，条件一旦写歪这条就静默失效。
+// 统一要求，对不含换行的 answer 也没有副作用。
+for (const inkRel of Object.keys(CONFIG.pages)) {
+  const b = parseInk(read(inkRel));
+  check(`${inkRel} 的 .answer 设了 white-space: pre-line`, () => {
+    if (!/\.answer\s*\{[^}]*white-space\s*:\s*pre-line/.test(b.style || '')) {
+      throw new Error('answer 的 \\n 会被折叠成空格');
+    }
+    return '有';
+  });
+}
+
 console.log('\n【4】模板绑定与 data 字段对照');
 // 这是三类静默故障里最难查的一个：绑定名写错，setData 也不报错，屏幕就是空的。
 for (const [inkRel, viewRel] of Object.entries(CONFIG.pages)) {
