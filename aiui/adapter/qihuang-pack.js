@@ -43,6 +43,42 @@ function joinSentences(parts) {
 const LEVEL_RANK = { strong: 3, moderate: 2, mild: 1, unknown: 0 };
 
 /**
+ * 按档位把条目合并成一句话，比如「禁用：大戟、甘遂」或「大戟、甘遂（有毒）」。
+ *
+ * 为什么合并：逐条念会把同一句话重复 N 遍——三味药就是三十多字，
+ * 其中只有三个药名是信息。播报听不完，屏幕也装不下。
+ *
+ * @param {Array} items 条目
+ * @param {(x) => string} levelOf 取档位
+ * @param {string} sep 档位之间的分隔符（妊娠用「；」，毒性用「、」）
+ */
+function groupByLevel(items, levelOf, sep = '；') {
+  const buckets = [];
+  for (const it of items) {
+    const lv = levelOf(it) || '';
+    const herb = it.herb || '';
+    const hit = buckets.find((b) => b.lv === lv);
+    // 同一味药只留一次：引擎的毒性表里有重复项（吴茱萸出现过两次）
+    if (hit) {
+      if (herb && !hit.herbs.includes(herb)) hit.herbs.push(herb);
+    } else {
+      buckets.push({ lv, herbs: herb ? [herb] : [] });
+    }
+  }
+  return buckets
+    .map((b) => {
+      if (!b.herbs.length) return '';
+      // 妊娠：档位在前（「妊娠禁用：大戟、甘遂」）
+      // 毒性：档位在后（「大戟、甘遂（有毒）」）
+      if (b.lv === '禁用' || b.lv === '慎用') return `${b.lv}：${b.herbs.join('、')}`;
+      if (b.lv) return `${b.herbs.join('、')}（${b.lv}）`;
+      return b.herbs.join('、');
+    })
+    .filter(Boolean)
+    .join(sep);
+}
+
+/**
  * 同一味药只留最严的一条妊娠提示。
  *
  * 为什么需要：InteractionEngine 内部把「桃仁」同时放进了 PREGNANCY_Toxic 和 PREGNANCY_Mild，
@@ -317,12 +353,16 @@ export function createQihuangPack(engines) {
     // 必须排在原因之后：原来它们夹在结论和原因之间，
     // 一句「妊娠禁忌」横插进来，把「为什么不能同用」和它的结论隔开了两行。
     if (pregnancy.length) {
-      noticeParts.push(`妊娠相关：${pregnancy.map((p) => p.msg).join('；')}`);
+      // 按档位合并，不逐味重复「— 妊娠禁忌（禁用）」。
+      // 原来三味药会念成「A — 妊娠禁忌（禁用）；B — 妊娠禁忌（禁用）；C — 妊娠禁忌（禁用）」，
+      // 三十多个字里只有三个药名是信息，其余全是复读，还把原因挤出屏幕。
+      noticeParts.push(`妊娠${groupByLevel(pregnancy, (p) => (/禁用/.test(p.msg) ? '禁用' : (/慎用/.test(p.msg) ? '慎用' : '')))}`);
       cites.push('pregnancy');
     }
     const toxic = (r.toxicity || []).filter((t) => t.toxicity && t.toxicity !== '无毒');
     if (toxic.length) {
-      noticeParts.push(`毒性提示：${toxic.map((t) => `${t.herb}（${t.toxicity}）`).join('、')}`);
+      // 同级的药名合在一起，级别只写在末尾一次：「大戟、甘遂（有毒）」。
+      noticeParts.push(`毒性：${groupByLevel(toxic, (t) => t.toxicity, '、')}`);
       cites.push('toxicity');
     }
 

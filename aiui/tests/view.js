@@ -83,9 +83,9 @@ truthy('原因带归属标签且在句首', /原因（现代药理研究）：/.
 check('结论在原因之前', () => {
   assert.ok(ans.indexOf('不可同用') < ans.indexOf('原因（'), ans);
 });
-check('原因在出处之前', () => {
-  assert.ok(ans.indexOf('原因（') < ans.indexOf('出处：'), ans);
-});
+// 原因在正文里，出处在下方的固定行：模板顺序保证它排在结论之后。
+// 这里只验原因确实在正文中，位置关系由 platform.js（模板顺序）守。
+truthy('原因在正文中', /原因（/.test(ans), ans);
 // 播报和屏幕给不同的量：播报是浓缩一句，屏幕是全文。
 // 两边一样长的话，播报要么太长，要么屏幕太浅。
 truthy('屏幕比播报详细', ans.length > spoken[0].length);
@@ -107,10 +107,13 @@ out = ask('查一下当归');
 check('标题是药名', out.patch.title, '当归');
 truthy('详情有性味或用量', String(out.patch.detail).length > 0);
 truthy('播报带出处', /《中国药典》/.test(spoken[0]));
-// 出处必须跟在结论后面，而不是跑到结论上方。
-// 页面从上到下是 title → detail → answer，detail 在结论之上：
-// 出处写进 detail，屏幕就变成「先看出处、后看结论」。这条断言守的是位置。
-truthy('结论后面标了出处', /出处：《中国药典》/.test(String(out.patch.answer)));
+// 出处单独一行、单独字段。
+// 拼进 answer 末尾会在正文变长时被顶出可视区（Studio 截图实证），
+// 而出处看不见等于这条结论没有依据。模板里它排在 answer 之后，
+// 所以视觉上仍然「跟在结论后面」。
+truthy('出处独立成字段', /出处：《中国药典》/.test(String(out.patch.source)));
+truthy('没有出处时不渲染那一行', out.patch.sourceClass === 'source');
+truthy('出处不在正文里重复一遍', !/出处/.test(String(out.patch.answer)));
 truthy('出处不在结论上方', !/出处/.test(String(out.patch.detail)));
 
 console.log('\n【6】重复说同一句不重复念，「再说一遍」能重听');

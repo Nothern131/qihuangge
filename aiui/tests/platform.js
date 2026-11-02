@@ -142,6 +142,28 @@ for (const inkRel of Object.keys(CONFIG.pages)) {
   check(`${inkRel} 用 export default 导出逻辑`, () => /\bexport\s+default\s*\{/.test(b.setup));
 }
 
+console.log('\n【3c】出处必须排在正文之后，且不跟正文抢空间');
+// 两条都要：位置对不对（在 answer 之后）+ 会不会被挤走（不进 answer 所在的可伸缩盒）。
+// 出处在屏幕上排到结论之前，用户会先看到「依据」再看到「结论」，
+// 而那时候他还不知道结论是什么。
+for (const [inkRel] of Object.entries(CONFIG.pages)) {
+  const raw = read(inkRel);
+  check(`${inkRel} 的出处块在正文块之后`, () => {
+    const ai = raw.indexOf('{{answer}}');
+    const si = raw.indexOf('{{source}}');
+    if (ai === -1 || si === -1) throw new Error('模板里没有 answer 或 source');
+    if (si < ai) throw new Error('出处排在正文之前');
+    return 'ok';
+  });
+  check(`${inkRel} 的出处块固定高度，不参与伸缩`, () => {
+    const b = parseInk(raw);
+    if (!/\.source\s*\{[^}]*flex\s*:\s*0\s+0\s+auto/.test(b.style || '')) {
+      throw new Error('出处块没有 flex: 0 0 auto，正文一长就会把它挤出屏幕');
+    }
+    return 'ok';
+  });
+}
+
 console.log('\n【3b】多行文本必须有 pre-line');
 // answer 里带 \n 的地方（结论 + 出处、正文 + 经典原文）靠换行分层。
 // 漏掉 white-space: pre-line 时页面不报错、不白屏，只是 \n 被折叠成空格，

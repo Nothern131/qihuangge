@@ -36,6 +36,13 @@ export const INITIAL_STATE = {
   status: '按住说话',
   answer: '—',
   tone: 'idle', // idle=灰 / ok=绿 / warn=黄 / bad=红
+  // 出处单独一个字段，单独一行，不跟着正文一起被裁。
+  // 原来它拼在 answer 末尾，正文一长就顶到屏幕外——而出处是结论的一部分，
+  // 看不见等于这条结论没有依据。Studio 截图实证：274 字时出处整行落在可视区外。
+  source: '',
+  // 没有出处时不渲染这一行。用类名切换而不是条件渲染：
+  // AIUI 模板里 wx:if 这类指令没有文档保证，类名是纯 CSS，一定能用。
+  sourceClass: 'source-off',
 };
 
 export function createQihuangView({ engines, store = null } = {}) {
@@ -240,7 +247,9 @@ export function createQihuangView({ engines, store = null } = {}) {
       // 实测确实如此（共 1 条提示 ｜ 出处 …. 上面，结论在下面红字）。
       // 出处是结论的附属信息，位置必须跟在结论句之后。
       if (r.sourceTag) {
-        patch.answer = `${patch.answer || r.speech}\n出处：${r.sourceTag}`;
+        // 单独一行、单独字段。见 INITIAL_STATE 里的说明。
+        patch.source = `出处：${r.sourceTag}`;
+        patch.sourceClass = 'source';
       }
       // 同一句话连问两次就不重播，避免「没听清 → 再说一遍」时被自己的播报盖住
       return emit(patch, same ? null : r.speech, same ? '' : lastSource, r.sayMax);

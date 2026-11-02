@@ -253,6 +253,13 @@ export default {
     <view class="answer answer-{{tone}}">
       <text>{{answer}}</text>
     </view>
+
+    <!-- 出处固定在这一行，不跟正文一起滚/被裁。
+         正文一长，拼在末尾的出处就落到可视区外——而出处是结论的一部分，
+         看不见等于这条结论没有依据。没有出处时整块隐藏（sourceClass='source-off'）。 -->
+    <view class="{{sourceClass}}">
+      <text>{{source}}</text>
+    </view>
   </view>
 </page>
 
@@ -321,6 +328,23 @@ export default {
      不设 pre-line，\n 会被当成普通空白折叠，出处就接在结论句屁股后面挤成一段，
      而「出处是跟在结论后的一行标注」正是它存在的意义。 */
   white-space: pre-line;
+}
+
+.source {
+  /* flex: 0 0 auto：固定占自身高度，不参与正文的伸缩。
+     正文再长也只能在自己那一块溢出，不会把出处挤出去。 */
+  flex: 0 0 auto;
+  padding: 8px 16px 10px;
+  border-top: 1px solid #21262d;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #8b949e;
+}
+
+/* 没有出处时整块不渲染。
+   用类名切换而不是条件渲染：模板指令有没有文档保证，类名是纯 CSS 一定有。 */
+.source-off {
+  display: none;
 }
 
 /* 颜色只是第二通道。真正的区分靠状态文字：
