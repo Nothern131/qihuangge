@@ -8,6 +8,7 @@
 // 镜腿键上报的是 GlobalHook 还是 Enter、vendor 包装在 Ink 运行时里能否正常 import。
 
 import { loadEngines } from '../adapter/load-engines.js';
+import { CANON_PAIRS } from '../adapter/wei-canon.js';
 import { createQihuangView, INITIAL_STATE, GUIDE, SCREEN_BUDGET } from '../ui/qihuang-view.js';
 import { speak, toBrief } from '../core/speech.js';
 
@@ -211,6 +212,12 @@ for (const g of [I.ANTI_GROUP1, I.ANTI_GROUP2, I.ANTI_GROUP3]) {
   for (const b of g.slice(1)) ALL_PAIRS.push([g[0], b]);
 }
 for (const p of Array.from(I.FEAR_PAIRS)) ALL_PAIRS.push([p[0], p[1]]);
+// 歌诀里有、引擎表里没有的那几对也要过一遍预算。
+// 只穷举引擎表的话，新补进来的「人参五灵脂」「肉桂赤石脂」「川乌犀角」
+// 这几条答复从来没被测过长度——而它们恰恰是最新写的文案，最可能超。
+for (const [a, b] of CANON_PAIRS) {
+  if (!ALL_PAIRS.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) ALL_PAIRS.push([a, b]);
+}
 
 const overBudget = [];
 let screenLongest = { len: 0, q: '' };
@@ -227,6 +234,22 @@ check(`全部 ${ALL_PAIRS.length * 2} 条问法都在 ${SCREEN_BUDGET} 字以内
   assert.deepEqual(overBudget, []);
 });
 console.log(`       最长 ${screenLongest.len} 字：${screenLongest.q}`);
+
+// 曾经想在这里加一条「裁到极限也要把正文写出去」的断言，反向验证时发现它是空的：
+// `picked` 有 `slice(0,1)` 兜底，永远不会是空数组，所以旧写法
+// `if (picked.length) patch.answer = …` 里的条件是恒真的死判断，坏场景根本构造不出来。
+// 断言写不出反例，就不是断言，是装饰。改成守一条真的性质：
+// 有原因的答复，屏幕上必须同时有结论句和原因行。
+const missingHalf = [];
+for (const [a, b] of ALL_PAIRS) {
+  const t = view.handle(`${a}${b}能一起吃吗`);
+  const ans = String(t.patch.answer || '');
+  if (!ans.includes(b)) missingHalf.push([a, b, '结论里没有这一味']);
+  else if (!/原因（/.test(ans)) missingHalf.push([a, b, '有原因却没上屏']);
+}
+check('有原因的答复：结论和原因同时在屏上', () => {
+  assert.deepEqual(missingHalf, []);
+});
 
 // 预算不是「随便砍」：砍的顺序必须是先争议、后第二条原因，
 // 结论和第一条原因永远留着——那是用户问的那件事本身。

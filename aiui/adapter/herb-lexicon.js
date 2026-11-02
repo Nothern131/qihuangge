@@ -17,9 +17,20 @@
 // 覆盖面仍有边界：两库加起来不到 200 味，远不是全部中药。
 // 表外的药名走整串匹配，不会被搞坏，但也不会被切开。
 
-/** 从引擎暴露的字段收集词表。引擎缺字段时返回空集，切词自动退化为不切。 */
-export function buildLexicon(InteractionEngine, BencaoEngine = null) {
+/**
+ * 从引擎暴露的字段收集词表。引擎缺字段时返回空集，切词自动退化为不切。
+ *
+ * @param {object} InteractionEngine
+ * @param {object} BencaoEngine
+ * @param {Iterable<string>} extras 引擎里没有、但业务上必须认得的名词。
+ *   目前是十九畏歌诀里的药名与别名（五灵脂、肉桂、官桂、赤石脂、犀角）。
+ *   为什么必须单独传进来：这些名字在引擎表里本就没有（引擎那张表本身缺这两组），
+ *   而本草库 123 味也没收录——不补的话，用户说「人参五灵脂」会被切成
+ *   「人参」一味，然后得到「没有查到配伍禁忌」这种答复，而它恰恰是最该报禁忌的一对。
+ */
+export function buildLexicon(InteractionEngine, BencaoEngine = null, extras = null) {
   const words = new Set();
+  if (extras) for (const w of extras) if (typeof w === 'string' && w) words.add(w);
   if (!InteractionEngine && !BencaoEngine) return words;
 
   if (InteractionEngine) {

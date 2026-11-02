@@ -262,9 +262,12 @@ export function createQihuangView({ engines, store = null } = {}) {
         let picked = [...whyLines, debate].filter(Boolean);
         if (!fits(picked)) picked = [...whyLines];
         if (!fits(picked)) picked = whyLines.slice(0, 1);
-        if (picked.length) {
-          patch.answer = [base, ...picked].join('\n');
-        }
+        // 不再套 `if (picked.length)`。
+        // picked 至少有一条（slice(0,1) 兜底），所以那个条件本来就是恒真的死判断；
+        // 它的存在只会让读代码的人以为「空的时候不设 answer」，而真到空的时候，
+        // 不设比设更糟——patch 里没有 answer，页面就留着上一题的答复。
+        // 宁可超一截（超了是裁切），也不能让屏幕上躺着别的答案。
+        patch.answer = [base, ...picked].join('\n');
       }
 
       // 出处写在结论后面，不往 detail 里塞。

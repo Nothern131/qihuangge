@@ -12,6 +12,7 @@
 
 import assert from 'node:assert/strict';
 import { reasonFor, mergeBriefs, WHY_KIND_TAG, reasonSource, WEI_DEFINITION } from '../adapter/reasons.js';
+import { CANON_PAIRS, CANON_HERBS, WEI_SONG, DIFF, reconcileWei } from '../adapter/wei-canon.js';
 import { loadEngines } from '../adapter/load-engines.js';
 import { createQihuangPack } from '../adapter/qihuang-pack.js';
 
@@ -41,8 +42,10 @@ function equal(label, actual, expected) {
     assert.deepEqual(actual, expected);
   });
 }
-function truthy(label, v) {
-  check(label, () => assert.ok(v, `实际值 ${JSON.stringify(v)}`));
+function truthy(label, v, hint) {
+  // hint 是失败时要看的东西。原来这个参数被丢掉了，断言红了只看到「实际值 false」，
+  // 得回代码里加 console.log 才知道屏幕到底写了什么。
+  check(label, () => assert.ok(v, `实际值 ${JSON.stringify(v)}${hint ? `｜${hint}` : ''}`));
 }
 
 console.log('=== 配伍禁忌原因库 ===');
@@ -73,12 +76,31 @@ equal('十八反全部有原因', missingFan, []);
 //（内容一模一样，仍然报 "same structure but not reference-equal"）。
 // 所以先 Array.from 搬进本 realm 再处理。这个坑在断言里表现为「明明空的却红了」，
 // 不看 realm 会查很久。
-const WEI_CASES = Array.from(I.FEAR_PAIRS, (p) => [p[0], p[1]]);
+const ENGINE_WEI = Array.from(I.FEAR_PAIRS, (p) => [p[0], p[1]]);
+// 十九畏的用例不再取自引擎表，改取歌诀——引擎那张表有两组是读错歌诀得来的。
+// 这么改之后，断言验的是「歌诀里的每一对都查得到原因」，
+// 而不是「引擎恰好吐出来的那几对查得到」。
+const WEI_CASES = CANON_PAIRS.map(([a, b]) => [a, b]);
 const missingWei = WEI_CASES.filter(([a, b]) => reasonFor(a, b, '十九畏').whyKind === 'none');
 equal('十九畏全部有原因', missingWei, []);
 
-truthy('用例数与引擎名单一致', FAN_CASES.length + WEI_CASES.length ===
-  (G1.length - 1) + (G2.length - 1) + (G3.length - 1) + I.FEAR_PAIRS.length);
+// 歌诀里没有被误当成禁忌的两对，原因库必须不再给出禁令——
+// 否则「查得到原因」这件事本身会把一条错禁忌坐实。
+equal('原因库不再给川乌草乌编禁令',
+  reasonFor('川乌', '草乌', '十九畏').whyKind, 'none');
+equal('原因库不再给人参赤石脂编禁令',
+  reasonFor('人参', '赤石脂', '十九畏').whyKind, 'none');
+
+truthy('十八反用例数与引擎分组一致', FAN_CASES.length ===
+  (G1.length - 1) + (G2.length - 1) + (G3.length - 1));
+
+// 「十九畏」这个名字来自 19 味药，不是 19 组：歌诀里 19 味药配成 10 对，
+// 其中川乌、草乌是并列主语、共畏犀角，所以按组算只有 9 组。
+// 把 19 当组数去补，会补出一堆不存在的组合——这个数是算出来的，不是数的。
+truthy('歌诀 19 味药、10 对',
+  CANON_HERBS.length === 19 && CANON_PAIRS.length === 10);
+equal('引擎表比歌诀少 4 对、多 2 对',
+  [DIFF.missing.length, DIFF.extra.length], [4, 2]);
 
 // 川乌、草乌是乌头组的别名。引擎会把 msg 里的名字换成实际出现的那味，
 // 查原因时也必须能按别名查到，否则「川乌反半夏」会答成「没有解释」。
@@ -284,6 +306,44 @@ check('有妊娠禁用时不套「没查到妊娠禁忌」', () => {
   if (!/妊娠/.test(t)) return; // 这条问法没命中妊娠，跳过
   assert.ok(!/没有查到[^。]*妊娠禁忌/.test(t), t);
 });
+
+console.log('\n[8] 十九畏按歌诀校正：错的不能再报，缺的必须能查到');
+
+// 这一组断言守的是一个已经发生的错：引擎表把歌诀「川乌草乌不顺犀」读成了
+// 「川乌畏草乌」，又把人参的对手记成了赤石脂。两处都错在**配错对手**，
+// 后果不是措辞问题——真正的那两对（人参畏五灵脂、官桂畏赤石脂）查不到，
+// 而川乌草乌这两味在实际方子里本来就同用（小活络丹）。
+const ask = (text) => pack.invoke('ask', { text, query: text });
+
+const w1 = ask('人参五灵脂能一起用吗');
+truthy('人参畏五灵脂能查到了', /十九畏：人参畏五灵脂/.test(w1.screenText || ''), w1.screenText);
+// 原因不在 screenText 里（那一层只管结论和提示），要看 reasonGroups。
+truthy('人参五灵脂给了原因', (w1.reasonGroups || []).length > 0, JSON.stringify(w1.reasonGroups));
+
+const w2 = ask('川乌草乌能一起用吗');
+// 判据要卡「属十九畏，不宜同用」整句：只查「属十九畏」会被
+// 「**不**属十九畏」这句纠正说明命中，断言假绿。
+truthy('川乌草乌不再被当成十九畏', !/属十九畏，不宜同用/.test(w2.screenText || ''), w2.screenText);
+truthy('川乌草乌要说清歌诀畏的是犀角', /畏的是犀角/.test(w2.screenText || ''), w2.screenText);
+// 纠正一条错禁忌之后必须把真实风险补回来：两味都含乌头碱，
+// 只说「不属十九畏」会被听成「可以放心一起吃」。
+truthy('川乌草乌仍给出毒性提示', /大毒/.test(w2.screenText || ''), w2.screenText);
+
+const w3 = ask('人参赤石脂能同用吗');
+truthy('人参赤石脂不再说「不宜同用」', !/不宜同用/.test(w3.screenText || ''), w3.screenText);
+truthy('人参赤石脂要说清对手记错了', /人参畏的不是赤石脂/.test(w3.screenText || ''), w3.screenText);
+
+// 官桂是肉桂的规格名。用户很可能照着歌诀的原文说法问「官桂」，
+// 表里记的是正名「肉桂」——不归口的话这一对就查不到。
+const w4 = ask('官桂畏赤石脂');
+truthy('官桂按正名查到肉桂畏赤石脂', /肉桂畏赤石脂/.test(w4.screenText || ''), w4.screenText);
+
+// 单元层：被删掉的那一对要带着歌诀原句出来，否则 pack 层没法解释「为什么不算」。
+const re = reconcileWei([{ herbs: ['川乌', '草乌'], type: '十九畏', level: 'moderate', msg: '川乌畏草乌' }], ['川乌', '草乌']);
+equal('川乌草乌被移除', re.weis.length, 0);
+equal('移除项带着歌诀信息', re.removed.length, 1);
+truthy('补上的两对只补用户问到的',
+  reconcileWei([], ['人参', '五灵脂', '甘草']).weis.length === 1);
 
 console.log(`\n通过 ${pass} / ${pass + fail}`);
 if (fail > 0) process.exit(1);

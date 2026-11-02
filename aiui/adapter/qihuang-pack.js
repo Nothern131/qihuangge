@@ -16,6 +16,9 @@ import { citeLine, citeTag, citeLong, citeScope, ancientLine, NOT_RECORDED } fro
 // 原因库：为什么这两味不能同用。古籍只给口诀不给解释，所以每条原因都标来源
 // （现代药理研究 / 传统医家解释 / 古籍未给解释），不混着写。
 import { reasonFor, mergeBriefs, mergeReasons, whyLabel, reasonSource, WEI_DEFINITION } from './reasons.js';
+// 十九畏的配对以歌诀原文为准。引擎 FEAR_PAIRS 有两组读错（川乌草乌、
+// 人参赤石脂），这里做校正并把「改了什么」回传给用户，不做静默纠正。
+import { reconcileWei, CANON_HERBS, ALIASES } from './wei-canon.js';
 
 // 出处不再手写在每个分支里，而是作为 source 字段回传，由页面挂到播报尾巴上。
 // 这么改是因为手写 19 处的结果必然是「改了 18 处，漏掉的那处静默地说了一句
@@ -108,6 +111,42 @@ function isHerbLike(name) {
 }
 
 /**
+ * 引擎表里有、歌诀里没有的药对，怎么跟用户交代。
+ *
+ * 两种说法，不是一个。屏幕只有 160 字的预算，而这两种场合的信息价值不一样：
+ *   - 这一对是**唯一结论**时（问「川乌草乌能一起用吗」），用户要的就是这个判断，
+ *     必须说清「为什么不算」，还要把真实存在的风险补回去（毒性叠加）。
+ *   - 同一句答复里**已经另有禁忌**时（问「川乌草乌半夏」），用户问的那件事已经答了
+ *     （草乌反半夏，不可同用）。此时展开讲「川乌草乌不算十九畏」要花 85 字，
+ *     恰好把原因和出处挤出屏幕——83 字不算长，但它是从这个场景里最不该让位的
+ *     那两样东西上抢来的。
+ *
+ * 短版只给判断（「不属十九畏」），不给理由。理由是用户追问时才需要的东西，
+ * 而「不算」这个结论本身必须说——不说的话，他若从别处听过「川乌畏草乌」，
+ * 会以为系统漏了。
+ *
+ * 返回 null 表示这一对没有现成说法。宁可不说，也不编。
+ */
+function explainRemoved(pair) {
+  const key = [pair[0], pair[1]].sort().join('+');
+  if (key === '川乌+草乌') {
+    return {
+      short: '川乌草乌不属十九畏',
+      long: '川乌和草乌不属十九畏。歌诀原文是「川乌草乌不顺犀」，畏的是犀角，'
+        + '这两味本来就常在同一个方子里。但两味都含乌头碱，毒性会叠加，用量要按医生开的来。',
+    };
+  }
+  if (key === '人参+赤石脂') {
+    return {
+      short: '人参畏的是五灵脂',
+      long: '人参畏的不是赤石脂。歌诀里「人参最怕五灵脂」说的是五灵脂，'
+        + '「若逢石脂便相欺」说的是官桂（也就是肉桂），两副对手配错了。',
+    };
+  }
+  return null;
+}
+
+/**
  * @param {object} engines 沙箱/全局里的引擎对象
  *   { InteractionEngine, BencaoEngine, VitaminEngine }
  */
@@ -116,7 +155,11 @@ export function createQihuangPack(engines) {
   // 词表从引擎公开字段取（见 herb-lexicon.mjs）。
   // 必须同时给 BencaoEngine：只用禁忌库会导致「三七」「当归」这类无禁忌的药材不在表里，
   // 用户说了真实药名却被判成「没听出药名」。引擎没加载时是空集，切词自动退化为不切。
-  const LEXICON = buildLexicon(InteractionEngine, BencaoEngine);
+  //
+  // 第三份是歌诀里的药名与别名：引擎表和本草库都没有「五灵脂」「肉桂」「赤石脂」，
+  // 而「人参五灵脂」正是十九畏里最常被问到的一对。不补这三个词，
+  // 用户说「人参五灵脂能一起用吗」会被切成只剩「人参」，答复变成「没查到禁忌」。
+  const LEXICON = buildLexicon(InteractionEngine, BencaoEngine, [...CANON_HERBS, ...Object.keys(ALIASES)]);
 
   /**
    * 意图分流表。
@@ -337,18 +380,32 @@ export function createQihuangPack(engines) {
       collect(r.fans, '十八反');
       cites.push('shibaFan');
     }
-    if (r.weis && r.weis.length) {
+    // 十九畏的配对以歌诀原文为准（见 wei-canon.js 的 DIFF）：
+    // 引擎 FEAR_PAIRS 里「川乌畏草乌」「人参畏赤石脂」两组是读错歌诀得来的，
+    // 而真正的那两对（人参畏五灵脂、官桂畏赤石脂）引擎表里没有。
+    const wei = reconcileWei(r.weis || [], herbs);
+    if (wei.weis.length) {
       // 原来只说「十九畏：丁香畏郁金」，没有「所以不能同用」这句。
       // 「畏」字在七情里另有含义（一药抑制另一药毒性、是可以同用的），
       // 不把结论说出来，用户听到的是一条不知道该怎么用的信息。
       // 用「不宜同用」而不用「不可同用」：十九畏的忌惮程度历来低于十八反。
       const involvedWei = new Set();
-      for (const w of r.weis) for (const h of w.herbs || []) involvedWei.add(h);
+      for (const w of wei.weis) for (const h of w.herbs || []) involvedWei.add(h);
       const whichWei = involvedWei.size <= 2 ? '两药' : '均';
-      speechParts.push(`十九畏：${r.weis.map((w) => w.msg).join('；')}。${whichWei}属十九畏，不宜同用`);
-      collect(r.weis, '十九畏');
+      speechParts.push(`十九畏：${wei.weis.map((w) => w.msg).join('；')}。${whichWei}属十九畏，不宜同用`);
+      collect(wei.weis, '十九畏');
       cites.push('shijiuWei');
     }
+    // 被歌诀否掉的那几对，不能只是「不报了」。
+    // 沉默等于让用户自己去猜「是没这条，还是系统不知道」——
+    // 而这两种情况他都会当成「没这条」，也就是「可以一起吃」。
+    //
+    // 长短两版按场合选：这句话是唯一结论时讲全（连同真实风险），
+    // 已经另有禁忌时只给判断——细节见 explainRemoved 的注释。
+    const corrections = wei.removed
+      .map((rm) => explainRemoved(rm.pair))
+      .filter(Boolean)
+      .map((c) => (speechParts.length > 0 ? c.short : c.long));
     // 妊娠与毒性是「附带提示」，不是结论本身。
     // 必须排在原因之后：原来它们夹在结论和原因之间，
     // 一句「妊娠禁忌」横插进来，把「为什么不能同用」和它的结论隔开了两行。
@@ -366,7 +423,7 @@ export function createQihuangPack(engines) {
       cites.push('toxicity');
     }
 
-    const totalWarnings = (r.fans || []).length + (r.weis || []).length + pregnancy.length;
+    const totalWarnings = (r.fans || []).length + wei.weis.length + pregnancy.length;
     // 部分药名认不出来时必须说出来，否则「没查到禁忌」会被听成「可以一起吃」。
     const unknownNote = unrecognized.length > 0
       ? (unrecognized.some(isHerbLike)
@@ -385,8 +442,14 @@ export function createQihuangPack(engines) {
     // 真正会自相矛盾的只有妊娠：妊娠禁忌本身就是这三类检查之一，
     // 前一句「妊娠禁用：大戟」、后一句「没查到妊娠禁忌」，自己打自己。
     // 毒性不在这三类里——一味药有毒，不等于两味药之间有配伍禁忌，两句可以并存。
-    const body = speechParts.length > 0
-      ? speechParts.join('。')
+    // 校正说明算结论的一部分，不是附带提示。
+    // 它解释的正是「你问的这一对到底算不算禁忌」，所以必须站在结论的位置上，
+    // 排在原因之前——把它往后放，用户先读到一大段机理，才发现机理讲的那条禁忌不成立。
+    // 只有它、没有别的结论时（问「川乌草乌」），正文就是它：
+    // 此时说「没查到禁忌」是错的，禁忌查到了，只是歌诀说不是这一对。
+    const bodyParts = [...speechParts, ...corrections];
+    const body = bodyParts.length > 0
+      ? bodyParts.join('。')
       : (pregnancy.length > 0
         ? ''
         : (known.length === 1
@@ -430,7 +493,11 @@ export function createQihuangPack(engines) {
       hasWarning: totalWarnings > 0 || (r.toxicity || []).some((t) => t.toxicity && t.toxicity !== '无毒'),
       totalWarnings,
       fans: r.fans,
-      weis: r.weis,
+      weis: wei.weis,
+      // 引擎报了、歌诀不认的那几对，单独回传。
+      // 不并进 weis：它们在语义上是「被否掉的」，混在一起会让
+      // hasWarning / totalWarnings 把不存在的禁忌算进去。
+      weiRemoved: wei.removed,
       pregnancy,
       toxicity: r.toxicity,
       // 逐对的原因，保留给需要追溯「哪一对」的调用方与测试。
@@ -450,7 +517,12 @@ export function createQihuangPack(engines) {
       // 32 字装不下「结论 + 原因」，而原因被截掉就只剩一句禁令，
       // 用户听到的是「不能吃」却不知道为什么——那和查字典没区别。
       // 追问为什么时放宽到 140，那时候用户要的就是全文。
-      ...(reasons.length > 0 ? { sayMax: wantsReason ? 140 : 72 } : {}),
+      //
+      // 校正说明也必须放宽：那句「川乌和草乌不属十九畏，歌诀畏的是犀角」本身就是结论，
+      // 按 32 字截它就断在「这两味本来就常在同一个方子里」后面，听着像没说完。
+      ...((reasons.length > 0 || corrections.length > 0)
+        ? { sayMax: wantsReason ? 140 : 72 }
+        : {}),
       speech,
     };
   }
