@@ -69,6 +69,25 @@ truthy('有播报', spoken.length === 1);
 console.log(`       屏幕：${out.patch.title}　|　${out.patch.detail}`);
 console.log(`       播报：${spoken[0]}`);
 
+console.log('\n【2b】查禁忌要说得出「为什么」，而且这句话要能上屏');
+// 只说「不可同用」是安全的，也是没用的：用户不知道怎么权衡。
+// 这一组守的是「原因真的到了用户眼前」，而不只是存在某个字段里。
+const ans = String(out.patch.answer);
+truthy('屏幕有原因全文', /原因：甘草含甘草酸/.test(ans), ans);
+// 归属标签必须跟着原因一起上屏。没有它，现代研究和古人的推断在屏幕上长得一样，
+// 而这两种话的可信度差得很远。
+truthy('原因带归属标签', /（现代药理研究）/.test(ans), ans);
+// 顺序：结论 → 原因 → 出处。原因跑到结论前面，用户得读到第二行才知道结论。
+check('结论在原因之前', () => {
+  assert.ok(ans.indexOf('不可同用') < ans.indexOf('原因：'), ans);
+});
+check('原因在出处之前', () => {
+  assert.ok(ans.indexOf('原因：') < ans.indexOf('出处：'), ans);
+});
+// 播报和屏幕给不同的量：播报是浓缩一句，屏幕是全文。
+// 两边一样长的话，播报要么太长，要么屏幕太浅。
+truthy('屏幕比播报详细', ans.length > spoken[0].length);
+
 console.log('\n【3】单味药的妊娠禁忌不能漏（必须单独查 checkPregnancy）');
 out = ask('桃仁能不能吃');
 truthy('提到妊娠相关', String(out.patch.answer).includes('妊娠'));
@@ -105,7 +124,10 @@ console.log('\n【7】播报长度受控（超过 32 字由 speech 层压缩，�
 ask('当归');
 ask('甘草海藻能不能一起吃');
 const longest = spoken.reduce((a, b) => (b.length > a.length ? b : a), '');
-truthy('最长播报不超过 60 字', longest.length <= 60);
+// 上限从 60 放宽到 90：播报内容从「只有结论」变成「结论 + 原因」，
+// 长度必然增加。但也不能无限长——超过 90 字，念完要二十秒以上，
+// 用户会开始等下一句而不是听这一句。想听全的走「为什么」追问（上限 140）。
+truthy('最长播报不超过 90 字', longest.length <= 90);
 // 这条守的是设计：出处走 tail，进 toBrief 的「永不裁剪」路径。
 // 如果哪天有人把出处改回拼在 speech 末尾，这里会红。
 truthy('最长播报保留出处', /《[^》]+》|药典|现代营养学/.test(longest));

@@ -59,9 +59,11 @@ export function createQihuangView({ engines, store = null } = {}) {
   let lastSource = '';
 
   // source 就是播报末句的出处。它只从 pack 的返回值里来，页面不发明一句。
-  function emit(patch, speech = null, source = '') {
+  // max 逐条给：查禁忌要说结论加原因，32 字装不下；
+  // 而「没听清」这种一句话回答用 72 是浪费。长度跟着内容走，不跟应用走。
+  function emit(patch, speech = null, source = '', max = SAY_MAX) {
     Object.assign(state, patch);
-    return { patch, say: speech, sayMax: SAY_MAX, tail: source };
+    return { patch, say: speech, sayMax: max || SAY_MAX, tail: source };
   }
 
   function handle(text) {
@@ -199,6 +201,33 @@ export function createQihuangView({ engines, store = null } = {}) {
       }
 
       patch.tone = tone;
+
+      // 原因写进正文，紧跟结论句。
+      //
+      // 为什么放屏幕而不是全靠播报：原因是整段文字，念出来要十几秒，
+      // 而用户往往只想知道「能不能」；但想深究的时候，屏幕上必须有全文可读。
+      // 两边给不同的量，是这个界面唯一能同时满足两种需求的办法。
+      if (r.intent === 'check' && r.reasons && r.reasons.length) {
+        const seen = new Set();
+        const lines = [];
+        let groups = 0;
+        for (const rs of r.reasons) {
+          // 同组多对药（甘草配大戟、甘遂）机理是同一段，列两遍会挤掉别的内容。
+          if (groups >= 2) break;
+          if (!rs.why || seen.has(rs.why)) continue;
+          seen.add(rs.why);
+          groups += 1;
+          // 标签写在句末括号里：用户读到「……可见损伤（现代药理研究）」，
+          // 一眼就知道这句话是谁说的。没有这个标签，古人的推断和实验结论长得一样。
+          lines.push(`原因：${rs.why}（${rs.whyKindTag}）`);
+          // 争议单独一行。它和原因是两件事：原因说为什么，争议说这条有多硬。
+          if (rs.debate) lines.push(`另：${rs.debate}`);
+        }
+        if (lines.length) {
+          patch.answer = [r.screenText || r.speech, ...lines].join('\n');
+        }
+      }
+
       // 出处写在结论后面，不往 detail 里塞。
       //
       // 页面结构从上到下是 title → detail → answer，detail 在结论上方。
@@ -209,7 +238,7 @@ export function createQihuangView({ engines, store = null } = {}) {
         patch.answer = `${patch.answer || r.speech}\n出处：${r.sourceTag}`;
       }
       // 同一句话连问两次就不重播，避免「没听清 → 再说一遍」时被自己的播报盖住
-      return emit(patch, same ? null : r.speech, same ? '' : lastSource);
+      return emit(patch, same ? null : r.speech, same ? '' : lastSource, r.sayMax);
     } catch (err) {
       // 用户能自己改的（没给药名 / 没听清）念给他听；其余只记日志，不假装成功
       const fixable = ['missing_herbs', 'missing_name', 'missing_text'];

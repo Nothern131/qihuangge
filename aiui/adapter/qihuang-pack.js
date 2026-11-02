@@ -13,6 +13,9 @@ import { buildLexicon, findNutrients, splitHerbList } from './herb-lexicon.js';
 // 经典原文由 tools/vendor-data.js 内嵌（源文件 static/data/ancient_texts.json 只读未改）
 import { ANCIENT_TEXTS } from '../vendor/ancient-texts.js';
 import { citeLine, citeTag, citeLong, citeScope, ancientLine, NOT_RECORDED } from './sources.js';
+// 原因库：为什么这两味不能同用。古籍只给口诀不给解释，所以每条原因都标来源
+// （现代药理研究 / 传统医家解释 / 古籍未给解释），不混着写。
+import { reasonFor, mergeBriefs, whyLabel, reasonSource, WEI_DEFINITION } from './reasons.js';
 
 // 出处不再手写在每个分支里，而是作为 source 字段回传，由页面挂到播报尾巴上。
 // 这么改是因为手写 19 处的结果必然是「改了 18 处，漏掉的那处静默地说了一句
@@ -110,6 +113,13 @@ export function createQihuangPack(engines) {
     { name: 'vitamin', re: /维生素|维他命|维\s*[ABCDEK]\b|营养素/ },
   ];
 
+  /**
+   * 用户在问「为什么」，不是问「能不能」。
+   * 这个区分不是为了多给内容，而是两句话的用途不同：
+   * 「能不能」要一句结论，说多了他听不完；「为什么」要一套解释，说少了等于没答。
+   */
+  const WANT_REASON = /(为什么|为啥|凭什么|什么道理|原因|原理|道理)/;
+
   function detectIntent(text) {
     for (const it of INTENT) if (it.re.test(text)) return it.name;
     return 'herb';
@@ -195,6 +205,9 @@ export function createQihuangPack(engines) {
   function viewCheck(payload) {
     const I = need('InteractionEngine', InteractionEngine);
     const herbs = readHerbList(payload);
+    // 追问「为什么」时要给完整机理和争议，默认只给一句。
+    // 判断放在这里而不是在播报层：播报层拿不到用户原话。
+    const wantsReason = Boolean(payload.wantsReason || payload.wantReason);
 
     // 先确认「这些到底是不是药名」。
     // 为什么这一步不能省：查不到禁忌时如果直接说「没查到禁忌」，
@@ -257,7 +270,22 @@ export function createQihuangPack(engines) {
     pregnancy = collapseByHerb(pregnancy);
 
     const speechParts = [];
+    // 附带的妊娠、毒性提示单独放，播报里排在原因之后。
+    const noticeParts = [];
     const cites = [];
+    // 每条命中都带上「为什么」。这不只是为了丰富：
+    // 只说「不可同用」而不说原因，用户没法判断这条规则对他当前的情况意味着什么，
+    // 最后要么全信要么全不信——两种都是把判断权丢了。
+    const reasons = [];
+
+    function collect(pairs, type) {
+      for (const item of pairs) {
+        const [a, b] = item.herbs || [];
+        const rs = reasonFor(a, b, type);
+        reasons.push({ pair: [a, b], type, ...rs });
+      }
+    }
+
     if (r.fans && r.fans.length) {
       // 不写「配伍禁忌：」这个前缀。理由不是字数，是它挤掉了出处的位置：
       // 屏幕一行 20 字左右，加上这四个字正好把「出处：」顶到行尾、书名断到下一行，
@@ -270,19 +298,31 @@ export function createQihuangPack(engines) {
       for (const f of r.fans) for (const h of f.herbs || []) involved.add(h);
       const which = involved.size <= 2 ? '两药' : '均';
       speechParts.push(`${r.fans.map((f) => f.msg).join('；')}。${which}属十八反，不可同用`);
+      collect(r.fans, '十八反');
       cites.push('shibaFan');
     }
     if (r.weis && r.weis.length) {
-      speechParts.push(`十九畏：${r.weis.map((w) => w.msg).join('；')}`);
+      // 原来只说「十九畏：丁香畏郁金」，没有「所以不能同用」这句。
+      // 「畏」字在七情里另有含义（一药抑制另一药毒性、是可以同用的），
+      // 不把结论说出来，用户听到的是一条不知道该怎么用的信息。
+      // 用「不宜同用」而不用「不可同用」：十九畏的忌惮程度历来低于十八反。
+      const involvedWei = new Set();
+      for (const w of r.weis) for (const h of w.herbs || []) involvedWei.add(h);
+      const whichWei = involvedWei.size <= 2 ? '两药' : '均';
+      speechParts.push(`十九畏：${r.weis.map((w) => w.msg).join('；')}。${whichWei}属十九畏，不宜同用`);
+      collect(r.weis, '十九畏');
       cites.push('shijiuWei');
     }
+    // 妊娠与毒性是「附带提示」，不是结论本身。
+    // 必须排在原因之后：原来它们夹在结论和原因之间，
+    // 一句「妊娠禁忌」横插进来，把「为什么不能同用」和它的结论隔开了两行。
     if (pregnancy.length) {
-      speechParts.push(`妊娠相关：${pregnancy.map((p) => p.msg).join('；')}`);
+      noticeParts.push(`妊娠相关：${pregnancy.map((p) => p.msg).join('；')}`);
       cites.push('pregnancy');
     }
     const toxic = (r.toxicity || []).filter((t) => t.toxicity && t.toxicity !== '无毒');
     if (toxic.length) {
-      speechParts.push(`毒性提示：${toxic.map((t) => `${t.herb}（${t.toxicity}）`).join('、')}`);
+      noticeParts.push(`毒性提示：${toxic.map((t) => `${t.herb}（${t.toxicity}）`).join('、')}`);
       cites.push('toxicity');
     }
 
@@ -296,19 +336,46 @@ export function createQihuangPack(engines) {
     // 结论只针对「认出来的药」说。把「乱说的东西」也念进结论里，
     // 用户会以为自己那味药查过了——那是另一种形式的假阴性。
     const known = r.herbs.filter((h) => !unrecognized.includes(h));
-    const body = speechParts.length === 0
-      ? (known.length === 1
-        // 单味药说「之间」是病句，质检最容易挑出来的那种
-        ? `没有查到${known[0]}相关的十八反、十九畏或妊娠禁忌`
-        : `${known.join('、')}之间没有查到十八反、十九畏或妊娠禁忌`)
-      : speechParts.join('。');
+    // 只有妊娠或毒性提示、没有配伍禁忌时，body 留空。
+    // 这种情况不能套用下面那句「没有查到…禁忌」——那会自相矛盾：
+    // 前一句刚说「妊娠禁忌（禁用）」，后一句说「没有查到禁忌」。
+    const body = speechParts.length > 0
+      ? speechParts.join('。')
+      : (noticeParts.length === 0
+        ? (known.length === 1
+          // 单味药说「之间」是病句，质检最容易挑出来的那种
+          ? `没有查到${known[0]}相关的十八反、十九畏或妊娠禁忌`
+          : `${known.join('、')}之间没有查到十八反、十九畏或妊娠禁忌`)
+        : '');
     // 一条都没命中时也要交代「拿什么核的」，否则「没查到」等于没依据的安静。
     // 这不是免责，是让用户知道这次是翻了三本书没翻到，不是我没查。
     // 有结论走 citeLine（说「出处」），没结论走 citeScope（说「按…核对」）——
     // 这两种情况必须用两种说法，混用会让「没查到」听起来像「查到了」。
     const SCOPE = ['shibaFan', 'shijiuWei', 'pregnancy'];
     const source = cites.length > 0 ? citeLine(cites) : citeScope(SCOPE);
-    const speech = joinSentences([unknownNote, body]);
+
+    // 原因句。
+    //
+    // 默认只说一条：播报一遍就过去了，两句以上的原因会挤掉结论本身，
+    // 用户记住的是「说了很多」而不是「不能用」。想听全的可以追问。
+    // 追问「为什么」时才把每条原因和争议一并给出来——那时候用户要的是解释，不是答案。
+    // 同组的多对药合并成一句原因（甘草配大戟、甘遂 → 「大戟、甘遂是利水药」）。
+    // 不合并的话，播报要么复读同一段原因，要么只说其中一味，
+    // 而用户问了五味药，只解释两味，剩下三味等于没查。
+    const uniqBrief = mergeBriefs(reasons).slice(0, wantsReason ? 3 : 1);
+    let whyLine = '';
+    if (uniqBrief.length) {
+      whyLine = `原因：${uniqBrief.join('；')}`;
+      if (wantsReason) {
+        const debate = [...new Set(reasons.map((x) => x.debate).filter(Boolean))][0];
+        if (debate) whyLine += `。需要说明的是：${debate}`;
+      }
+    }
+
+    // 顺序：结论 → 原因 → 附带提示。
+    // 原因紧跟结论，中间不插妊娠或毒性提示——那是两件事，
+    // 隔开之后用户听到的是「不能用、孕妇禁用、原因是什么」，因果被打断了。
+    const speech = joinSentences([unknownNote, body, whyLine, noticeParts.join('。')]);
 
     return {
       herbs: r.herbs,
@@ -320,8 +387,20 @@ export function createQihuangPack(engines) {
       weis: r.weis,
       pregnancy,
       toxicity: r.toxicity,
+      // 屏幕用：每对药一条完整原因。播报只念浓缩的一句，屏幕给全文，
+      // 因为语音听完就过去了，而「为什么」这件事用户往往要停下来读。
+      reasons,
+      // 屏幕正文：结论 + 附带提示，**不含**播报里那句浓缩原因。
+      // 屏幕下面紧接着就是原因的全文，第一行再带一句浓缩版
+      // 会变成「原因：…」然后又是「原因：…」，同一件事说两遍。
+      screenText: joinSentences([unknownNote, body, noticeParts.join('。')]),
       source,
       sourceTag: citeTag(cites.length > 0 ? cites : SCOPE),
+      // 播报长度按内容给，不再是全应用一个 32。
+      // 32 字装不下「结论 + 原因」，而原因被截掉就只剩一句禁令，
+      // 用户听到的是「不能吃」却不知道为什么——那和查字典没区别。
+      // 追问为什么时放宽到 140，那时候用户要的就是全文。
+      ...(reasons.length > 0 ? { sayMax: wantsReason ? 140 : 72 } : {}),
       speech,
     };
   }
@@ -338,7 +417,16 @@ export function createQihuangPack(engines) {
     return String(text || '')
       .replace(/(能不能|可不可以|能否|会不会)(一起|同时|同)?(吃|用|服|喝|服用|泡水)?/g, '')
       .replace(/(可以|能)(一起|同时|同)(吃|用|服|喝)/g, '')
-      .replace(/(相克|相反|配伍|忌讳|禁忌|冲突)/g, '')
+      .replace(/(相克|相反|配伍|忌讳|禁忌|冲突|十八反|十九畏|相冲|相忌|打架)/g, '')
+      // 追问用语。「为什么甘草反海藻」里「为什么」和「反」都不是药名，
+      // 不剥掉会剩下整整八个字，连「像不像药名」都过不了，
+      // 最后答「没听出药名」——用户明明说得很清楚，却被告知没听懂。
+      // 不剥「怎么」：它属于「怎么用/怎么吃」这类问法，下面那一行整词处理更准，
+      // 这里先剥会留下一个孤零零的「用」，被当成没听出的药名。
+      .replace(/(为什么|为啥|凭什么|什么道理|原因|原理|道理)/g, '')
+      // 「反」单独剥，放在「相反」「十八反」之后：整词已经处理过，
+      // 剩下的「反」只会出现在「A反B」这种句式里，不可能是药名的一部分。
+      .replace(/反/g, ' ')
       // 「XX有什么功效」「XX是什么」「XX能不能吃」是最常见的三种问法。
       // 不剥掉，整句会被当成一个药名（「铁皮石斛有什么功效」七个字），
       // 连「像不像药名」都过不了，最后答「没听出药名」——
@@ -856,9 +944,10 @@ export function createQihuangPack(engines) {
     // 上游（流水线）如果已经切好药名，就直接用它的结果——
     // 两处各切一次会出现「上游认出附子、下游答没听出药名」这种自相矛盾。
     const preHerbs = Array.isArray(payload.herbs) ? payload.herbs : null;
+    const wantsReason = Boolean(payload.wantsReason) || WANT_REASON.test(text);
     const args = preHerbs
-      ? { text, query: text, herbs: preHerbs, name: preHerbs[0] }
-      : { text, query: text, herbs: text, name: text };
+      ? { text, query: text, herbs: preHerbs, name: preHerbs[0], wantsReason }
+      : { text, query: text, herbs: text, name: text, wantsReason };
     const result = viewDispatch(intent, args);
     return { ...result, intent, text };
   }
