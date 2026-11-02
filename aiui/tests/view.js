@@ -86,9 +86,11 @@ out = ask('查一下当归');
 check('标题是药名', out.patch.title, '当归');
 truthy('详情有性味或用量', String(out.patch.detail).length > 0);
 truthy('播报带出处', /《中国药典》/.test(spoken[0]));
-// 屏幕上也留一行：《中国药典》＋《本草纲目》这类短标签。
-// 语音听完就忘了，想核对的时候必须有个地方能看。
-truthy('屏幕上也标了出处', /《中国药典》/.test(String(out.patch.detail)));
+// 出处必须跟在结论后面，而不是跑到结论上方。
+// 页面从上到下是 title → detail → answer，detail 在结论之上：
+// 出处写进 detail，屏幕就变成「先看出处、后看结论」。这条断言守的是位置。
+truthy('结论后面标了出处', /出处：《中国药典》/.test(String(out.patch.answer)));
+truthy('出处不在结论上方', !/出处/.test(String(out.patch.detail)));
 
 console.log('\n【6】重复说同一句不重复念，「再说一遍」能重听');
 spoken.length = 0;

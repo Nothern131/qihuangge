@@ -178,27 +178,31 @@ export function createQihuangView({ engines, store = null } = {}) {
             : '换个说法，或者把药名说全';
         } else {
           const head = [r.xingwei, r.dosage].filter(Boolean).join('　｜　');
-          // 不在这里写「《X》有原文」：下面那行出处已经列了书名，
-          // 两处书名相同看起来像重复三次，而屏幕只有两行宽。
+          // 「下方附原文」不加书名：出处行里已经列了，同一行出现两次书名
+          // 看起来像 bug，而屏幕只有两行宽。
           patch.detail = r.ancient ? `${head}　｜　下方附原文` : head;
         }
         patch.status = r.found === false ? '没查到' : '已查询';
         tone = r.found === false ? 'idle' : (r.toxicity && r.toxicity !== '无毒' ? 'warn' : 'ok');
         // 经典原文放屏幕，不塞进播报：古文断句在语音里很难听懂，
-        // 而且会把「功效」挤到听不见的位置。播报里已经说了「屏幕上有原文」。
+        // 而且会把「功效」挤到听不见的位置。播报里已经说了屏幕上有原文。
+        //
+        // 正文用 screenText 而不是 speech：speech 末尾那句
+        // 「原文见《X》，屏幕上可看」在屏幕上紧跟着就是原文，指着自己说，多余。
         if (r.ancient) {
-          patch.answer = `${r.speech}\n《${r.ancient.source}·${r.ancient.chapter}》：${r.ancient.text}`;
+          patch.answer = `${r.screenText || r.speech}\n《${r.ancient.source}·${r.ancient.chapter}》：${r.ancient.text}`;
         }
       }
 
       patch.tone = tone;
-      // 屏幕上也留一行出处。语音听完就忘了，想核对时得有地方看；
-      // 而且单墨绿屏上这行小字比任何图标都容易做对（颜色会塌成亮度）。
+      // 出处写在结论后面，不往 detail 里塞。
       //
-      // 加「出处」二字而不是光贴书名：只有书名和前面的「性味」「常用量」
-      // 看起来是同一层信息，用户分不清哪部分是依据、哪部分是资料名。
+      // 页面结构从上到下是 title → detail → answer，detail 在结论上方。
+      // 把出处放 detail，屏幕上就是「先看出处、后看结论」——顺序反了，
+      // 实测确实如此（共 1 条提示 ｜ 出处 …. 上面，结论在下面红字）。
+      // 出处是结论的附属信息，位置必须跟在结论句之后。
       if (r.sourceTag) {
-        patch.detail = [patch.detail, `出处 ${r.sourceTag}`].filter(Boolean).join('　｜　');
+        patch.answer = `${patch.answer || r.speech}\n出处：${r.sourceTag}`;
       }
       // 同一句话连问两次就不重播，避免「没听清 → 再说一遍」时被自己的播报盖住
       return emit(patch, same ? null : r.speech, same ? '' : lastSource);

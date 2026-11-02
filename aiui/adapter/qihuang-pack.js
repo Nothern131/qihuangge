@@ -521,6 +521,10 @@ export function createQihuangPack(engines) {
         ? `${citeLong('bencao')} 屏幕上那段原文出自《${ancient.source}》，不是药典条目。`
         : citeLong('bencao'),
       speech: `${exact}：` + joinSentences(ancientSay ? [...parts, ancientSay] : parts),
+      // 屏幕版正文：不带「原文在屏幕上可看」这句。
+      // 那句话是给语音用的（用户看不见屏幕，得告诉他去看），
+      // 放到屏幕上就变成「原文在屏幕上可看」紧接一段原文——自己指着自己，多余。
+      screenText: `${exact}：` + joinSentences(parts),
     };
   }
 
