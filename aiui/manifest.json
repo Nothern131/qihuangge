@@ -1,0 +1,19 @@
+{
+  "_说明": "岐黄阁 AIUI 适配层加载清单。路径相对岐黄阁项目根，顺序敏感。",
+  "_约束": "此文件只声明「加载哪些原始文件」，原始文件本身零改动。新增功能一律加在 aiui/ 目录内。",
+  "scripts": [
+    "static/js/engine-registry.js",
+    "static/js/engines/interaction-engine.js",
+    "static/js/engines/bencao-engine.js",
+    "static/js/engines/vitamin-engine.js",
+    "static/js/engines/tizhi-engine.js",
+    "static/js/engines/symptom-engine.js"
+  ],
+  "_未纳入": {
+    "bianzheng-engine.js": "辨证=诊断，商店审核红线，不上架",
+    "fangji-engine.js": "方剂=开方，同上",
+    "report-engine.js": "综合报告会输出诊断结论，同上",
+    "masters-engine.js": "大师医案，内容量大且属诊疗，暂不纳入",
+    "archive-engine.js": "个人档案，需要存储与隐私合规设计，二期再做"
+  }
+}

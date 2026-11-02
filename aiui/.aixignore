@@ -1,0 +1,8 @@
+# 不打进 .aix 的开发文件。
+# 注意：.aixignore 是仓库提交信息里提到的机制，官方文档没有正式定义它的语法，
+# 所以这里只列「即使被打进去也无害」的目录。原始引擎在 aiui/ 之外，
+# 设备上用的是 vendor/ 里的包装副本（源文件零改动，见 tools/vendor-engines.js）。
+tests/
+tools/
+node_modules/
+package-lock.json

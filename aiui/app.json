@@ -1,0 +1,7 @@
+{
+  "pages": ["pages/index/index"],
+  "permissions": ["RECORD_AUDIO"],
+  "window": {
+    "navigationBarTitleText": "本草速查"
+  }
+}
