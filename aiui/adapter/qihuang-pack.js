@@ -19,6 +19,9 @@ import { reasonFor, mergeBriefs, mergeReasons, whyLabel, reasonSource, WEI_DEFIN
 // 十九畏的配对以歌诀原文为准。引擎 FEAR_PAIRS 有两组读错（川乌草乌、
 // 人参赤石脂），这里做校正并把「改了什么」回传给用户，不做静默纠正。
 import { reconcileWei, CANON_HERBS, ALIASES } from './wei-canon.js';
+// 毒性分级以《中国药典》83 种名单为准。引擎那张表两个方向都错（半夏被判无毒、
+// 野菊花被判有毒），详见 toxicity-canon.js 顶部的对照结论。
+import { toxicityOf, NOT_LISTED, CANON_HERBS as TOX_HERBS, normalizeToxin } from './toxicity-canon.js';
 
 // 出处不再手写在每个分支里，而是作为 source 字段回传，由页面挂到播报尾巴上。
 // 这么改是因为手写 19 处的结果必然是「改了 18 处，漏掉的那处静默地说了一句
@@ -159,7 +162,13 @@ export function createQihuangPack(engines) {
   // 第三份是歌诀里的药名与别名：引擎表和本草库都没有「五灵脂」「肉桂」「赤石脂」，
   // 而「人参五灵脂」正是十九畏里最常被问到的一对。不补这三个词，
   // 用户说「人参五灵脂能一起用吗」会被切成只剩「人参」，答复变成「没查到禁忌」。
-  const LEXICON = buildLexicon(InteractionEngine, BencaoEngine, [...CANON_HERBS, ...Object.keys(ALIASES)]);
+  //
+  // 第四份是药典毒性名单：山豆根、白屈菜、金铁锁这些既不在引擎表也不在本草库，
+  // 不补的话「山豆根有毒吗」会被切成一味不认识的药，答「本草库还没收录」——
+  // 而它的毒性恰恰是药典里写着的。
+  const LEXICON = buildLexicon(InteractionEngine, BencaoEngine, [
+    ...CANON_HERBS, ...Object.keys(ALIASES), ...TOX_HERBS,
+  ]);
 
   /**
    * 意图分流表。
@@ -416,7 +425,16 @@ export function createQihuangPack(engines) {
       noticeParts.push(`妊娠${groupByLevel(pregnancy, (p) => (/禁用/.test(p.msg) ? '禁用' : (/慎用/.test(p.msg) ? '慎用' : '')))}`);
       cites.push('pregnancy');
     }
-    const toxic = (r.toxicity || []).filter((t) => t.toxicity && t.toxicity !== '无毒');
+    // 毒性提示也按药典名单算，不再用 r.toxicity。
+    // r.toxicity 来自引擎的 getToxicity，而那张表缺半夏、白果、山豆根这些
+    // 药典明列的有毒品——「甘草、半夏」这种问法会漏掉半夏的毒性提示。
+    const toxic = herbs
+      .filter((h) => !unrecognized.includes(h))
+      .map((h) => {
+        const t = toxicityOf(h);
+        return { herb: h, toxicity: t ? (t.level || '已取消药用标准') : null };
+      })
+      .filter((t) => t.toxicity);
     if (toxic.length) {
       // 同级的药名合在一起，级别只写在末尾一次：「大戟、甘遂（有毒）」。
       noticeParts.push(`毒性：${groupByLevel(toxic, (t) => t.toxicity, '、')}`);
@@ -448,14 +466,20 @@ export function createQihuangPack(engines) {
     // 只有它、没有别的结论时（问「川乌草乌」），正文就是它：
     // 此时说「没查到禁忌」是错的，禁忌查到了，只是歌诀说不是这一对。
     const bodyParts = [...speechParts, ...corrections];
+    // 有妊娠提示时，正文只回答「配伍禁忌」这一项，不再提妊娠。
+    // 原来这种情况正文整个留空，理由是「妊娠禁用」后面接「没查到妊娠禁忌」自相矛盾——
+    // 但留空本身也是错的：「甘草和半夏能一起吃吗」屏幕上只剩「妊娠禁用：半夏」
+    // 和「毒性：半夏」，用户问的那件事（这两味能不能配）没有一句话回答。
+    // 矛盾的根源是句子把三类检查捆在一句里说，拆开就没有矛盾了。
+    const noConflict = known.length === 1
+      // 单味药说「之间」是病句，质检最容易挑出来的那种
+      ? `没有查到${known[0]}相关的十八反、十九畏`
+      : `${known.join('、')}之间没有十八反、十九畏`;
     const body = bodyParts.length > 0
       ? bodyParts.join('。')
-      : (pregnancy.length > 0
-        ? ''
-        : (known.length === 1
-          // 单味药说「之间」是病句，质检最容易挑出来的那种
-          ? `没有查到${known[0]}相关的十八反、十九畏或妊娠禁忌`
-          : `${known.join('、')}之间没有查到十八反、十九畏或妊娠禁忌`));
+      : (pregnancy.length > 0 || toxic.length > 0
+        ? noConflict
+        : `${noConflict}或妊娠禁忌`);
     // 一条都没命中时也要交代「拿什么核的」，否则「没查到」等于没依据的安静。
     // 这不是免责，是让用户知道这次是翻了三本书没翻到，不是我没查。
     // 有结论走 citeLine（说「出处」），没结论走 citeScope（说「按…核对」）——
@@ -595,21 +619,12 @@ export function createQihuangPack(engines) {
   function isKnownHerb(name) {
     if (!name) return false;
     if (LEXICON.has(name)) return true;
-    // 毒性表里有记录的，也算认识。
-    // 引擎的 TOXICITY 表没有暴露出来（只导出了 FEAR_PAIRS 等六个字段），
-    // 所以词表收不到它里面的药名——「全蝎」「斑蝥」这些全不在 123 味本草库里，
-    // 结果「全蝎有毒吗」被判成「不认识这味药」，而引擎其实存着它的大毒记录。
-    // 这里用 getToxicity 的返回值反推：说得出毒性等级，就是表里有。
-    // 只认「非无毒」——因为 getToxicity 对任何未知输入都返回「无毒」（见坑三），
-    // 拿它当正判据会把「★☆※」也认成药。
-    if (InteractionEngine && typeof InteractionEngine.getToxicity === 'function') {
-      try {
-        const t = InteractionEngine.getToxicity(name);
-        if (t && t !== '无毒') return true;
-      } catch (err) {
-        console.error('[qihuang] getToxicity 失败：', err.message);
-      }
-    }
+    // 药典毒性名单里有的，当然认识。
+    // 引擎的 TOXICITY 表没有导出（只导出了 FEAR_PAIRS 等六个字段），
+    // 所以词表收不到它里面的药名——「全蝎」「斑蝥」这些既不在词表也不在本草库里，
+    // 「全蝎有毒吗」会被判成不认识这味药，而它明明是药典的有毒品。
+    // 现在判据换成药典名单，比引擎那张错表可靠：名单是权威的，引擎表不是。
+    if (toxicityOf(name)) return true;
     const B = BencaoEngine;
     if (B && typeof B.search === 'function') {
       try {
@@ -777,33 +792,59 @@ export function createQihuangPack(engines) {
     const I = need('InteractionEngine', InteractionEngine);
     const name = readName(payload, '药名');
 
-    if (!isKnownHerb(name)) {
+    // 分级改以《中国药典》83 种名单为准（toxicity-canon.js），不再透传引擎。
+    // 引擎那张表两个方向都错：半夏、白果、山豆根在药典里是「有毒」，
+    // 引擎里根本没有它们，透传就成了「半夏在药典里标注为无毒」——
+    // 一味药典明列的有毒药、还是十八反成员，被答成无毒。这不是数据陈旧。
+    const tox = toxicityOf(name);
+    // 认不认识只影响后半句，不该把整个问题挡掉。
+    // 原来这里「不认识 → 本草库还没收录」，但用户问的是毒性，
+    // 而毒性依据的是药典那 83 种名单，不依赖本草库——名单是完整的，
+    // 查不到就说「不在名单里」，这比「本草库没收录」更接近他问的事。
+    const known = isKnownHerb(name);
+
+    if (!tox && !known && !isHerbLike(name)) {
       return {
         name,
         found: false,
         toxicity: null,
         source: NOT_RECORDED.herb,
         sourceTag: '',
-        speech: isHerbLike(name)
-          ? `本草库还没收录${name}，查不到它的毒性记录。`
-          : '没听出药名。',
+        speech: '没听出药名。',
       };
     }
 
-    const level = I.getToxicity(name);
+    if (tox) {
+      return {
+        name,
+        found: true,
+        // level 是等级字符串；已取消药用标准的没有等级，给字符串本身，
+        // 调用方按「非空且不是无毒」判断有没有要提醒的东西，两种都能覆盖。
+        toxicity: tox.level || '已取消药用标准',
+        source: citeLine(['toxicity']),
+        sourceTag: citeTag(['toxicity']),
+        // 原来这句尾巴是「用量和炮制方式要严格按医嘱」。删掉的原因不是嫌它长：
+        // 它把「谁负责」从书转移到了一个不在场的人身上，用户听完只剩一句
+        // 「反正得问别人」，既没得到知识也没得到边界。换成出处之后，
+        // 主语是药典，用户知道自己该去翻什么。
+        speech: tox.kind === 'canon'
+          ? `${tox.text}，具体用量和炮制方式药典里有规定，我不给数。`
+          : tox.text,
+      };
+    }
+
+    // 名单里没有。这里**不能**说「无毒」：83 种名单只覆盖药典收载的毒性品种，
+    // 不在名单只说明药典没把它列为毒性药材，不说明它安全——
+    // 而且「查不到」被说成「可以吃」是这个应用已经踩过一次的坑。
     return {
       name,
       found: true,
-      toxicity: level,
-      source: citeLine(['toxicity']),
-      sourceTag: '《中国药典》毒性分级',
-      // 原来这句尾巴是「用量和炮制方式要严格按医嘱」。删掉的原因不是嫌它长：
-      // 它把「谁负责」从书转移到了一个不在场的人身上，用户听完只剩一句
-      // 「反正得问别人」，既没得到知识也没得到边界。换成出处之后，
-      // 主语是药典，用户知道自己该去翻什么。
-      speech: level === '无毒'
-        ? `${name}在药典里标注为无毒。`
-        : `${name}在药典里标注为「${level}」，具体用量和炮制方式药典里有规定，我不给数。`,
+      toxicity: null,
+      source: citeScope(['toxicity'], '没有把它列为毒性药材'),
+      sourceTag: citeTag(['toxicity']),
+      speech: known
+        ? `${name}${NOT_LISTED}。`
+        : `${name}${NOT_LISTED}，本草库也没有收录它的条目。`,
     };
   }
 
@@ -888,8 +929,14 @@ export function createQihuangPack(engines) {
     const preg = typeof I.checkPregnancy === 'function'
       ? collapseByHerb(I.checkPregnancy(known) || [])
       : [];
-    const tox = known.map((h) => ({ herb: h, level: I.getToxicity(h) }));
-    const toxic = tox.filter((t) => t.level && t.level !== '无毒');
+    // 毒性也走药典名单，不再用 I.getToxicity。
+    // 「能不能吃」这条路上漏报一次，用户就会把它当成「可以吃」——
+    // 而引擎表里半夏、白果、山豆根整个缺失，透传等于替它们开了通行证。
+    const tox = known.map((h) => {
+      const t = toxicityOf(h);
+      return { herb: h, level: t ? (t.level || '已取消药用标准') : null, text: t ? t.text : '' };
+    });
+    const toxic = tox.filter((t) => t.level);
 
     const parts = [];
     const cites = [];
@@ -898,7 +945,7 @@ export function createQihuangPack(engines) {
       cites.push('pregnancy');
     }
     if (toxic.length) {
-      parts.push(toxic.map((t) => `${t.herb}在药典里标注「${t.level}」`).join('、'));
+      parts.push(toxic.map((t) => t.text).join('、'));
       cites.push('toxicity');
     }
 

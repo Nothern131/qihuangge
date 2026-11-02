@@ -291,15 +291,17 @@ check('藜芦配细辛走发散那一路', () => {
 // ── 空正文：只有提示、没有禁忌时，必须正面回答「能不能同用」 ──
 console.log('\n[7] 没有禁忌时，正文要正面回答用户问的那件事');
 
-// 细辛配芍药：两味都收录了，之间确实没有十八反/十九畏，
-// 但细辛有小毒，于是正文原来被清空，屏幕只剩「毒性：细辛（小毒）」——
-// 用户问「能同用吗」，屏幕上没有一句话回答。
-const noConflict = pack.invoke('ask', { text: '细辛和芍药能同用吗', query: '细辛和芍药能同用吗' });
-truthy('正文说了「没有查到」', /没有查到/.test(noConflict.screenText || ''), noConflict.screenText);
-truthy('毒性提示仍在', /毒性：细辛/.test(noConflict.screenText || ''), noConflict.screenText);
+// 甘草配半夏：两味之间确实没有十八反、十九畏（反半夏的是乌头），
+// 但半夏有妊娠禁用和毒性提示。正文原来被清空，屏幕只剩提示——
+// 用户问「能同用吗」，屏幕上没有一句话回答那可不可以。
+const noConflict = pack.invoke('ask', { text: '甘草和半夏能同用吗', query: '甘草和半夏能同用吗' });
+truthy('正文回答了有没有配伍禁忌', /之间没有十八反、十九畏/.test(noConflict.screenText || ''), noConflict.screenText);
+truthy('毒性提示仍在', /毒性：半夏（有毒）/.test(noConflict.screenText || ''), noConflict.screenText);
+truthy('妊娠提示仍在', /妊娠禁用：半夏/.test(noConflict.screenText || ''), noConflict.screenText);
 
-// 但妊娠必须例外：妊娠禁忌本身就是这三类检查之一，
-// 前一句「妊娠禁用」、后一句「没查到妊娠禁忌」会自己打自己。
+// 有妊娠提示时，正文不能再说「没查到妊娠禁忌」——前一句刚说禁用，后一句说没查到，
+// 自己打自己。原来为了躲这个矛盾干脆把正文清空，代价是用户的问题没人答。
+// 现在的做法是把句子拆开：正文只说配伍禁忌，妊娠单独作为提示。
 const preg = pack.invoke('ask', { text: '三棱能吃不', query: '三棱能吃不' });
 check('有妊娠禁用时不套「没查到妊娠禁忌」', () => {
   const t = preg.screenText || '';
