@@ -47,7 +47,7 @@ function clipAtComma(text, max) {
  * @param {string} text 完整结论
  * @param {object} opts
  * @param {number} opts.max 播报上限字符数
- * @param {string} opts.tail 必须保留的尾句（免责声明这类合规内容必须传，不能靠裁剪侥幸留下）
+ * @param {string} opts.tail 必须保留的尾句（出处这类不能靠裁剪侥幸留下的内容必须传）
  * @returns {string} 可直接交给 TTS 的一到三句
  */
 export function toBrief(text, { max = 40, tail = '' } = {}) {
@@ -64,7 +64,9 @@ export function toBrief(text, { max = 40, tail = '' } = {}) {
   if (out.length > max) out = clipAtComma(out, max);
 
   if (tail && !out.includes(tail)) {
-    out = out.replace(/[。；]$/, '') + '。' + tail;
+    // 去掉尾部任意标点再拼。只去句号/分号会念出「…有规定，。出处是…」——
+    // 逗号被截断处留下的尾巴没被清掉，TTS 会把那个逗号当停顿念出来。
+    out = out.replace(/[。；，、,;：:]$/, '') + '。' + tail;
   }
   return out;
 }

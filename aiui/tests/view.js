@@ -53,9 +53,12 @@ function ask(q) {
   return out;
 }
 
-console.log('【1】开场白：必须自带免责声明');
+console.log('【1】开场白：一句话说清「我说的话有出处」');
 truthy('开场白提到能做什么', /禁忌|一起用/.test(GUIDE));
-truthy('开场白带免责声明', GUIDE.includes('咨询医师'));
+// 开场白就是产品承诺。承诺了什么，用户就会用那个标准要求它——
+// 说「每条都告诉你出哪本书」，后面每条就真的得带出处（[5][7] 在守这件事）。
+truthy('开场白承诺给出处', /哪本书|出处/.test(GUIDE));
+truthy('开场白不挂免责话术', !/咨询医师|仅供参考|药师/.test(GUIDE));
 
 console.log('\n【2】口语不加连词也要查得出配伍禁忌');
 let out = ask('甘草海藻能不能一起吃');
@@ -77,11 +80,14 @@ truthy('标题承认没查到', /没查到|没听出/.test(out.patch.title));
 truthy('详情指出是哪一味没查到', String(out.patch.detail).includes('乱说的东西'));
 truthy('不谎称无禁忌', !/没有查到.*禁忌/.test(String(out.patch.answer)));
 
-console.log('\n【5】本草条目查询：性味 + 用量 + 免责');
+console.log('\n【5】本草条目查询：性味 + 用量 + 出处');
 out = ask('查一下当归');
 check('标题是药名', out.patch.title, '当归');
 truthy('详情有性味或用量', String(out.patch.detail).length > 0);
-truthy('播报带免责声明', spoken[0].includes('咨询医师'));
+truthy('播报带出处', /《中国药典》/.test(spoken[0]));
+// 屏幕上也留一行：《中国药典》＋《本草纲目》这类短标签。
+// 语音听完就忘了，想核对的时候必须有个地方能看。
+truthy('屏幕上也标了出处', /《中国药典》/.test(String(out.patch.detail)));
 
 console.log('\n【6】重复说同一句不重复念，「再说一遍」能重听');
 spoken.length = 0;
@@ -92,12 +98,14 @@ check('同一句第二次不重复播报', spoken.length, afterFirst);
 const o3 = view.handle('再说一遍'); applyOut(o3);
 check('「再说一遍」触发重播', spoken.length, afterFirst + 1);
 
-console.log('\n【7】播报长度受控（超过 32 字由 speech 层压缩，但免责声明必须留）');
+console.log('\n【7】播报长度受控（超过 32 字由 speech 层压缩，但出处必须留）');
 ask('当归');
 ask('甘草海藻能不能一起吃');
 const longest = spoken.reduce((a, b) => (b.length > a.length ? b : a), '');
 truthy('最长播报不超过 60 字', longest.length <= 60);
-truthy('最长播报保留免责声明', longest.includes('咨询医师'));
+// 这条守的是设计：出处走 tail，进 toBrief 的「永不裁剪」路径。
+// 如果哪天有人把出处改回拼在 speech 末尾，这里会红。
+truthy('最长播报保留出处', /《[^》]+》|药典|现代营养学/.test(longest));
 console.log(`       最长 ${longest.length} 字：${longest}`);
 
 console.log('\n【8】拒绝档：屏幕必须一眼看出「系统没答」');

@@ -12,8 +12,13 @@
 import { buildLexicon, findNutrients, splitHerbList } from './herb-lexicon.js';
 // 经典原文由 tools/vendor-data.js 内嵌（源文件 static/data/ancient_texts.json 只读未改）
 import { ANCIENT_TEXTS } from '../vendor/ancient-texts.js';
+import { citeLine, citeTag, citeLong, ancientLine, NOT_RECORDED } from './sources.js';
 
-const DISCLAIMER = '仅供参考，具体用药请咨询医师或药师。';
+// 出处不再手写在每个分支里，而是作为 source 字段回传，由页面挂到播报尾巴上。
+// 这么改是因为手写 19 处的结果必然是「改了 18 处，漏掉的那处静默地说了一句
+// 和别处不一致的话」——静默比少说严重。
+// 挂在 tail 上还有第二个理由：播报会被 toBrief 按句截断，
+// 出处拼在 speech 里就有被截掉的可能，而截掉之后听起来像结论没有来源。
 
 export const SAFE_ACTIONS = ['check', 'herb', 'toxicity', 'vitamin', 'vitamin-mix', 'pregnancy', 'safety', 'ask'];
 
@@ -133,17 +138,31 @@ export function createQihuangPack(engines) {
       }
 
       switch (action) {
-        case 'check': return viewCheck(payload);
-        case 'herb': return viewHerb(payload);
-        case 'toxicity': return viewToxicity(payload);
-        case 'pregnancy': return viewPregnancy(payload);
-        case 'safety': return viewSafety(payload);
-        case 'vitamin': return viewVitamin(payload);
-        case 'vitamin-mix': return viewNutrientMix(payload);
-        // ask 是唯一的「自然语言入口」：眼镜上用户不会说「查配伍」，
-        // 只会说「甘草海藻能不能一起吃」。分流规则放在适配层而不是页面，
-        // 因为只有这里能手写测试（见 tests/smoke.mjs 的意图分流用例）。
-        default: return viewAsk(payload);
+        case 'ask':
+          // ask 是唯一的「自然语言入口」：眼镜上用户不会说「查配伍」，
+          // 只会说「甘草海藻能不能一起吃」。分流规则放在适配层而不是页面，
+          // 因为只有这里能手写测试（见 tests/smoke.js 的意图分流用例）。
+          return viewAsk(payload);
+        default: {
+          // 每个动作都补一个 intent。视图模型靠它决定屏幕怎么排，
+          // 而直接 invoke('vitamin-mix') 拿到的是没有 intent 的结果——
+          // 实测表现是「钙和铁能一起吃吗」的屏幕上写着一个「本草」。
+          const views = {
+            check: viewCheck,
+            herb: viewHerb,
+            toxicity: viewToxicity,
+            pregnancy: viewPregnancy,
+            safety: viewSafety,
+            vitamin: viewVitamin,
+            'vitamin-mix': viewNutrientMix,
+          };
+          const fn = views[action];
+          // 动作名叫 vitamin-mix，但语义上的意图名是 nutrient-mix；
+          // 两套名字混用会让视图模型漏掉一个分支（屏幕上是「本草」那种错）。
+          // 这里统一成意图名，动作名只留在 SAFE_ACTIONS 这一层。
+          const intent = action === 'vitamin-mix' ? 'nutrient-mix' : action;
+          return fn ? { ...fn(payload), intent } : viewAsk(payload);
+        }
       }
     },
 
@@ -189,8 +208,8 @@ export function createQihuangPack(engines) {
       // 不区分的话两种情况都念「没听出药名」，说「三七」的用户会一直重说。
       const herbLike = unrecognized.filter(isHerbLike);
       const speech = herbLike.length > 0
-        ? `本草库里还没有收录${herbLike.join('、')}，查不了它的配伍禁忌。${DISCLAIMER}`
-        : `没听出药名。请说两味药，比如「甘草 海藻」。${DISCLAIMER}`;
+        ? `本草库里还没有收录${herbLike.join('、')}，查不了它的配伍禁忌。`
+        : '没听出药名。请说两味药，比如「甘草 海藻」。';
       return {
         herbs,
         recognized: false,
@@ -202,7 +221,10 @@ export function createQihuangPack(engines) {
         pregnancy: [],
         toxicity: [],
         unknown: unrecognized,
-        disclaimer: DISCLAIMER,
+        // 这一档没有结论，也就没有出处可引。给的是边界句，不是免责话术：
+        // 「没收录」和「能用」是两件事，不说清这一点，用户会把安静当成安全。
+        source: NOT_RECORDED.herb,
+        sourceTag: '',
         speech,
       };
     }
@@ -235,6 +257,7 @@ export function createQihuangPack(engines) {
     pregnancy = collapseByHerb(pregnancy);
 
     const speechParts = [];
+    const cites = [];
     if (r.fans && r.fans.length) {
       // 「这两味」只在真的只涉及两味药时才对。三味药同时出现两对反，
       // 说「这两味不能同用」会让用户以为只有其中一对有问题。
@@ -242,16 +265,20 @@ export function createQihuangPack(engines) {
       for (const f of r.fans) for (const h of f.herbs || []) involved.add(h);
       const which = involved.size <= 2 ? '这两味' : '这些药';
       speechParts.push(`配伍禁忌：${r.fans.map((f) => f.msg).join('；')}。${which}属于十八反，不能同用`);
+      cites.push('shibaFan');
     }
     if (r.weis && r.weis.length) {
       speechParts.push(`十九畏：${r.weis.map((w) => w.msg).join('；')}`);
+      cites.push('shijiuWei');
     }
     if (pregnancy.length) {
       speechParts.push(`妊娠相关：${pregnancy.map((p) => p.msg).join('；')}`);
+      cites.push('pregnancy');
     }
     const toxic = (r.toxicity || []).filter((t) => t.toxicity && t.toxicity !== '无毒');
     if (toxic.length) {
       speechParts.push(`毒性提示：${toxic.map((t) => `${t.herb}（${t.toxicity}）`).join('、')}`);
+      cites.push('toxicity');
     }
 
     const totalWarnings = (r.fans || []).length + (r.weis || []).length + pregnancy.length;
@@ -270,7 +297,12 @@ export function createQihuangPack(engines) {
         ? `没有查到${known[0]}相关的十八反、十九畏或妊娠禁忌`
         : `${known.join('、')}之间没有查到十八反、十九畏或妊娠禁忌`)
       : speechParts.join('。');
-    const speech = joinSentences([unknownNote, body]) + DISCLAIMER;
+    // 一条都没命中时也要交代「拿什么核的」，否则「没查到」等于没依据的安静。
+    // 这不是免责，是让用户知道这次是翻了三本书没翻到，不是我没查。
+    const source = cites.length > 0
+      ? citeLine(cites)
+      : '这次是按《儒门事亲》十八反、《医经小学》十九畏和妊娠用药禁忌核的，都没记到这几味。';
+    const speech = joinSentences([unknownNote, body]);
 
     return {
       herbs: r.herbs,
@@ -282,7 +314,10 @@ export function createQihuangPack(engines) {
       weis: r.weis,
       pregnancy,
       toxicity: r.toxicity,
-      disclaimer: DISCLAIMER,
+      source,
+      sourceTag: cites.length > 0
+        ? citeTag(cites)
+        : '《儒门事亲》十八反、《医经小学》十九畏、妊娠用药禁忌歌',
       speech,
     };
   }
@@ -429,11 +464,13 @@ export function createQihuangPack(engines) {
       return {
         found: false,
         query: cleaned,
+        source: NOT_RECORDED.herb,
+        sourceTag: '',
         speech: knowsElsewhere
-          ? `${cleaned}没有性味功效条目，但禁忌库里有它的记录，可以问「${cleaned}有毒吗」或「孕妇能吃${cleaned}吗」。${DISCLAIMER}`
+          ? `${cleaned}没有性味功效条目，但禁忌库里有它的记录，可以问「${cleaned}有毒吗」或「孕妇能吃${cleaned}吗」。`
           : (isHerbLike(cleaned)
-            ? `本草库还没收录${cleaned}，目前收录 ${Object.keys(B.DB || {}).length} 味常用药材。${DISCLAIMER}`
-            : `没听出药名，说一下药名就行。${DISCLAIMER}`),
+            ? `本草库还没收录${cleaned}，目前收录 ${Object.keys(B.DB || {}).length} 味常用药材。`
+            : '没听出药名，说一下药名就行。'),
       };
     }
 
@@ -441,7 +478,7 @@ export function createQihuangPack(engines) {
     const exact = hits.find((h) => h === cleaned) || hits[0];
     const info = B.query(exact);
     if (!info) {
-      return { found: false, query: cleaned, speech: `查到了${exact}，但没有详细条目。` };
+      return { found: false, query: cleaned, source: NOT_RECORDED.herb, sourceTag: '', speech: `查到了${exact}，但没有详细条目。` };
     }
 
     // 只念四件用户当场最需要的事：性味、功效、用量、忌服。
@@ -455,7 +492,7 @@ export function createQihuangPack(engines) {
     const ancient = ancientFor(exact);
     // 原文放屏幕，播报只说一句「经典里有原文」。
     // 不整段念：古文的断句在语音里很难听懂，而且会把功效挤到听不见的地方。
-    const ancientSay = ancient ? `《${ancient.source}》里也有这味药的原文，屏幕上能看到` : '';
+    const ancientSay = ancient ? ancientLine(ancient.source) : '';
 
     return {
       found: true,
@@ -470,8 +507,15 @@ export function createQihuangPack(engines) {
       // 出处只在真讲这味药时给，不给就不给——编一个出处比没有出处糟得多
       ancient: ancient ? { source: ancient.source, chapter: ancient.chapter, text: ancient.original_text } : null,
       // 引擎字段自带句号（维生素的「功效」就是「…。」），直接拼会出现「。。」
-      // 用 joinSentences 统一管标点：引擎字段自带句号，手拼会出现「。。」
-      speech: `${exact}：` + joinSentences(ancientSay ? [...parts, ancientSay] : parts) + DISCLAIMER,
+      // 用 joinSentences 统一管标点
+      // 有原文时播报已点名《本草纲目》，尾巴就不再重复「性味功效按药典」，
+      // 改成屏幕上的那句长说明，让用户知道药性和原文是两套来源。
+      source: ancient ? `性味功效按《中国药典》；原文引自《${ancient.source}》。` : citeLine(['bencao']),
+      sourceTag: ancient ? `《中国药典》＋《${ancient.source}》` : '《中国药典》',
+      sourceLong: ancient
+        ? `${citeLong('bencao')} 屏幕上那段原文出自《${ancient.source}》，不是药典条目。`
+        : citeLong('bencao'),
+      speech: `${exact}：` + joinSentences(ancientSay ? [...parts, ancientSay] : parts),
     };
   }
 
@@ -495,9 +539,11 @@ export function createQihuangPack(engines) {
         name,
         found: false,
         toxicity: null,
+        source: NOT_RECORDED.herb,
+        sourceTag: '',
         speech: isHerbLike(name)
-          ? `本草库还没收录${name}，查不到它的毒性记录。${DISCLAIMER}`
-          : `没听出药名。${DISCLAIMER}`,
+          ? `本草库还没收录${name}，查不到它的毒性记录。`
+          : '没听出药名。',
       };
     }
 
@@ -506,9 +552,15 @@ export function createQihuangPack(engines) {
       name,
       found: true,
       toxicity: level,
+      source: citeLine(['toxicity']),
+      sourceTag: '《中国药典》毒性分级',
+      // 原来这句尾巴是「用量和炮制方式要严格按医嘱」。删掉的原因不是嫌它长：
+      // 它把「谁负责」从书转移到了一个不在场的人身上，用户听完只剩一句
+      // 「反正得问别人」，既没得到知识也没得到边界。换成出处之后，
+      // 主语是药典，用户知道自己该去翻什么。
       speech: level === '无毒'
-        ? `${name}在药典里标注为无毒。${DISCLAIMER}`
-        : `${name}在药典里标注为「${level}」，用量和炮制方式要严格按医嘱。${DISCLAIMER}`,
+        ? `${name}在药典里标注为无毒。`
+        : `${name}在药典里标注为「${level}」，具体用量和炮制方式药典里有规定，我不给数。`,
     };
   }
 
@@ -529,9 +581,11 @@ export function createQihuangPack(engines) {
         herbs,
         found: false,
         entries: [],
+        source: NOT_RECORDED.herb,
+        sourceTag: '',
         speech: isHerbLike(herbs[0])
-          ? `本草库还没收录${herbs.join('、')}，查不到妊娠禁忌记录。${DISCLAIMER}`
-          : `没听出药名。${DISCLAIMER}`,
+          ? `本草库还没收录${herbs.join('、')}，查不到妊娠禁忌记录。`
+          : '没听出药名。',
       };
     }
 
@@ -541,11 +595,15 @@ export function createQihuangPack(engines) {
 
     if (entries.length === 0) {
       // 查不到记录 ≠ 可以用。这句必须说，否则「没查到」会被当成「安全」。
+      // 但「去问医生」不是这里该给的答案：用户问的是「这味药记不记在禁忌歌里」，
+      // 那是书能回答的，答完就够了。
       return {
         herbs: known,
         found: true,
         entries: [],
-        speech: `${known.join('、')}没有查到妊娠禁忌记录，但没有记录不等于可以放心用，怀孕期间任何用药都要先问医生。${DISCLAIMER}`,
+        source: citeLine(['pregnancy']),
+        sourceTag: '妊娠用药禁忌歌',
+        speech: `${known.join('、')}没有查到妊娠禁忌记录，但没有记录不等于孕妇可以吃。`,
       };
     }
 
@@ -555,7 +613,9 @@ export function createQihuangPack(engines) {
       found: true,
       entries,
       strictest: entries.some((e) => e.level === 'strong') ? 'strong' : 'moderate',
-      speech: joinSentences([msgs.join('；'), '妊娠期间不要自行服用']) + DISCLAIMER,
+      source: citeLine(['pregnancy']),
+      sourceTag: '妊娠用药禁忌歌',
+      speech: joinSentences([msgs.join('；'), '妊娠期间不要自行服用']),
     };
   }
 
@@ -574,9 +634,11 @@ export function createQihuangPack(engines) {
         herbs,
         found: false,
         entries: [],
+        source: NOT_RECORDED.herb,
+        sourceTag: '',
         speech: isHerbLike(herbs[0])
-          ? `本草库还没收录${herbs.join('、')}，查不到它的禁忌和毒性记录。${DISCLAIMER}`
-          : `没听出药名。${DISCLAIMER}`,
+          ? `本草库还没收录${herbs.join('、')}，查不到它的禁忌和毒性记录。`
+          : '没听出药名。',
       };
     }
 
@@ -587,13 +649,20 @@ export function createQihuangPack(engines) {
     const toxic = tox.filter((t) => t.level && t.level !== '无毒');
 
     const parts = [];
-    if (preg.length) parts.push(preg.map((e) => e.msg.replace(/\s*—\s*/g, '：')).join('；'));
-    if (toxic.length) parts.push(toxic.map((t) => `${t.herb}在药典里标注「${t.level}」`).join('、'));
+    const cites = [];
+    if (preg.length) {
+      parts.push(preg.map((e) => e.msg.replace(/\s*—\s*/g, '：')).join('；'));
+      cites.push('pregnancy');
+    }
+    if (toxic.length) {
+      parts.push(toxic.map((t) => `${t.herb}在药典里标注「${t.level}」`).join('、'));
+      cites.push('toxicity');
+    }
 
     const body = parts.length === 0
       // 查不到记录 ≠ 可以放心用。这句必须说。
-      ? `${known.join('、')}没有查到妊娠禁忌或毒性记录，但这不等于可以放心用，具体请咨询医师或药师`
-      : parts.join('。') + (preg.length ? '。妊娠期间不要自行服用' : '。用量和炮制方式要按医嘱');
+      ? `${known.join('、')}没有查到妊娠禁忌或毒性记录，但这不等于可以放心用`
+      : parts.join('。') + (preg.length ? '。妊娠期间不要自行服用' : '');
 
     return {
       herbs: known,
@@ -601,7 +670,9 @@ export function createQihuangPack(engines) {
       entries: preg,
       toxicity: tox,
       hasWarning: parts.length > 0,
-      speech: joinSentences([body]) + DISCLAIMER,
+      source: citeLine(cites),
+      sourceTag: citeTag(cites),
+      speech: joinSentences([body]),
     };
   }
 
@@ -641,13 +712,15 @@ export function createQihuangPack(engines) {
     const hit = list.find((v) => norm(v.nameCN).includes(key) || norm(v.id) === key);
 
     if (!hit) {
-      // 「没收录」的答复同样要留退路。少了它，用户听到的是
+      // 「没收录」的答复同样要留边界。少了它，用户听到的是
       // 「这个库里没有它」——很容易被理解成「所以应该没关系」。
       return {
         found: false,
         query: name,
         available: list.slice(0, 8).map((v) => v.nameCN).filter(Boolean),
-        speech: `营养素库里没有「${name}」。可以问${list.slice(0, 4).map((v) => v.nameCN).filter(Boolean).join('、')}。${DISCLAIMER}`,
+        source: NOT_RECORDED.nutrient,
+        sourceTag: '',
+        speech: `营养素库里没有「${name}」。可以问${list.slice(0, 4).map((v) => v.nameCN).filter(Boolean).join('、')}。`,
       };
     }
 
@@ -665,8 +738,10 @@ export function createQihuangPack(engines) {
       effect: d.function,
       dailyIntake: d.dailyIntake,
       foods: d.foods,
+      source: citeLine(['vitamin']),
+      sourceTag: '现代营养学资料',
       // 引擎的「功效」字段本身带句号，直接用 join('。') 会念出「。。」
-      speech: `${d.nameCN || hit.nameCN}：` + joinSentences(parts) + DISCLAIMER,
+      speech: `${d.nameCN || hit.nameCN}：` + joinSentences(parts),
     };
   }
 
@@ -716,7 +791,9 @@ export function createQihuangPack(engines) {
       return {
         found: false,
         pair: ids.map(nameOf),
-        speech: `营养素库里没有「${ids.map(nameOf).join('、')}」这一对的搭配记录。没记录不等于可以随便一起吃，拿不准就问医师或药师。${DISCLAIMER}`,
+        source: NOT_RECORDED.nutrient,
+        sourceTag: '',
+        speech: `营养素库里没有「${ids.map(nameOf).join('、')}」这一对的搭配记录。没记录不等于可以随便一起吃。`,
       };
     }
 
@@ -735,7 +812,9 @@ export function createQihuangPack(engines) {
       entries: found,
       severity: found[0].severity,
       hasWarning: found.some((f) => f.severity === 'high' || f.severity === 'medium'),
-      speech: `${lines.join('；')}。${DISCLAIMER}`,
+      source: citeLine(['nutrientMix']),
+      sourceTag: '现代营养学资料',
+      speech: joinSentences([lines.join('；')]),
     };
   }
 
@@ -772,13 +851,21 @@ export function createQihuangPack(engines) {
   }
 
   function viewDispatch(intent, args) {
+    let result;
     switch (intent) {
-      case 'check': return viewCheck(args);
-      case 'pregnancy': return viewPregnancy(args);
-      case 'safety': return viewSafety(args);
-      case 'toxicity': return viewToxicity(args);
-      case 'vitamin': return viewVitamin(args);
-      default: return viewHerb(args);
+      case 'check': result = viewCheck(args); break;
+      case 'pregnancy': result = viewPregnancy(args); break;
+      case 'safety': result = viewSafety(args); break;
+      case 'toxicity': result = viewToxicity(args); break;
+      case 'vitamin': result = viewVitamin(args); break;
+      case 'vitamin-mix': result = viewNutrientMix(args); break;
+      case 'herb': result = viewHerb(args); break;
+      default: result = viewHerb(args);
     }
+    // intent 统一在这里补，而不是只靠 viewAsk 那一层补。
+    // 原因：页面也能直接 invoke('vitamin-mix') 拿到结果，
+    // 那条路上没有 intent，视图模型就会把它当成本草条目渲染——
+    // 实测表现是「钙和铁能一起吃吗」的屏幕上写着一个「本草」。
+    return { ...result, intent };
   }
 }

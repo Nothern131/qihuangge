@@ -109,12 +109,17 @@ for (const [dirty, herb] of [
   });
 }
 
-console.log('\n[9] 不变量：直接回答档一律带就医提示');
-// 少了这句，产品就从「查资料」越界成了「给建议」。
+console.log('\n[9] 不变量：直接回答档一律说得出出处');
+// 先断言「结论里没有免责话术」，再断言「给出了出处」。
+// 为什么两条都要：只删免责不补出处，等于把「有边界」变成「没依据」；
+// 只加出处不删免责，就成了用户明确提过不要的那种每句挂尾巴。
+const NO_DISCLAIMER = /仅供参考|咨询医师|咨询药师|见医生/;
+const HAS_SOURCE = /(《[^》]+》|药典|现代营养学|禁忌歌|本草库|营养素库|没收录|没记录)/;
 for (const t of ['附子有毒吗', '孕妇能吃桃仁吗', '甘草和海藻能一起吃吗', '桃仁能不能吃', '三七']) {
   const r = ask(t);
   if (r.verdict !== 'answer') continue;
-  check(`带就医提示：${t}`, () => assert.ok(/医师|药师|医嘱/.test(r.speech)));
+  check(`说了出处：${t}`, () => assert.ok(HAS_SOURCE.test(r.result.source || ''), `source=${r.result.source}`));
+  check(`不挂免责尾巴：${t}`, () => assert.ok(!NO_DISCLAIMER.test(r.speech), r.speech));
 }
 
 console.log('\n[10] 不变量：有风险时不允许出现安慰措辞');
@@ -172,7 +177,7 @@ check('钙和铁走搭配而不是单味', () => {
   assert.ok(/钙/.test(mix.speech) && /铁/.test(mix.speech), mix.speech);
   assert.ok(/间隔|分开/.test(mix.speech), mix.speech);
 });
-check('搭配结论带就医提示', () => assert.ok(/医师|药师/.test(mix.speech), mix.speech));
+check('搭配结论说得出出处', () => assert.ok(/现代营养学/.test(mix.result.source || ''), mix.result.source));
 check('库里没有这一对时不说「没问题」', () => {
   const r = ask('锌和镁能一起吃吗');
   assert.ok(!/(可以一起吃|没问题|放心)/.test(r.speech), r.speech);
@@ -234,7 +239,10 @@ for (const [q, want] of [['当归有什么功效', true], ['人参有什么功�
 }
 check('有原文时播报里要说明去哪看', () => {
   const r = ask('当归有什么功效');
-  assert.ok(/屏幕上能看到/.test(r.speech), r.speech);
+  assert.ok(/屏幕上/.test(r.speech), r.speech);
+  // 同时要能说出是哪本书——「屏幕上能看到」但不说书名，等于没说。
+  assert.ok(/《[^》]+》/.test(r.speech), r.speech);
+  assert.ok(/《[^》]+》/.test(r.result.source || ''), r.result.source);
 });
 
 console.log('\n[20] 耗时可控');

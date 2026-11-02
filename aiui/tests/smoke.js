@@ -76,13 +76,14 @@ for (const act of ['bianzheng', 'fangji', 'diagnose', 'prescribe']) {
   check(`拒绝 ${act}`, code, 'unsupported_action');
 }
 
-console.log('\n【6】每条语音都带免责声明（漏一条就是医疗风险）');
-const allSpeech = [
-  bad.speech, good.speech, toxic.speech, herb.speech,
-  pack.invoke('vitamin', { name: '维生素C' }).speech,
-];
-const withoutDisclaimer = allSpeech.filter((s) => !s.includes('仅供参考'));
-check('全部带免责声明', withoutDisclaimer.length, 0);
+console.log('\n【6】每条结论都说得出出处（说不出就是没依据）');
+// 断言两件事，缺一不可：
+//   ① 每条结论都带出处 —— 否则「我查到了」和「我猜的」在用户耳朵里一样
+//   ② 没有一条挂免责话术 —— 那句话对用户没有信息量，而且会把引书和给建议混成一件事
+const allResults = [bad, good, toxic, herb, pack.invoke('vitamin', { name: '维生素C' })];
+const noSource = allResults.filter((r) => !/(《[^》]+》|药典|现代营养学|本草库|营养素库)/.test(r.source || ''));
+check('全部带出处', noSource.length, 0);
+check('没有一条挂免责话术', allResults.filter((r) => /仅供参考|咨询医师|咨询药师/.test(r.speech)).length, 0);
 
 console.log('\n【7】原始文件零改动（git 证明，不是口头保证）');
 // 断言范围精确锁定 static/ —— 这才是「不动它原本的架构」要证明的东西。
@@ -116,9 +117,12 @@ const untracked = (() => {
       .split('\n').map((l) => l.trim()).filter((l) => l.startsWith('??'));
   } catch { return []; }
 })();
-console.log('       本次新增（应只有 aiui/）：');
+console.log('       本次新增（应都在 aiui/ 之内）：');
 untracked.forEach((u) => console.log('         ' + u));
-check('新增项只有 aiui/', untracked.every((u) => u === '?? aiui/'), true);
+// 断言的性质是「没有跑到 aiui/ 外面去建东西」，不是「新增的必须恰好叫 aiui/」。
+// 原来那句 `u === '?? aiui/'` 只在 aiui/ 整个目录还没被 git 跟踪时成立；
+// 目录一进版本库，新增文件就变成 `?? aiui/adapter/x.js`，断言会假红。
+check('新增项都在 aiui/ 之内', untracked.every((u) => /^\?\? aiui(\/|$)/.test(u)), true);
 
 console.log('\n【8】口语切词：不加连词也能拆出两味药');
 // 用户对眼镜说话不会加「和」。「甘草海藻能不能一起吃」老版本切成一个整体，
@@ -150,10 +154,13 @@ check('部分认不出时列出未知项', partial.unknown, ['乱说的东西'])
 truthy('部分认不出时仍返回结论文本', partial.recognized === true && /没收录|没听出/.test(partial.speech));
 console.log(`       语音：${partial.speech}`);
 
-console.log('\n【10】播报裁剪：免责声明必须留在播报里');
-const longSpeech = pack.invoke('herb', { query: '附子' }).speech;
-const brief = toBrief(longSpeech, { max: 20, tail: '仅供参考，具体用药请咨询医师或药师。' });
-truthy('裁剪后仍带免责声明', brief.includes('仅供参考'));
+console.log('\n【10】播报裁剪：出处必须留在播报里');
+const herbRes = pack.invoke('herb', { query: '附子' });
+const longSpeech = herbRes.speech;
+// 用真实出处当过 tail：tail 的作用就是「不管怎么裁都不把它丢掉」，
+// 拿一句硬编码的假免责去测，测到的是那句假话，不是产品行为。
+const brief = toBrief(longSpeech, { max: 20, tail: herbRes.source });
+truthy('裁剪后仍带出处', /《中国药典》/.test(brief));
 truthy('裁剪后确实短了', brief.length < longSpeech.length);
 console.log(`       原句 ${longSpeech.length} 字 → 播报 ${brief.length} 字：${brief}`);
 

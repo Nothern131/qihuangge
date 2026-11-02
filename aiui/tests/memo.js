@@ -84,9 +84,9 @@ console.log('\n[2] 下次会主动提（这才是「越用越懂你」）');
     assert.ok(/记着在吃/.test(r.speech), r.speech);
     assert.ok(/间隔|分开/.test(r.speech), r.speech);
   });
-  check('提示里仍保留主答案和就医提示', () => {
+  check('提示里仍保留主答案和出处', () => {
     assert.ok(/构成血红蛋白|运输氧气/.test(r.speech), r.speech);
-    assert.ok(/医师|药师/.test(r.speech), r.speech);
+    assert.ok(/现代营养学/.test(r.result.source || ''), r.result.source);
   });
   check('问的就是记着的那一样时不重复提醒', () => {
     const r2 = ask(agent, '钙有什么作用');

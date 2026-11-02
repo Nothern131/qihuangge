@@ -11,20 +11,21 @@
 import { createQihuangPack } from '../adapter/qihuang-pack.js';
 import { createQihuangAgent, askQihuang } from '../adapter/qihuang-agent.js';
 
-// 兜底免责声明。正常情况下用 pack 返回的 disclaimer，保证两边一致；
-// 但播报层的 tail 需要一个常量，不能等到有结果才知道。
-const DEFAULT_DISCLAIMER = '仅供参考，具体用药请咨询医师或药师。';
+// 出处不再是一个兜底常量。每条结论自己带回出处（pack 的 source 字段），
+// 页面只负责把它挂到播报尾巴上。tail 为空就真是「这条没有出处可说」（比如没听出药名），
+// 不能拿一句通用话术填上去——那会让「查到了」和「没查到」听起来一样完整。
+//
+// 也不能把出处拼进 speech 里：播报会被 toBrief 按句截断，
+// 出处排在最后就有被截掉的可能，而截掉之后听起来像结论没有出处。
 
 const SAY_MAX = 32;
 
-// 开场白。放这里而不是写死在 .ink 里：它是文案也是合规内容（必须带免责），
-// 写进页面就没法在 Node 里断言它带没带。
-// 开场白。放这里而不是写死在 .ink 里：它是文案也是合规内容（必须带免责），
-// 写进页面就没法在 Node 里断言它带没带。
+// 开场白。放这里而不是写死在 .ink 里：它是文案也是产品主张，
+// 写进页面就没法在 Node 里断言它有没有说清「每条都告诉你出处」。
 //
 // 刻意不念「我会记住你说过什么」——开场白超过 10 秒用户就开始烦。
 // 那个能力放在屏幕上第一行提示里，用户看得见、不用等。
-export const GUIDE = '说药名我告诉你禁忌，说两味药我告诉你能不能一起用。仅供参考，具体用药请咨询医师。';
+export const GUIDE = '说药名我查书里的禁忌，说两味药我查能不能一起用。每条都告诉你出在哪本书。';
 
 export const INITIAL_STATE = {
   title: '说药名查禁忌，说「记一下我在吃钙片」我会记住',
@@ -52,21 +53,21 @@ export function createQihuangView({ engines, store = null } = {}) {
 
   let lastAnswer = '';
   let lastQuery = '';
+  let lastSource = '';
 
-  // tail 跟着每条出口一起返回：免责声明只能有一个来源，
-  // 页面再复制一份常量，改的时候必有一处漏掉。
-  function emit(patch, speech = null) {
+  // source 就是播报末句的出处。它只从 pack 的返回值里来，页面不发明一句。
+  function emit(patch, speech = null, source = '') {
     Object.assign(state, patch);
-    return { patch, say: speech, sayMax: SAY_MAX, tail: DEFAULT_DISCLAIMER };
+    return { patch, say: speech, sayMax: SAY_MAX, tail: source };
   }
 
   function handle(text) {
     const t = String(text || '').trim();
-    if (!t) return { patch: {}, say: null, sayMax: SAY_MAX, tail: DEFAULT_DISCLAIMER };
+    if (!t) return { patch: {}, say: null, sayMax: SAY_MAX, tail: '' };
 
     // 「再说一遍」要能重听——播报有去重（见下面），不给这条出口用户只能重新说药名。
     if (/再说一遍|再念|重复一下/.test(t)) {
-      if (lastAnswer) return emit({ status: '重播' }, lastAnswer);
+      if (lastAnswer) return emit({ status: '重播' }, lastAnswer, lastSource);
       return emit({ status: '还没念过内容' });
     }
 
@@ -84,6 +85,7 @@ export function createQihuangView({ engines, store = null } = {}) {
         const refused = a.verdict === 'stop';
         lastQuery = t;
         lastAnswer = a.speech;
+        lastSource = '';
         return emit(
           {
             title: refused ? '这个不做' : '没听出',
@@ -100,6 +102,7 @@ export function createQihuangView({ engines, store = null } = {}) {
       const same = t === lastQuery;
       lastQuery = t;
       lastAnswer = r.speech;
+      lastSource = r.source || '';
 
       const patch = { answer: r.speech };
       let tone = 'ok';
@@ -144,6 +147,14 @@ export function createQihuangView({ engines, store = null } = {}) {
         patch.detail = r.found === false ? '营养素库没有' : (r.dailyIntake || '');
         patch.status = r.found === false ? '没查到' : '已查询';
         tone = r.found === false ? 'idle' : 'ok';
+      } else if (r.intent === 'nutrient-mix') {
+        // 不加这一档，「钙和铁能一起吃吗」的标题会落到下面的 else 上，
+        // 而 r.name 在搭配结果里不存在，屏幕上于是显示一个「本草」。
+        // 用户问的是两样营养素，屏幕上写「本草」，看起来就像答错了题。
+        patch.title = (r.pair || []).join(' + ') || '营养素搭配';
+        patch.detail = r.found === false ? '营养素库没这一对' : (r.hasWarning ? '有需要注意的地方' : '未查到相互影响');
+        patch.status = r.found === false ? '没查到' : '已查询';
+        tone = r.found === false ? 'idle' : (r.hasWarning ? 'warn' : 'ok');
       } else if (r.intent === 'memo') {
         // 「记住」是唯一一个长期生效的动作，所以屏幕上要说清「现在记着几样」，
         // 否则用户不知道这句话到底有没有落地——语音一次就过去了，
@@ -157,7 +168,11 @@ export function createQihuangView({ engines, store = null } = {}) {
       } else {
         patch.title = r.name || (r.found === false ? '没查到' : '本草');
         if (r.found === false) {
-          patch.detail = '换个说法，或者把药名说全';
+          // 「换个说法」只适用于「听不出药名」。库里真没收这味药时说这句，
+          // 会让用户反复重说同一个名字，一直试到放弃。
+          patch.detail = /没收录|没有收录/.test(r.speech)
+            ? '这味药不在本草库'
+            : '换个说法，或者把药名说全';
         } else {
           const head = [r.xingwei, r.dosage].filter(Boolean).join('　｜　');
           patch.detail = r.ancient ? `${head}　｜　《${r.ancient.source}》有原文` : head;
@@ -172,8 +187,13 @@ export function createQihuangView({ engines, store = null } = {}) {
       }
 
       patch.tone = tone;
+      // 屏幕上也留一行出处。语音听完就忘了，想核对时得有地方看；
+      // 而且单墨绿屏上这行小字比任何图标都容易做对（颜色会塌成亮度）。
+      if (r.sourceTag) {
+        patch.detail = [patch.detail, r.sourceTag].filter(Boolean).join('　｜　');
+      }
       // 同一句话连问两次就不重播，避免「没听清 → 再说一遍」时被自己的播报盖住
-      return emit(patch, same ? null : r.speech);
+      return emit(patch, same ? null : r.speech, same ? '' : lastSource);
     } catch (err) {
       // 用户能自己改的（没给药名 / 没听清）念给他听；其余只记日志，不假装成功
       const fixable = ['missing_herbs', 'missing_name', 'missing_text'];
@@ -193,6 +213,5 @@ export function createQihuangView({ engines, store = null } = {}) {
   return {
     get state() { return state; },
     handle,
-    get disclaimer() { return DEFAULT_DISCLAIMER; },
   };
 }

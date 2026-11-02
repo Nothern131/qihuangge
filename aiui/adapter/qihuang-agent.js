@@ -44,7 +44,18 @@ function extractMemoTarget(text) {
 // 两者在系统眼里都是「一个不认识的词」，但一个是闲聊，一个是真药名。
 const MEDICAL_RE = /(毒|吃|用|服|禁忌|孕妇|怀孕|哺乳|一起|同用|相克|副作用|功效|什么用|治|病|配伍|忌)/;
 
-const DISCLAIMER_CORE = /(医师|药师|医嘱)/;
+// 出处自检：结论必须说得出它从哪来。
+//
+// 原来这里查的是「有没有就医提示」。那句话有两个毛病：对用户没有信息量，
+// 而且把所有结论压成同一种口吻——引《儒门事亲》的和引现代营养学的听起来一样，
+// 可这两件事的可信度根本不是一回事。现在改查出处。
+//
+// 注意不能只查「有没有《》」：查不到的时候本来就没书可引，那种时候该说的是
+// 「本草库没收录」这个边界句。两类都算合格，因为它们都在回答「凭什么」。
+// 「没收录」必须算在内——把它当作不合格的后果实测过：
+// 问「三七」会被自检判成「没说清出处」，然后降级成反问，
+// 播报变成「我三七、未收录：三七不在本草库里」，比原来更难听懂。
+const SOURCE_RE = /(《[^》]+》|药典|现代营养学|禁忌歌|本草库|营养素库|歌诀|没收录|没记录)/;
 
 export function createQihuangAgent(pack, { store = null } = {}) {
   /**
@@ -81,7 +92,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       total: r.profile.supplements.length,
       items: store.listItems(),
       speech: r.added
-        ? `记下了：${name}。以后你问别的，我会帮你看它和这个有没有冲突`
+        ? `记下了：${name}。以后你问到它，我会先看一眼有没有冲突。`
         : `${name}已经记着了`,
     };
   }
@@ -238,9 +249,15 @@ export function createQihuangAgent(pack, { store = null } = {}) {
         issues.push('查不到却没有说明查不到');
       }
 
-      // 结论必须留退路。少了这句，产品就从「查资料」越界成了「医疗建议」
-      if (!DISCLAIMER_CORE.test(speech)) {
-        issues.push('结论缺少就医提示');
+      // 结论必须能说出出处。少了这一步，产品就从「引书」越界成了「给建议」——
+      // 差别很小但在审核和信任上很关键：引书可以核对，建议只能相信。
+      //
+      // 查的是 r.source 而不是 speech：出处作为播报尾巴单独传（见 ui/qihuang-view.js），
+      // 不在 speech 里。在这里查 speech 会全部报错，然后每条结论都被降级成反问——
+      // 表面上「更谨慎」，实际上是助手什么都不肯答了。
+      const source = String(r.source || '');
+      if (!SOURCE_RE.test(source)) {
+        issues.push('结论没说清出处');
       }
 
       // 用户问的是配伍，却只认出一味药——这时候的配伍结论没有意义。
