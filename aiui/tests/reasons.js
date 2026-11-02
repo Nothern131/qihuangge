@@ -11,7 +11,7 @@
 // 但他按这话去查书查不到，之后就一句都不信了。
 
 import assert from 'node:assert/strict';
-import { reasonFor, mergeBriefs, WHY_KIND_TAG, reasonSource, WEI_DEFINITION } from '../adapter/reasons.js';
+import { reasonFor, mergeBriefs, WHY_KIND_TAG, reasonSource, WEI_DEFINITION, FAN_GROUPS, WEI_PAIRS } from '../adapter/reasons.js';
 import { CANON_PAIRS, CANON_HERBS, WEI_SONG, DIFF, reconcileWei } from '../adapter/wei-canon.js';
 import { loadEngines } from '../adapter/load-engines.js';
 import { createQihuangPack } from '../adapter/qihuang-pack.js';
@@ -122,7 +122,7 @@ const ALL = [
   ...WEI_CASES.map(([a, b]) => ({ pair: [a, b], ...reasonFor(a, b, '十九畏') })),
 ];
 
-const badKind = ALL.filter((r) => !['modern', 'classic', 'none'].includes(r.whyKind));
+const badKind = ALL.filter((r) => !['experiment', 'pharmacology', 'classic', 'none'].includes(r.whyKind));
 equal('whyKind 取值合法', badKind.map((r) => r.pair), []);
 
 const badTag = ALL.filter((r) => r.whyKindTag !== WHY_KIND_TAG[r.whyKind]);
@@ -130,7 +130,7 @@ equal('标签与类型一致', badTag.map((r) => r.pair), []);
 
 // 说得出「现代研究」的，就得说得出是哪一类研究；说不出就别说它是研究。
 check('modern 档都给了来源类别', () => {
-  const bad = ALL.filter((r) => r.whyKind === 'modern' && !reasonSource('modern'));
+  const bad = ALL.filter((r) => ['experiment', 'pharmacology'].includes(r.whyKind) && !reasonSource(r.whyKind));
   assert.deepEqual(bad.map((r) => r.pair), []);
 });
 
@@ -138,7 +138,7 @@ check('modern 档都给了来源类别', () => {
 // 标成 classic 的条目里不能出现具体的现代分子或酶名。
 // 两种都是把归属搞反了，而搞反了比不说更糟。
 check('modern 档没有写成古人说的话', () => {
-  const bad = ALL.filter((r) => r.whyKind === 'modern' && /(传统认为|古人认为|古籍认为)/.test(r.why));
+  const bad = ALL.filter((r) => ['experiment', 'pharmacology'].includes(r.whyKind) && /(传统认为|古人认为|古籍认为)/.test(r.why));
   assert.deepEqual(bad.map((r) => r.pair), []);
 });
 check('classic 档没有冒充实验结论', () => {
@@ -346,6 +346,69 @@ equal('川乌草乌被移除', re.weis.length, 0);
 equal('移除项带着歌诀信息', re.removed.length, 1);
 truthy('补上的两对只补用户问到的',
   reconcileWei([], ['人参', '五灵脂', '甘草']).weis.length === 1);
+
+console.log('\n[9] 引经据典：说了「研究/实验」就必须给得出文献');
+
+// 这一条是用户明确提的要求：关乎身体，引用必须真实。
+// 它抓的是一种最难发现的错——**说法本身很像真的，但去查查不到**。
+// 曾经就有过一条：「研究认为丁香油酚会抑制郁金中姜黄素的吸收利用」。
+// 查证的结果相反（共煎时姜黄素基本不变），那句话只在健康科普网站上流转。
+//
+// 判据只认肯定句式（「研究认为/实验显示/测过」），不认否定句
+//（「现代研究没有专门验证」本身是诚实的，不该被罚）。
+// 只认肯定句式，而且要看前面有没有否定词。
+// 不加这一层，「不是实验测出来的」会被当成在声称实验——而这句恰恰是在**否认**有实验。
+function claimsResearch(text) {
+  const re = /(研究|实验)(认为|显示|表明|发现|观察|看到|测出|测过|里)/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const before = text.slice(Math.max(0, m.index - 6), m.index);
+    if (/不是|没有|缺少|未做|没有同等/.test(before)) continue;
+    return true;
+  }
+  return false;
+}
+const noRef = [];
+for (const [key, g] of Object.entries(FAN_GROUPS)) {
+  const sample = g.partners[0] || '';
+  const why = g.whyOf ? g.whyOf([sample]) : String(g.why || '').replace(/\{partners\}/g, sample);
+  const text = `${why}${g.debateFor ? g.debateFor([sample]) : (g.debate || '')}`;
+  if (claimsResearch(text) && !(Array.isArray(g.ref) && g.ref.length > 0)) noRef.push([key, text.slice(0, 24)]);
+}
+for (const w of WEI_PAIRS) {
+  const text = `${w.why || ''}${w.debate || ''}`;
+  if (claimsResearch(text) && !(Array.isArray(w.ref) && w.ref.length > 0)) noRef.push([w.pair.join('+'), text.slice(0, 24)]);
+}
+equal('声称有研究依据的条目都给了文献', noRef, []);
+
+// 文献不能是占位符。要求至少有「刊物名或年份」这种能追的痕迹。
+const weakRef = [];
+const allRefs = [
+  ...Object.entries(FAN_GROUPS).flatMap(([k, g]) => (g.ref || []).map((r) => [k, r])),
+  ...WEI_PAIRS.flatMap((w) => (w.ref || []).map((r) => [w.pair.join('+'), r])),
+];
+for (const [k, r] of allRefs) {
+  if (!/\d{4}|学报|杂志|出版社/.test(String(r))) weakRef.push([k, r]);
+}
+equal('文献要追得下去（有年份或刊物）', weakRef, []);
+truthy('至少有一条条目给了文献', allRefs.length > 0);
+
+// 屏幕上标着「动物实验」的，背后必须有文献。
+// 之前只有一档「现代药理研究」，把「做过实验」和「药理上讲得通」混在一起，
+// 结果是后者借了前者的可信度。拆开之后，标 experiment 就必须给得出实验。
+const expNoRef = [
+  ...Object.entries(FAN_GROUPS).filter(([, g]) => g.whyKind === 'experiment'
+    && !(Array.isArray(g.ref) && g.ref.length)).map(([k]) => k),
+  ...WEI_PAIRS.filter((w) => w.whyKind === 'experiment'
+    && !(Array.isArray(w.ref) && w.ref.length)).map((w) => w.pair.join('+')),
+];
+equal('标了「动物实验」的必须有文献', expNoRef, []);
+
+// 反过来：标「药理常识」的不许挂文献——挂了就说明它其实是实验结论，标签写错了。
+const pharmWithRef = Object.entries(FAN_GROUPS)
+  .filter(([, g]) => g.whyKind === 'pharmacology' && Array.isArray(g.ref) && g.ref.length)
+  .map(([k]) => k);
+equal('标「药理常识」的不该挂实验文献', pharmWithRef, []);
 
 console.log(`\n通过 ${pass} / ${pass + fail}`);
 if (fail > 0) process.exit(1);

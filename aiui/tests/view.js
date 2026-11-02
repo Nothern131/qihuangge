@@ -79,7 +79,10 @@ truthy('屏幕有原因全文', /原因（[^）]+）：甘草含甘草酸/.test(
 // 而这两种话的可信度差得很远。
 // 标签在句首而不是句末：句末的括号会被行尾截成「（现代药理研」+「究）」，
 // 两行都读不通。Studio 截图实证过。
-truthy('原因带归属标签且在句首', /原因（现代药理研究）：/.test(ans), ans);
+// 标签从「现代药理研究」拆成了「动物实验」和「药理常识」——
+// 甘草这一组有动物实验支持（附三项文献），所以标的是前者。
+// 拆的理由：混在一档里，「药理上说得通」会借「做过实验」的可信度。
+truthy('原因带归属标签且在句首', /原因（动物实验）：/.test(ans), ans);
 // 顺序：结论 → 原因 → 出处。原因跑到结论前面，用户得读到第二行才知道结论。
 check('结论在原因之前', () => {
   assert.ok(ans.indexOf('不可同用') < ans.indexOf('原因（'), ans);
@@ -254,13 +257,16 @@ check('有原因的答复：结论和原因同时在屏上', () => {
 // 预算不是「随便砍」：砍的顺序必须是先争议、后第二条原因，
 // 结论和第一条原因永远留着——那是用户问的那件事本身。
 // 这一条守的是「砍对了」，不是「砍了」。
-const longestOut = view.handle('为什么乌头反瓜蒌');
+// 用例换过一次：原来用「为什么乌头反瓜蒌」，后来原因句变短，那个问法装得下了，
+// 断言就失去了前提（它期待争议被砍，实际没砍）。现在改用一条确实装不下的问法。
+// 这类断言的用例必须跟着文案长度走，否则文案一改，断言就从「守着」变成「碰巧绿」。
+const longestOut = view.handle('为什么乌头反半夏');
 truthy('超预算时先砍争议', !/另：/.test(longestOut.patch.answer), longestOut.patch.answer);
 truthy('砍完还留着原因', /原因（/.test(longestOut.patch.answer), longestOut.patch.answer);
 truthy('砍完还留着结论', /不可同用/.test(longestOut.patch.answer), longestOut.patch.answer);
 
 // 反过来：装得下时争议不能被顺手砍掉，否则追问就白问了。
-const fitOut = view.handle('为什么甘草反海藻');
+const fitOut = view.handle('为什么乌头反瓜蒌');
 truthy('装得下时争议要保留', /另：/.test(fitOut.patch.answer), fitOut.patch.answer);
 
 console.log('\n' + '='.repeat(60));
