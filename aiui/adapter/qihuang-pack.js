@@ -12,7 +12,7 @@
 import { buildLexicon, findNutrients, splitHerbList } from './herb-lexicon.js';
 // 经典原文由 tools/vendor-data.js 内嵌（源文件 static/data/ancient_texts.json 只读未改）
 import { ANCIENT_TEXTS } from '../vendor/ancient-texts.js';
-import { citeLine, citeTag, citeLong, ancientLine, NOT_RECORDED } from './sources.js';
+import { citeLine, citeTag, citeLong, citeScope, ancientLine, NOT_RECORDED } from './sources.js';
 
 // 出处不再手写在每个分支里，而是作为 source 字段回传，由页面挂到播报尾巴上。
 // 这么改是因为手写 19 处的结果必然是「改了 18 处，漏掉的那处静默地说了一句
@@ -259,12 +259,13 @@ export function createQihuangPack(engines) {
     const speechParts = [];
     const cites = [];
     if (r.fans && r.fans.length) {
-      // 「这两味」只在真的只涉及两味药时才对。三味药同时出现两对反，
-      // 说「这两味不能同用」会让用户以为只有其中一对有问题。
+      // 「两药」只在真的只涉及两味药时才对。三味药同时出现两对反，
+      // 说「两药不可同用」会让用户以为只有其中一对有问题；那种时候用「均」，
+      // 覆盖全部涉及的药。语体上也更书：播报里「这两味属于」口语味太重。
       const involved = new Set();
       for (const f of r.fans) for (const h of f.herbs || []) involved.add(h);
-      const which = involved.size <= 2 ? '这两味' : '这些药';
-      speechParts.push(`配伍禁忌：${r.fans.map((f) => f.msg).join('；')}。${which}属于十八反，不能同用`);
+      const which = involved.size <= 2 ? '两药' : '均';
+      speechParts.push(`配伍禁忌：${r.fans.map((f) => f.msg).join('；')}。${which}属十八反，不可同用`);
       cites.push('shibaFan');
     }
     if (r.weis && r.weis.length) {
@@ -299,9 +300,10 @@ export function createQihuangPack(engines) {
       : speechParts.join('。');
     // 一条都没命中时也要交代「拿什么核的」，否则「没查到」等于没依据的安静。
     // 这不是免责，是让用户知道这次是翻了三本书没翻到，不是我没查。
-    const source = cites.length > 0
-      ? citeLine(cites)
-      : '这次是按《儒门事亲》十八反、《医经小学》十九畏和妊娠用药禁忌核的，都没记到这几味。';
+    // 有结论走 citeLine（说「出处」），没结论走 citeScope（说「按…核对」）——
+    // 这两种情况必须用两种说法，混用会让「没查到」听起来像「查到了」。
+    const SCOPE = ['shibaFan', 'shijiuWei', 'pregnancy'];
+    const source = cites.length > 0 ? citeLine(cites) : citeScope(SCOPE);
     const speech = joinSentences([unknownNote, body]);
 
     return {
@@ -315,9 +317,7 @@ export function createQihuangPack(engines) {
       pregnancy,
       toxicity: r.toxicity,
       source,
-      sourceTag: cites.length > 0
-        ? citeTag(cites)
-        : '《儒门事亲》十八反、《医经小学》十九畏、妊娠用药禁忌歌',
+      sourceTag: citeTag(cites.length > 0 ? cites : SCOPE),
       speech,
     };
   }
@@ -510,8 +510,13 @@ export function createQihuangPack(engines) {
       // 用 joinSentences 统一管标点
       // 有原文时播报已点名《本草纲目》，尾巴就不再重复「性味功效按药典」，
       // 改成屏幕上的那句长说明，让用户知道药性和原文是两套来源。
-      source: ancient ? `性味功效按《中国药典》；原文引自《${ancient.source}》。` : citeLine(['bencao']),
-      sourceTag: ancient ? `《中国药典》＋《${ancient.source}》` : '《中国药典》',
+      // 有原文时药性和原文是两套来源，必须分开标：用户翻书时得知道哪句在药典、
+      // 哪句在古籍。合成一句「出自《中国药典》」会把原文也算成药典条目，
+      // 合成「出自《本草纲目》」则把性味功效算成古人说的——两种都是错标。
+      source: ancient
+        ? `出处：《中国药典》（性味功效）；原文引自《${ancient.source}》。`
+        : citeLine(['bencao']),
+      sourceTag: ancient ? `《中国药典》、《${ancient.source}》` : '《中国药典》与中药学教材',
       sourceLong: ancient
         ? `${citeLong('bencao')} 屏幕上那段原文出自《${ancient.source}》，不是药典条目。`
         : citeLong('bencao'),

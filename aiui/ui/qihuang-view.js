@@ -20,16 +20,19 @@ import { createQihuangAgent, askQihuang } from '../adapter/qihuang-agent.js';
 
 const SAY_MAX = 32;
 
-// 开场白。放这里而不是写死在 .ink 里：它是文案也是产品主张，
-// 写进页面就没法在 Node 里断言它有没有说清「每条都告诉你出处」。
+// 开场白只做一件事：说清它能查什么。
 //
-// 刻意不念「我会记住你说过什么」——开场白超过 10 秒用户就开始烦。
-// 那个能力放在屏幕上第一行提示里，用户看得见、不用等。
-export const GUIDE = '说药名我查书里的禁忌，说两味药我查能不能一起用。每条都告诉你出在哪本书。';
+// 不预告「每条都告诉你出处」——那是产品的内部机制，用户要的是答案，
+// 不是使用说明。出处该出现的位置是每条结论的末尾，那里标了自然就看见了；
+// 提前承诺一遍，反而像在给自己免责。
+//
+// 也不念「我会记住你说过什么」——开场白超过 10 秒用户就开始烦。
+// 记忆能力放屏幕上第一行，用户看得见、不用等。
+export const GUIDE = '说药名，查药性与配伍禁忌；说两味药，查能否同用。';
 
 export const INITIAL_STATE = {
-  title: '说药名查禁忌，说「记一下我在吃钙片」我会记住',
-  detail: '',
+  title: '说药名，查禁忌',
+  detail: '说「记一下在吃钙片」可记住',
   status: '按住说话',
   answer: '—',
   tone: 'idle', // idle=灰 / ok=绿 / warn=黄 / bad=红
@@ -175,7 +178,9 @@ export function createQihuangView({ engines, store = null } = {}) {
             : '换个说法，或者把药名说全';
         } else {
           const head = [r.xingwei, r.dosage].filter(Boolean).join('　｜　');
-          patch.detail = r.ancient ? `${head}　｜　《${r.ancient.source}》有原文` : head;
+          // 不在这里写「《X》有原文」：下面那行出处已经列了书名，
+          // 两处书名相同看起来像重复三次，而屏幕只有两行宽。
+          patch.detail = r.ancient ? `${head}　｜　下方附原文` : head;
         }
         patch.status = r.found === false ? '没查到' : '已查询';
         tone = r.found === false ? 'idle' : (r.toxicity && r.toxicity !== '无毒' ? 'warn' : 'ok');
@@ -189,8 +194,11 @@ export function createQihuangView({ engines, store = null } = {}) {
       patch.tone = tone;
       // 屏幕上也留一行出处。语音听完就忘了，想核对时得有地方看；
       // 而且单墨绿屏上这行小字比任何图标都容易做对（颜色会塌成亮度）。
+      //
+      // 加「出处」二字而不是光贴书名：只有书名和前面的「性味」「常用量」
+      // 看起来是同一层信息，用户分不清哪部分是依据、哪部分是资料名。
       if (r.sourceTag) {
-        patch.detail = [patch.detail, r.sourceTag].filter(Boolean).join('　｜　');
+        patch.detail = [patch.detail, `出处 ${r.sourceTag}`].filter(Boolean).join('　｜　');
       }
       // 同一句话连问两次就不重播，避免「没听清 → 再说一遍」时被自己的播报盖住
       return emit(patch, same ? null : r.speech, same ? '' : lastSource);

@@ -42,7 +42,7 @@ console.log('\n【2】配伍禁忌：十八反应能查出来');
 const bad = pack.invoke('check', { herbs: '甘草 海藻' });
 check('识别为有警告', bad.hasWarning, true);
 truthy('十八反条目非空', bad.fans.length > 0);
-truthy('语音里点明不能同用', bad.speech.includes('不能同用'));
+truthy('语音里点明不可同用', bad.speech.includes('不可同用'));
 console.log(`       语音：${bad.speech}`);
 
 const good = pack.invoke('check', { herbs: '当归 黄芪' });

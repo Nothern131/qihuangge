@@ -53,17 +53,18 @@ function ask(q) {
   return out;
 }
 
-console.log('【1】开场白：一句话说清「我说的话有出处」');
-truthy('开场白提到能做什么', /禁忌|一起用/.test(GUIDE));
-// 开场白就是产品承诺。承诺了什么，用户就会用那个标准要求它——
-// 说「每条都告诉你出哪本书」，后面每条就真的得带出处（[5][7] 在守这件事）。
-truthy('开场白承诺给出处', /哪本书|出处/.test(GUIDE));
+console.log('【1】开场白：只说能查什么，不说自己怎么实现的');
+truthy('开场白提到能查什么', /禁忌|同用/.test(GUIDE));
+// 开场白只介绍能力。不预告「每条都告诉你出处」——
+// 出处是结论的一部分，跟在结论后面就够了；提前承诺一遍变成使用说明，
+// 用户开屏听到的不是答案而是承诺书。那条线由 [5][7] 在结论侧守。
+truthy('开场白不预告出处', !/出处|哪本书|每条/.test(GUIDE));
 truthy('开场白不挂免责话术', !/咨询医师|仅供参考|药师/.test(GUIDE));
 
 console.log('\n【2】口语不加连词也要查得出配伍禁忌');
 let out = ask('甘草海藻能不能一起吃');
 check('标题显示两味药', out.patch.title, '甘草 + 海藻');
-truthy('结论提示不能同用', String(out.patch.answer).includes('不能同用'));
+truthy('结论提示不可同用', String(out.patch.answer).includes('不可同用'));
 truthy('有播报', spoken.length === 1);
 console.log(`       屏幕：${out.patch.title}　|　${out.patch.detail}`);
 console.log(`       播报：${spoken[0]}`);
