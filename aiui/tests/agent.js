@@ -59,6 +59,22 @@ check('认出了附子', () => assert.deepEqual(r1.recognized, ['附子']));
 check('明确指出有毒', () => assert.ok(/有毒/.test(r1.speech)));
 check('播报说得出口', () => spokenOk(r1.speech));
 
+// 「X 有毒吗」里的「有毒」必须当问句成分剥掉。
+// 原来没剥，一个词表外的药名（全蝎、车前草）就会剩下「全蝎有毒」四个字，
+// 连「像不像药名」都过不了，最后答「本草库还没收录全蝎有毒」——
+// 把用户自己的问句当成药名念回去，看起来像系统在复读。
+const r1b = ask('全蝎有毒吗');
+check('答复里不把问句当药名念回去', () => {
+  assert.ok(!/全蝎有毒/.test(r1b.speech), `speech=${r1b.speech}`);
+});
+// 引擎的 TOXICITY 表没有导出，词表收不到「全蝎」「斑蝥」「马钱子」这些
+// （它们也不在 123 味本草库里）。判「认不认识」时如果只看词表和本草库，
+// 就会把「全蝎有毒吗」答成「本草库还没收录全蝎」——引擎明明存着它的大毒记录。
+check('毒性表里的药名要查得到毒性，不能答「没收录」', () => {
+  assert.ok(!/没收录/.test(r1b.speech), `speech=${r1b.speech}`);
+  assert.ok(/大毒|有毒|小毒/.test(r1b.speech), `speech=${r1b.speech}`);
+});
+
 console.log('\n[2] 妊娠：风险必须出现在答复里');
 const r2 = ask('孕妇能吃桃仁吗');
 check('认出桃仁', () => assert.ok(r2.recognized.includes('桃仁')));

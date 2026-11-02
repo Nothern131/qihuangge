@@ -540,6 +540,11 @@ export function createQihuangPack(engines) {
       .replace(/(能不能|可不可以|能否|会不会)(一起|同时|同)?(吃|用|服|喝|服用|泡水)?/g, '')
       .replace(/(可以|能)(一起|同时|同)(吃|用|服|喝)/g, '')
       .replace(/(相克|相反|配伍|忌讳|禁忌|冲突|十八反|十九畏|相冲|相忌|打架)/g, '')
+      // 「X 有毒吗」是毒性查询的标准问法，不剥掉就剩「全蝎有毒」四个字，
+      // 连「像不像药名」都过不了，最后答「本草库还没收录全蝎有毒」——
+      // 把用户自己的问句当成药名念回去了，看起来像系统在复读。
+      // 药名里没有「毒」字（密陀僧、七叶一枝花都没有），剥掉是安全的。
+      .replace(/(有没有毒|有无毒|有毒|无毒|小毒|大毒|毒性|毒不毒)/g, '')
       // 追问用语。「为什么甘草反海藻」里「为什么」和「反」都不是药名，
       // 不剥掉会剩下整整八个字，连「像不像药名」都过不了，
       // 最后答「没听出药名」——用户明明说得很清楚，却被告知没听懂。
@@ -590,6 +595,21 @@ export function createQihuangPack(engines) {
   function isKnownHerb(name) {
     if (!name) return false;
     if (LEXICON.has(name)) return true;
+    // 毒性表里有记录的，也算认识。
+    // 引擎的 TOXICITY 表没有暴露出来（只导出了 FEAR_PAIRS 等六个字段），
+    // 所以词表收不到它里面的药名——「全蝎」「斑蝥」这些全不在 123 味本草库里，
+    // 结果「全蝎有毒吗」被判成「不认识这味药」，而引擎其实存着它的大毒记录。
+    // 这里用 getToxicity 的返回值反推：说得出毒性等级，就是表里有。
+    // 只认「非无毒」——因为 getToxicity 对任何未知输入都返回「无毒」（见坑三），
+    // 拿它当正判据会把「★☆※」也认成药。
+    if (InteractionEngine && typeof InteractionEngine.getToxicity === 'function') {
+      try {
+        const t = InteractionEngine.getToxicity(name);
+        if (t && t !== '无毒') return true;
+      } catch (err) {
+        console.error('[qihuang] getToxicity 失败：', err.message);
+      }
+    }
     const B = BencaoEngine;
     if (B && typeof B.search === 'function') {
       try {
