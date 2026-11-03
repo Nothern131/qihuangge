@@ -30,7 +30,11 @@ function emptyProfile(userId) {
     supplements: [],
     // 用户自己说的关注点（胃寒、备孕、睡眠差）。只存原话，不做任何医学解读。
     concerns: [],
-    // 问过什么。用于「上次问的那个」，也有上限，不无限长。
+    // 用药计划：几点吃什么。这是「管家」和「字典」的分界——
+    // 只有 supplements（在吃什么）而没有 time（几点吃），就没法提醒，也就没有每天被打开的理由。
+    // 每条 { id, name, time: 'HH:MM' | null, timing: 'before_meal' | ... | null, createdAt }
+    medPlans: [],
+    // 问过什么。用于「上次那个」，也有上限，不无限长。
     history: [],
     createdAt: null,
     updatedAt: null,
@@ -51,6 +55,9 @@ export function memoryBackend(initial = {}) {
 
 const HISTORY_LIMIT = 50;
 const SUPPLEMENT_LIMIT = 30;
+// 20 条足够覆盖常见多病共存（高血压 + 糖尿病 + 血脂，每种早晚各一次也才 6 条）。
+// 定上限不是为了省空间，是为了让「记不下」这件事有明确的说法，而不是悄悄丢掉最旧的一条。
+const MED_PLAN_LIMIT = 20;
 
 /**
  * @param {object} opts
@@ -164,6 +171,62 @@ export function createProfileStore({ backend, userId = 'local' } = {}) {
     findItemByRef(ref) {
       if (!ref) return null;
       return load().supplements.find((x) => x.ref === ref) || null;
+    },
+
+    /**
+     * 加一条用药计划。
+     *
+     * @param {string} name 药名（用户原话里剥出来的）
+     * @param {string|null} time 'HH:MM'
+     * @param {string|null} timing 相对时段（before_meal 等）
+     */
+    addMedPlan(name, time = null, timing = null) {
+      const clean = String(name || '').trim();
+      if (!clean) {
+        const err = new Error('要记的药没说清');
+        err.code = 'missing_item';
+        throw err;
+      }
+      if (!time && !timing) {
+        // 没有时间就不是「计划」，只是「在吃什么」。让调用方走 rememberItem。
+        // 两条路不能混：混了会出现「记了药但永远不会提醒」这种静默失效。
+        const err = new Error('没说时间，记不成计划');
+        err.code = 'missing_time';
+        throw err;
+      }
+      const p = load();
+      const k = norm(clean);
+      // 同一种药同一个时间，只留一条。重复说「早上八点吃二甲双胍」不该变成两条提醒。
+      const dup = p.medPlans.find((x) => norm(x.name) === k && x.time === time && x.timing === timing);
+      if (dup) return { added: false, plan: dup, profile: p };
+      const plan = {
+        id: `m${Date.now()}${p.medPlans.length}`,
+        name: clean,
+        time: time || null,
+        timing: timing || null,
+        createdAt: new Date().toISOString(),
+      };
+      const next = [ ...p.medPlans, plan ];
+      if (next.length > MED_PLAN_LIMIT) {
+        const err = new Error(`最多记 ${MED_PLAN_LIMIT} 条用药计划`);
+        err.code = 'too_many';
+        throw err;
+      }
+      p.medPlans = next;
+      const saved = save(p);
+      return { added: true, plan, profile: saved };
+    },
+
+    listMedPlans() {
+      return load().medPlans;
+    },
+
+    removeMedPlan(id) {
+      const p = load();
+      const before = p.medPlans.length;
+      p.medPlans = p.medPlans.filter((x) => x.id !== id);
+      if (p.medPlans.length === before) return { removed: false, profile: p };
+      return { removed: true, profile: save(p) };
     },
 
     addConcern(text) {

@@ -12,6 +12,9 @@
 // 两个作品各自打包成 .aix 独立上架，跨目录 import 在打包后必然断，所以只能各持一份。
 // 代价是可能漂移——tests/parity.mjs 会逐字节比对两份，不一致就红。
 import { createPipeline } from '../core/pipeline.js';
+// 用药计划的解析与回显。「几点吃什么」是管家形态的入口，
+// 没有它，记忆就只是「你在吃什么」，永远产生不了「到点提醒」。
+import { parseMedPlans, humanTime, TIMING_LABEL } from './med-schedule.js';
 
 // 本版明确不做的事。这些不是说错了，是根本不该由这个作品回答——
 // 眼镜上一个只说三句话的助手给出剂量建议，比不给建议危险得多。
@@ -70,6 +73,13 @@ export function createQihuangAgent(pack, { store = null } = {}) {
    * 交叉核对永远不会命中，「记住」就成了摆设。
    */
   function doMemo(ctx) {
+    // 先说清一件事：带时间的「记一下早上八点吃二甲双胍」存的是**计划**，
+    // 不带时间的「记一下我在吃钙片」存的是**在吃清单**。两条路分开：
+    // 计划能被提醒，清单只能被交叉核对。混在一起就会出现
+    // 「记了药但永远不会响」——而这种失效是静默的，用户以为设好了。
+    const plans = parseMedPlans(ctx.text);
+    if (plans.length > 0) return rememberPlans(plans);
+
     const target = extractMemoTarget(ctx.text);
     const n = (ctx.recog.nutrients || [])[0];
     const herb = (ctx.recog.known || [])[0];
@@ -98,6 +108,58 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       speech: r.added
         ? `记下了：${name}。以后你问到它，我会先看一眼有没有冲突。`
         : `${name}已经记着了`,
+    };
+  }
+
+  /**
+   * 存用药计划，并把「记下了什么」说回去。
+   *
+   * 说回去这一步不能省：时间是这一层的风险点，用户说「八点」被理解成「晚上八点」，
+   * 只有让他听见「早上 8 点」才会当场发现。这是唯一一次能纠错的机会。
+   */
+  function rememberPlans(plans) {
+    const added = [];
+    const dup = [];
+    let err = null;
+    for (const p of plans) {
+      try {
+        const r = store.addMedPlan(p.name, p.time, p.timing);
+        (r.added ? added : dup).push({ ...p, id: r.plan.id });
+      } catch (e) {
+        if (!err) err = e;
+      }
+    }
+    if (err && added.length === 0 && dup.length === 0) throw err;
+
+    const say = (list) => list.map((p) => {
+      const when = p.time ? humanTime(p.time) : (TIMING_LABEL[p.timing] || '');
+      return `${when} ${p.name}`.trim();
+    }).join('，');
+
+    let speech;
+    if (added.length && dup.length) {
+      speech = `记下了 ${say(added)}；${say(dup)} 已经记着了`;
+    } else if (added.length) {
+      speech = added.length === 1
+        ? `记下了：${say(added)}。到点我会提醒你`
+        : `记下了 ${added.length} 条：${say(added)}。到点我会提醒你`;
+    } else {
+      speech = `${say(dup)} 已经记着了`;
+    }
+
+    // 部分失败必须说出来。
+    // 原来这里只判「一条都没成功才抛」，于是「记满 20 条后第 21 条失败」被吞掉——
+    // 用户听到「记下了 20 条」，以为全记上了，明天那一顿药不会响。
+    // 这是静默失败，而且发生在要吃药的事上。
+    if (err) speech += `。${err.message}，后面没记上的那些请你再说一次`;
+
+    return {
+      found: true,
+      intent: 'memo',
+      kind: 'plan',
+      added: added.length,
+      plans: store.listMedPlans(),
+      speech,
     };
   }
 
@@ -193,7 +255,12 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 「记一下」优先于查询：用户在交代一件事，不是在提问。
       // 没有 store 时必须明说存不了，不能装作记住了——
       // 用户以为记下了，明天再问「我记的都有什么」会得到空，这种失望比当场报错重得多。
-      if (MEMO_RE.test(ctx.text)) {
+      // 判据扩过一次：除了「记一下 / 我在吃」这类明说的，**能解析出「几点吃什么」的也算**。
+      // 因为交代用药时用户经常不重复动词——「早上八点吃二甲双胍，晚上八点吃阿托伐他汀」，
+      // 后半句没有「记一下」，但它显然还在同一次交代里。
+      // 不扩的话，后半句会掉进查询，回一句「这句没听懂」，用户得把整句重说一遍。
+      const looksLikePlan = parseMedPlans(ctx.text).length > 0;
+      if (MEMO_RE.test(ctx.text) || looksLikePlan) {
         if (!store) {
           return {
             stop: true,
