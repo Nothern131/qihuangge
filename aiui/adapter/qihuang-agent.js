@@ -29,6 +29,10 @@ const WELLNESS_RE = /(调理|养生|怎么养|怎么预防|怎么缓解|怎么�
 // 「记一下我在吃钙片」——这是「越用越懂你」唯一的入口。
 // 没有它，产品永远只能回答当下这一句，用户用三个月和用一天没有区别。
 const MEMO_RE = /(记一下|记住|记下|帮我记|我在吃|我在用|我常吃|我一直在吃|我平时吃|在吃|吃着)/;
+// 「上次那个」「刚才问的」——跨句指代。
+// 只认这几种明确说法，不碰「它」「这个」：代词在语音里指代对象太模糊，
+// 补错了比不补更糟——用户会以为系统记错了东西。
+const ELLIPSIS_RE = /(上次|刚才)(那个|问的|说的|那味|那味药)/;
 const MEMO_STRIP = /(帮我)?(记一下|记住|记下|我一直在吃|我平时吃|我在吃|我在用|我常吃|吃着|在吃|在用|还有)/g;
 
 /** 从「记一下我在吃钙片」里取出「钙片」。取不出来就返回空串，交给上层的报错路径。 */
@@ -97,6 +101,52 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     };
   }
 
+  /**
+   * 「上次那个有毒吗」——把指代换成上次说过的药名。
+   *
+   * 记忆有两种价值：一种是记住你吃什么（跨天），一种是记住你刚才问什么（跨句）。
+   * 后者看起来小，但它是最容易被听见的那一种：问完甘草，补一句「上次那个和海藻能一起用吗」，
+   * 能答上来和答不上来是两种产品。
+   *
+   * 只在真能补全时替换。找不到就原句不动，让下游照常答「没听出药名」——
+   * 补错了比不补更糟。
+   */
+  function resolveEllipsis(ctx) {
+    if (!store || !ELLIPSIS_RE.test(ctx.text)) return;
+    const herb = findLastHerb();
+    if (!herb) {
+      // 找不到历史，而且这句话去掉指代之后几乎没剩什么内容 —— 那就是纯指代。
+      // 不说的话，切词会把「上次那个」当成一味药名，回答「本草库没收录上次那个」：
+      // 听起来像这味药没收录，实际是它没听懂你在指哪一味。两件事对用户的意义完全不同。
+      const rest = String(ctx.text).replace(ELLIPSIS_RE, '')
+        .replace(/[吗呢吧啊呀的？?，,。！!\s]/g, '');
+      if (rest.length <= 2) ctx.ellipsisFailed = true;
+      return;
+    }
+    ctx.text = String(ctx.text).replace(ELLIPSIS_RE, herb);
+    ctx.ellipsis = { resolvedTo: herb };
+  }
+
+  /** 从历史里倒着找最近一条能认出药名的问法。认不出就继续往前，最多看 5 条。 */
+  function findLastHerb() {
+    let hist = [];
+    try {
+      hist = store.getHistory() || [];
+    } catch (err) {
+      console.warn('[qihuang] 读历史失败，本次不做指代补全：', err && err.message);
+      return null;
+    }
+    let looked = 0;
+    for (let i = hist.length - 1; i >= 0 && looked < 5; i -= 1) {
+      const q = hist[i].q;
+      if (!q || ELLIPSIS_RE.test(q)) continue;
+      looked += 1;
+      const r = pack.recognize(q);
+      if (r && Array.isArray(r.herbs) && r.herbs.length) return r.herbs[0];
+    }
+    return null;
+  }
+
   return createPipeline({
     name: 'qihuang',
     // 和麻将的 0.75/0.4 不同：这里 lower 档位意味着「先反问」，
@@ -104,6 +154,11 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     thresholds: { answer: 0.75, confirm: 0.5 },
 
     normalize(ctx) {
+      // 「上次那个」这类指代，先换成上次说过的药名再识别。
+      // 这是记忆唯一能被**听见**的另一条路：不是记住你吃什么，是记住你刚才问什么。
+      // 放在 normalize 而不是 interpret：后面每一站都读 ctx.text，
+      // 在这里换掉，等于整条链路都拿到了补全后的问题。
+      resolveEllipsis(ctx);
       const r = pack.recognize(ctx.text);
       ctx.recog = r;
       // tokens 在中药域是药名（字符串），不是牌索引。
@@ -112,6 +167,13 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     },
 
     interpret(ctx) {
+      // 指代没补上：说清是「没有记录」，不是「没听懂」，也不是「没收录」。
+      if (ctx.ellipsisFailed) {
+        return {
+          stop: true,
+          speech: '我这边没有上次的记录，不知道你指的是哪一味。直接说药名就行，比如「甘草有毒吗」',
+        };
+      }
       // 能力边界优先于一切：这几类问题听懂了也不能答。
       if (DOSE_RE.test(ctx.text)) {
         return {
@@ -305,7 +367,14 @@ export function createQihuangAgent(pack, { store = null } = {}) {
      * 没数据就不说——为了显得聪明硬凑一句，比不说更糟。
      */
     decorate(ctx) {
-      if (!store || ctx.intent === 'memo') return null;
+      if (!store) return null;
+
+      // 每一问都记进历史，指代（「上次那个」）才有东西可查。
+      // 在这之前 history 只写不读——profile-store 里实现了读写，但整个应用一次都没调用过，
+      // 等于挂着一个永远空的字段。写失败不影响本次回答，所以这一处可以吞（存储层会记 warn）。
+      if (ctx.intent !== 'memo') store.pushHistory(ctx.text);
+
+      if (ctx.intent === 'memo') return null;
       const items = store.listItems();
       if (items.length === 0) return null;
 

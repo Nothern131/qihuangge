@@ -151,6 +151,42 @@ console.log('\n[5] 档案隔离：换个用户看不到别人的');
   });
 }
 
+// ── 跨句记忆：历史与指代 ─────────────────────────────────
+console.log('\n[跨句] 记住刚才问什么，「上次那个」要能对上');
+
+{
+  const backend = memoryBackend();
+  const store = createProfileStore({ backend });
+  const agent = createQihuangAgent(createQihuangPack(ENGINES), { store });
+
+  askQihuang(agent, '甘草有毒吗');
+  askQihuang(agent, '当归有什么功效');
+
+  check('每一问都记进历史，不是只写不读', () => {
+    const h = store.getHistory();
+    assert.equal(h.length, 2, JSON.stringify(h));
+    assert.equal(h[0].q, '甘草有毒吗');
+  });
+
+  // 指代补全：历史里最近一条能认出药名的是「当归有什么功效」，
+  // 所以「上次那个」应该补成当归，而不是从头开始答「没听出药名」。
+  const r = askQihuang(agent, '上次那个有毒吗');
+  check('「上次那个」补成上一次问的药', () => {
+    assert.ok(r.recognized.includes('当归'), JSON.stringify(r.recognized));
+  });
+
+  // 补错了比不补更糟：没有历史时，原句不能被动。
+  const fresh = createQihuangAgent(createQihuangPack(ENGINES), { store: createProfileStore({ backend: memoryBackend() }) });
+  const noHist = askQihuang(fresh, '上次那个有毒吗');
+  // 判据不能看 recognized：切词会把「上次那个」当成一味药名（4 个汉字，像药名），
+  // 那是既有兜底行为，不是这次的问题。要看的是它怎么回答——
+  // 必须说「没有上次的记录」，而不是「本草库没收录上次那个」。
+  check('没有历史时说「没有记录」，不说成「没收录」', () => {
+    assert.ok(/没有上次的记录/.test(noHist.speech), noHist.speech);
+    assert.ok(!/没收录/.test(noHist.speech), noHist.speech);
+  });
+}
+
 console.log(`\n通过 ${pass} / ${pass + fail}`);
 if (fail > 0) {
   console.log('存在失败');
