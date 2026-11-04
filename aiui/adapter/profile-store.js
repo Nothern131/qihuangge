@@ -34,6 +34,11 @@ function emptyProfile(userId) {
     // 只有 supplements（在吃什么）而没有 time（几点吃），就没法提醒，也就没有每天被打开的理由。
     // 每条 { id, name, time: 'HH:MM' | null, timing: 'before_meal' | ... | null, createdAt }
     medPlans: [],
+    // 养生行为：艾灸、拔罐这类「身体上的」操作。
+    // 和 supplements 分开存：一个是吃进去的，一个是做在身上的，
+    // 两者对同一味药的结论可能相反（比如阴虚的人吃滋阴药是对症，做艾灸是加重）。
+    // 每条 { name, ref, addedAt }
+    practices: [],
     // 问过什么。用于「上次那个」，也有上限，不无限长。
     history: [],
     createdAt: null,
@@ -226,6 +231,41 @@ export function createProfileStore({ backend, userId = 'local' } = {}) {
       const before = p.medPlans.length;
       p.medPlans = p.medPlans.filter((x) => x.id !== id);
       if (p.medPlans.length === before) return { removed: false, profile: p };
+      return { removed: true, profile: save(p) };
+    },
+
+    /**
+     * 记一个养生行为。
+     *
+     * ref 存规范名（艾灸），name 存用户原话。
+     * 只存规范名的话，用户下次说「我做艾条」对不上；
+     * 只存原话的话，做禁忌匹配时没有稳定的键。两个都要。
+     */
+    addPractice(name, ref) {
+      const clean = String(name || '').trim();
+      const key = String(ref || name || '').trim();
+      if (!clean || !key) {
+        const err = new Error('没听出是哪一项');
+        err.code = 'missing_item';
+        throw err;
+      }
+      const p = load();
+      const hit = p.practices.find((x) => x.ref === key);
+      if (hit) return { added: false, practice: hit, profile: p };
+      const item = { name: clean, ref: key, addedAt: new Date().toISOString() };
+      p.practices = [...p.practices, item];
+      return { added: true, practice: item, profile: save(p) };
+    },
+
+    listPractices() {
+      return load().practices;
+    },
+
+    removePractice(ref) {
+      const p = load();
+      const before = p.practices.length;
+      p.practices = p.practices.filter((x) => x.ref !== ref);
+      if (p.practices.length === before) return { removed: false, profile: p };
       return { removed: true, profile: save(p) };
     },
 

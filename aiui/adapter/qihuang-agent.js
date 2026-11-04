@@ -18,6 +18,9 @@ import { parseMedPlans, humanTime, TIMING_LABEL } from './med-schedule.js';
 // 个人状况 × 本草禁忌的匹配。只在库里写着「什么人忌服」时才说话，
 // 不自己推「艾灸温热所以不能配寒凉」这类结论——那种推理的正确性要我们负责。
 import { extractStates, cautionsFor, cautionSpeech, cautionLine } from './advice.js';
+// 养生行为（艾灸这类）。它的禁忌依据是《伤寒论》原文，判定靠用户自述的状况，
+// 两者都不是这套系统自己推出来的——这一点在 practice-canon.js 顶部写清了。
+import { practiceOf, findPractices, practiceCautions } from './practice-canon.js';
 
 // 本版明确不做的事。这些不是说错了，是根本不该由这个作品回答——
 // 眼镜上一个只说三句话的助手给出剂量建议，比不给建议危险得多。
@@ -115,6 +118,53 @@ export function createQihuangAgent(pack, { store = null } = {}) {
   }
 
   /**
+   * 把「用户说过的状况」和「用户做过的养生行为」对一遍，找出该提醒的。
+   *
+   * 两个方向都要查：先记艾灸后说阴虚、先说阴虚后记艾灸，都得提醒。
+   * 所以这个函数不关心调用顺序，只看档案里现在有什么。
+   *
+   * 措辞上的分界：说「你做艾灸，这条要看一下」，不说「你不能艾灸」。
+   * 依据是《伤寒论》的原文，但原文判的是脉象，我们只有用户的自述——
+   * 中间差一层，措辞就得把这层差露出来。
+   */
+  function practiceWarnings(extraStates) {
+    if (!store) return [];
+    let states = [];
+    try {
+      states = store.getConcerns().flatMap((c) => extractStates(c.text));
+    } catch (err) {
+      console.warn('[qihuang] 读状况失败，本次不做对照：', err && err.message);
+      return [];
+    }
+    // 刚记下的状况还没进档案（或者调用方想临时算一遍），一起并进来
+    if (Array.isArray(extraStates) && extraStates.length) {
+      const seen = new Set(states.map((x) => x.key));
+      for (const st of extraStates) if (!seen.has(st.key)) states.push(st);
+    }
+    if (!states.length) return [];
+
+    let practices = [];
+    try {
+      practices = store.listPractices();
+    } catch (err) {
+      console.warn('[qihuang] 读养生行为失败，本次不做对照：', err && err.message);
+      return [];
+    }
+
+    const out = [];
+    for (const item of practices) {
+      const pr = practiceOf(item.ref || item.name);
+      if (!pr) continue;
+      for (const hit of practiceCautions(pr, states)) {
+        // 不再重复「你说过阴虚」——前半句「阴虚火旺的人慎灸」已经把因果说清了，
+        // 再加一句只是把播报撑长，而播报是有字数上限的。
+        out.push(`${pr.name}：${hit.plain}（出自${hit.source}）`);
+      }
+    }
+    return out;
+  }
+
+  /**
    * 记下用户的状况（脾胃虚寒、怀孕、湿气重……）。
    *
    * 存的是**他的原话**，不是我们归一后的术语：下次复述时「喝凉的不舒服」
@@ -133,13 +183,58 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       if (r.added) added += 1;
     }
     const names = states.map((x) => x.tags[0]).join('、');
+    // 记完状况立刻回头看一眼：有没有正在做的养生行为和这条冲突。
+    // 这个时机最好——用户刚说完自己的情况，正是他愿意听一句相关提醒的时候。
+    // 等到下次问药才说，前面那句话早就过去了。
+    const warns = practiceWarnings(states);
+    const base = added
+      ? `记下了：${names}。以后你问药的禁忌，我会先看一眼和你这条对不对得上`
+      : `${names} 已经记着了`;
+    // 前缀只用一次「另外要看一下」，不提「这一条要看」——那半句在
+    // practiceWarnings 拼出来的每一句里已经有了，重复两次就成了绕口令。
     return {
       found: true,
       intent: 'concern',
       states: states.map((x) => x.key),
-      speech: added
-        ? `记下了：${names}。以后你问药的禁忌，我会先看一眼和你这条对不对得上`
-        : `${names} 已经记着了`,
+      // states 里存的是英文 key（yin-deficiency），那个东西只该给程序用。
+      // 屏幕上直接显示 key 会变成「yin-deficiency 已记在档案里」，
+      // 用户看到的是一串代码。
+      stateNames: states.map((x) => x.tags[0]),
+      warnings: warns,
+      // 播报默认上限是 32 字，装不下「记下了什么 + 那一句提醒」。
+      // 提醒里带着出处，被截掉就等于只说了半句禁忌——这半句比不说更糟。
+      sayMax: warns.length ? 140 : 80,
+      speech: warns.length ? `${base}。另外要看一下——${warns.join('；')}` : base,
+    };
+  }
+
+  /**
+   * 记一个养生行为（艾灸）。
+   *
+   * 存两个字段的理由见 profile-store：name 是原话，ref 是规范名。
+   * 这里额外做一件事——记完马上和已知的状况对一遍。
+   * 用户说「我在做艾灸」，如果档案里早就有「阴虚」，那这句话必须当场说，
+   * 而不是等他下次问药。
+   */
+  function doPractice(practice) {
+    // 存规范名（艾灸），不存原话（「我在做艾灸」）。
+    // 存原话的话，档案里会多出「我在做／」这种半截动词，
+    // 下次复述就变成「你在做我在做艾灸」。
+    const r = store.addPractice(practice.name, practice.name);
+    const warns = practiceWarnings();
+    const base = r.added
+      ? `记下了：你在做${practice.name}。它偏${practice.nature}，作用是${practice.uses}`
+      : `${practice.name} 已经记着了`;
+    return {
+      found: true,
+      intent: 'practice',
+      practice: practice.name,
+      added: r.added,
+      warnings: warns,
+      // 播报默认上限是 32 字，装不下「记下了什么 + 那一句提醒」。
+      // 提醒里带着出处，被截掉就等于只说了半句禁忌——这半句比不说更糟。
+      sayMax: warns.length ? 140 : 80,
+      speech: warns.length ? `${base}。另外要看一下——${warns.join('；')}` : base,
     };
   }
 
@@ -308,6 +403,23 @@ export function createQihuangAgent(pack, { store = null } = {}) {
         return { intent: 'concern', conf: 1 };
       }
 
+      // 养生行为：「我在做艾灸」。
+      // 判据要排除问句——「艾灸有什么好处」是在问，不是在交代，
+      // 把它记进档案会让用户莫名其妙多了一条记录。
+      const pracs = findPractices(ctx.text);
+      if (pracs.length && !/[?？]|吗|好处|作用|效果|能不能|可不可以|适合/.test(ctx.text)) {
+        if (!store) {
+          return {
+            stop: true,
+            speech: '这台设备上没法保存记录，我只能当场回答，记不住你在做什么',
+          };
+        }
+        // 存进 ctx，execute 阶段直接用，不再从原句里认第二遍——
+        // 认两遍就有两次判断不一致的机会。
+        ctx.practice = pracs[0];
+        return { intent: 'practice', conf: 1 };
+      }
+
       const looksLikePlan = parseMedPlans(ctx.text).length > 0;
       if (MEMO_RE.test(ctx.text) || looksLikePlan) {
         if (!store) {
@@ -373,6 +485,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     execute(ctx) {
       if (ctx.intent === 'memo') return { result: doMemo(ctx) };
       if (ctx.intent === 'concern') return { result: doConcern(ctx) };
+      if (ctx.intent === 'practice') return { result: doPractice(ctx.practice) };
 
       // 营养素走独立动作：下游的 vitamin 分支只认单味营养素名，
       // 把整句「维生素C有什么作用」丢进去它只会答「库里没有这句话」。
@@ -403,7 +516,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 记住一件事不是查询结论：它没给任何健康建议，也就不需要就医提示。
       // 不豁免的话，每次「记一下」都会被自检判成「结论缺少就医提示」，
       // 然后降级成反问——用户会觉得这个助手连记东西都记不住。
-      if (r.intent === 'memo' || r.intent === 'concern') return { issues: [] };
+      if (r.intent === 'memo' || r.intent === 'concern' || r.intent === 'practice') return { issues: [] };
 
       const speech = String(r.speech || '');
 

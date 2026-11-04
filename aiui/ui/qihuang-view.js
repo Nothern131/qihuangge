@@ -198,6 +198,19 @@ export function createQihuangView({ engines, store = null } = {}) {
           : `现在记着 ${r.total || (r.items || []).length} 样`;
         patch.status = r.added === false ? '已记着' : '已记住';
         tone = 'ok';
+      } else if (r.intent === 'practice' || r.intent === 'concern') {
+        // 这两类不接进来会落到下面的 else，标题变成「本草」——
+        // 用户刚说完「我在做艾灸」，屏幕上写着「本草」，像是答错了题。
+        if (r.intent === 'practice') {
+          patch.title = r.practice || '养生记录';
+          patch.detail = r.added === false ? '之前就记着了' : '已记在档案里';
+        } else {
+          patch.title = (r.stateNames || r.states || []).join('、') || '个人状况';
+          patch.detail = '已记在档案里';
+        }
+        patch.status = r.added === false ? '已记着' : '已记住';
+        // 有冲突提醒时用黄色：这是这一屏唯一需要他当场看一眼的东西。
+        tone = (r.warnings || []).length ? 'warn' : 'ok';
       } else {
         patch.title = r.name || (r.found === false ? '没查到' : '本草');
         if (r.found === false) {
