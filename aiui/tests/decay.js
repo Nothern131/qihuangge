@@ -82,6 +82,17 @@ console.log('\n[2] 冷却：衰减只降资格，不删数据');
   truthy('热回来之后仍持续提醒', personal(agent, '黄连有什么功效'));
 
   // 冷热真正管的是主动提醒：practiceWarnings 只认热记忆（见 [5] 的对照）
+
+  // 重新郑重说一遍 ≥ 基线：衰减扣到 0 后用户重提，不能在 0 上 +1——
+  // 那样同样一句话，新人记 3.0、久未使用回来的人只记 1.0，
+  // 越久没用的人反而被记得越浅，正好制造「我说过的事你忘了」的体感。
+  store.decayConcerns(120);
+  eq('120 天后彻底冷透', (store.getConcerns()[0] || {}).importance, 0);
+  store.addConcern('脾胃虚寒');
+  truthy('冷透后重提恢复到基线以上（3.0 + 1）',
+    store.getConcerns()[0].importance >= 4.0 - 1e-9,
+    `实际 ${store.getConcerns()[0].importance}`);
+  eq('重提后重新获得主动提醒资格', store.activeConcerns().length, 1);
 }
 
 // 热的时候必须有提醒——上面那条「不再提醒」才有意义
@@ -145,13 +156,15 @@ console.log('\n[5] 事实类永不衰减');
 
 // 冷了半年重新说一遍，立即热起——重新提起本来就该把记忆激活，
 // 行为提醒（艾灸 × 阴虚）随之恢复。这是「用户主动」，不是「系统主动打扰」。
+// 而且恢复 ≥ 基线再强化（3.0 + 1 = 4.0），不是在衰减后的 0 上 +1：
+// 否则越久没用、回来重新交代的人记得越浅，和「新人记 3.0」相比就是在惩罚回来的人。
 {
   const { store, agent } = mk();
   askQihuang(agent, '我阴虚火旺');
   askQihuang(agent, '我在做艾灸');
   store.decayConcerns(180);
   const r = askQihuang(agent, '我阴虚火旺');
-  eq('重新提起 → importance 回到 1（0 + 1）', store.getConcerns()[0].importance, 1);
+  eq('重新提起 → importance 回到基线再强化（4.0）', store.getConcerns()[0].importance, 4.0);
   truthy('重新提起后行为提醒恢复', r.speech.includes('艾灸'), r.speech);
 }
 

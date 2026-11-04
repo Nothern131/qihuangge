@@ -321,7 +321,13 @@ export function createProfileStore({ backend, userId = 'local' } = {}) {
       const hit = p.concerns.find((c) => norm(c.text) === norm(clean));
       if (hit) {
         // 重复提起 = 强化。反复说的话这条就该一直热着。
-        hit.importance = Math.min(IMPORTANCE_MAX, (typeof hit.importance === 'number' ? hit.importance : IMPORTANCE_BASE) + 1);
+        // 基线兜底必须有：衰减把重要度扣到 0 之后用户重提一遍，
+        // 老逻辑在 0 上 +1，同样一句话新人记 3.0、老人只记 1.0——
+        // 越久没用、回来重新交代的人反而被记得越浅，这正好是
+        // 「我说过的事你之后又忘了」的机制根源。重新郑重说一遍
+        // 至少回到基线（reheatConcern 注释里那句话的另一半）。
+        const cur = typeof hit.importance === 'number' ? hit.importance : IMPORTANCE_BASE;
+        hit.importance = Math.min(IMPORTANCE_MAX, Math.max(IMPORTANCE_BASE, cur) + 1);
         hit.lastMentionedAt = new Date().toISOString();
         if (o.core) hit.core = true;
         return { added: false, reinforced: true, importance: hit.importance, profile: save(p) };

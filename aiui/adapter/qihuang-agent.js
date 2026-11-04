@@ -210,7 +210,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     // 等到下次问药才说，前面那句话早就过去了。
     const warns = practiceWarnings(states);
     const base = added
-      ? `记下了：${names}。以后你问药的禁忌，我会先看一眼和你这条对不对得上`
+      ? `记下了：${names}。以后你问药的禁忌，我会先看一眼和你这条对不对得上。`
       : (reinforced
         // 反复提起 = 这条变热了。如实说，但不说「我记牢了」这种拟人话。
         ? `${names} 又记了一次，这条我看得更重了`

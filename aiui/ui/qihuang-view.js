@@ -113,6 +113,9 @@ export function createQihuangView({ engines, store = null } = {}) {
         lastQuery = t;
         lastAnswer = a.speech;
         lastSource = '';
+        // 拒绝理由放宽到 72：默认 32 字会把「用量我不给建议」后面的
+        // 为什么不给全部裁掉，用户只听到一句生硬的「不给」，屏幕上的
+        // 理由他是低着头看眼镜的，不会去读。拒绝要说得让人服气。
         return emit(
           {
             title: refused ? '这个不做' : '没听出',
@@ -122,6 +125,8 @@ export function createQihuangView({ engines, store = null } = {}) {
             tone: refused ? 'bad' : 'idle',
           },
           a.speech,
+          '',
+          72,
         );
       }
 
