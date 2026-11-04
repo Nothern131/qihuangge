@@ -1,7 +1,7 @@
 <script def>
 {
   "navigationBarTitleText": "岐黄阁",
-  "description": "随身养生助手：说一味药查性味功效与禁忌，说两味药查能不能一起用，也能问毒性、孕妇能不能用、营养素。说「记一下我在吃钙片」会本机记住，以后查别的会主动提醒冲突。只查资料，不给用量、不开方、不辨证。",
+  "description": "随身养生助手：说一味药查性味功效与禁忌，说两味药查能不能一起用，也能问毒性、孕妇能不能用、营养素。说「记一下我在吃钙片」会本机记住，以后查别的会主动提醒冲突；说「记一下早上八点吃二甲双胍」会记下用药时间。只查资料，不给用量、不开方、不辨证。",
   "schema": {
     "data": {
       "type": "object",
@@ -241,7 +241,7 @@ export default {
 <page>
   <view class="page">
     <view class="bar">
-      <text class="title">本草速查</text>
+      <text class="title">岐黄阁</text>
       <text class="status">{{status}}</text>
     </view>
 

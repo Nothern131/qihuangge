@@ -23,7 +23,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 // 每个页面对应的视图模型（用来取 data 的字段名，检查模板绑定是否都存在）
 const CONFIG = {
-  name: '本草速查',
+  name: '岐黄阁',
   // 官方 framework.md 列出的合法权限值，大小写敏感，且没有 SPEECH_RECOGNITION
   allowedPermissions: ['GEOLOCATION', 'CAMERA', 'RECORD_AUDIO'],
   speechModule: 'core/speech.js',

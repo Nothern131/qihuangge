@@ -2,6 +2,6 @@
   "pages": ["pages/index/index"],
   "permissions": ["RECORD_AUDIO"],
   "window": {
-    "navigationBarTitleText": "本草速查"
+    "navigationBarTitleText": "岐黄阁"
   }
 }
