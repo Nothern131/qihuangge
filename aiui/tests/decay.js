@@ -72,9 +72,16 @@ console.log('\n[2] 冷却：衰减只降资格，不删数据');
   // 反向验证「衰减顺带删数据」时，数组会真的空掉——
   // 直接取 [0].importance 会抛 TypeError，测试变成崩溃而不是变红。
   eq('60 天掉到 0（0.05 × 60 = 3.0）', (after[0] || {}).importance, 0);
-  eq('活跃状况为空', store.activeConcerns().length, 0);
+  eq('主动提醒资格失去', store.activeConcerns().length, 0);
   eq('但数据还在——这是和 SoulBrain 的关键差异', after.length, 1);
-  truthy('冷掉之后不再个性化提醒', !personal(agent, '黄连有什么功效'));
+
+  // 冷 ≠ 忘。查询触发的核对用全量：用户半年没提脾胃虚寒，
+  // 今天问黄连，碰上「脾胃虚寒者慎用」恰恰最该提——这是回答问题，不是打扰。
+  truthy('冷掉仍参与查询核对', personal(agent, '黄连有什么功效'));
+  eq('核对命中后热回来（恢复到初始值）', store.getConcerns()[0].importance, 3.0);
+  truthy('热回来之后仍持续提醒', personal(agent, '黄连有什么功效'));
+
+  // 冷热真正管的是主动提醒：practiceWarnings 只认热记忆（见 [5] 的对照）
 }
 
 // 热的时候必须有提醒——上面那条「不再提醒」才有意义
@@ -136,6 +143,18 @@ console.log('\n[5] 事实类永不衰减');
   truthy('药是事实，不因为没提就当用户停了', store.listItems()[0].name === '钙');
 }
 
+// 冷了半年重新说一遍，立即热起——重新提起本来就该把记忆激活，
+// 行为提醒（艾灸 × 阴虚）随之恢复。这是「用户主动」，不是「系统主动打扰」。
+{
+  const { store, agent } = mk();
+  askQihuang(agent, '我阴虚火旺');
+  askQihuang(agent, '我在做艾灸');
+  store.decayConcerns(180);
+  const r = askQihuang(agent, '我阴虚火旺');
+  eq('重新提起 → importance 回到 1（0 + 1）', store.getConcerns()[0].importance, 1);
+  truthy('重新提起后行为提醒恢复', r.speech.includes('艾灸'), r.speech);
+}
+
 // ─────────────────────────────────────────────────────────
 console.log('\n[6] 老数据兼容');
 
@@ -174,9 +193,9 @@ console.log('\n[7] 食补建议只认热记忆');
   askQihuang(agent, '我阴虚火旺');
   store.decayConcerns(60);
   const cold = askQihuang(agent, '我没在吃什么药，吃什么好');
-  // 冷掉的阴虚不再作为食补依据——给一个半年没提的体质推荐食材，是在猜
-  truthy('冷的状况不作为食补依据', !/阴虚的话/.test(cold.speech), cold.speech);
-  truthy('但缺状况的归因要说清', /不知道你是什么情况|没有对应的食补条目/.test(cold.speech), cold.speech);
+  // 食补也是查询触发的核对：半年前说的阴虚，今天问「吃什么好」就该按阴虚给。
+  // 忘了才是错的——冷热管的是主动打扰，不管「被问到时想不想得起来」。
+  truthy('冷的状况仍作为食补依据', /百合|麦冬|桑椹/.test(cold.speech), cold.speech);
 }
 
 console.log(`\n通过 ${pass} / ${pass + fail}`);

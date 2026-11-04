@@ -299,9 +299,11 @@ export function createProfileStore({ backend, userId = 'local' } = {}) {
      *
      *   ① SoulBrain 的记忆全是事件，低于阈值直接删掉，无妨。
      *      这里的「身体状况」删掉的话，用户问「黄连我能吃吗」时就不再核对
-     *      他三个月前说过的脾胃虚寒——那是一次真实的漏提醒。所以这里衰减
-     *      只降低 importance（不再主动提醒、不参与交叉核对），**数据保留**，
-     *      用户明确问起时照样能查到。
+     *      他三个月前说过的脾胃虚寒——那是一次真实的漏提醒。
+     *
+     *      衰减在这里管的是**主动提醒的资格**（没人问也凑上去说的那种），
+     *      不是查询时的核对——后者是回答问题所必需的，永不衰减。
+     *      冷掉的状况在被相关查询命中时会热回来（reheatConcern）。
      *
      *   ② SoulBrain 里所有记忆都衰减。这里只有「状态」类衰减（体质、感受）；
      *      「事实」类（在吃什么、几点吃药）在另外的字段里，永不衰减——
@@ -342,10 +344,31 @@ export function createProfileStore({ backend, userId = 'local' } = {}) {
       }));
     },
 
-    /** 参与提醒和食补交叉核对的资格线。掉到线下的只是「冷」了，数据还在。 */
+    /** 参与主动提醒的资格线。掉到线下的只是「不主动说」，查询核对不受此限。 */
     activeConcerns(min) {
       const m = typeof min === 'number' ? min : IMPORTANCE_ACTIVE_MIN;
       return this.getConcerns().filter((c) => c.importance >= m);
+    },
+
+    /**
+     * 把一条冷掉（或半冷）的记忆热回来。
+     *
+     * 触发时机：查询命中了它的相关禁忌。「想起来」要有证据——
+     * 用户半年没提脾胃虚寒，今天问黄连，系统核对上了还提醒了，
+     * 这条的重要度就该恢复。不然下次又冷掉，用户的感知是「上次它记得，这次忘了」。
+     *
+     * 恢复到初始值而不是 +1：想起来和重新郑重说一遍是两件事。
+     */
+    reheatConcern(text) {
+      const clean = String(text || '').trim();
+      if (!clean) return null;
+      const p = load();
+      const hit = p.concerns.find((c) => norm(c.text) === norm(clean));
+      if (!hit) return null;
+      hit.importance = Math.max(hit.importance || 0, IMPORTANCE_BASE);
+      hit.lastMentionedAt = new Date().toISOString();
+      save(p);
+      return { importance: hit.importance, text: hit.text };
     },
 
     /**

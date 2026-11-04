@@ -291,8 +291,9 @@ export function createQihuangAgent(pack, { store = null } = {}) {
 
     if (store) {
       try {
-        // 食补建议只认热的状况：给一个已经冷掉（半年没提）的体质推荐食材，是在猜
-        for (const c of store.activeConcerns()) for (const st of extractStates(c.text)) push(st);
+        // 食补同 decorate：查询触发的核对用全量。用户半年前说阴虚，
+        // 今天问「吃什么好」，按阴虚给方向是核对记忆，不是猜。
+        for (const c of store.getConcerns()) for (const st of extractStates(c.text)) push(st);
       } catch (err) {
         console.warn('[qihuang] 读状况失败，本次只用这句话里说的：', err && err.message);
       }
@@ -803,12 +804,30 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 一起出现时先说更急的那条。
       // 依据全部来自本草条目的 tabi 原文，一个字都没改；命中就念原话，没命中就闭嘴。
       const avoid = ctx.result && ctx.result.avoid;
-      // 同上：交叉核对只看热记忆。这条在 decorate 里，每次查药都会走到。
-      const states = store.activeConcerns().flatMap((c) => extractStates(c.text));
+      // 查询核对用**全量**，不看冷热——这是上一版改错的地方，值得写清为什么。
+      //
+      // 用户问「黄连能吃吗」，核对黄连禁忌 vs 他说过的所有状况，
+      // 是回答这个问题所必需的，不是主动打扰。半年前说的脾胃虚寒
+      // 碰上黄连的「脾胃虚寒者慎用」，恰恰是最该提的时刻。
+      // 冷热只该管「没人问也凑上去说」的主动提醒（见 practiceWarnings）。
+      //
+      // 冷记忆在这里被命中时还要热回来（reheatConcern）：不然用户的感知是
+      // 「上次它记得，这次忘了」——比从来记不住更伤信任。
+      const states = store.getConcerns().flatMap((c) => extractStates(c.text));
       if (avoid && states.length) {
         const hits = cautionsFor(avoid, states);
         if (hits.length) {
           const herb = ctx.result.name || '';
+          // 命中就把相关的那几条热回来。
+          // cautionsFor 的每项是 {state: 标签, line: 原文}，state 是单个字符串，
+          // 和状况的 tags（「脾胃虚寒」「虚寒」这些词）比对——第一次写成
+          // h.states.some(...)，那个字段不存在，整段被 pipeline 的 catch 吞掉，
+          // 表面症状是「冷记忆没热回来」，报错只在日志里。
+          const hitTags = new Set(hits.map((h) => h.state));
+          for (const c of store.getConcerns()) {
+            const tags = extractStates(c.text).flatMap((x) => x.tags);
+            if (tags.some((t) => hitTags.has(t))) store.reheatConcern(c.text);
+          }
           // 屏幕也要有一行。只进播报的话，用户看到的是「黄连：性味苦寒…」，
           // 而「你说过脾胃虚寒」这句只在语音里飘过去，回头屏幕上找不到。
           if (ctx.result && typeof ctx.result.screenText === 'string') {
