@@ -1,0 +1,4 @@
+# aix CLI 本机状态与打包产物，不进仓库
+.aix/
+dist/
+node_modules/

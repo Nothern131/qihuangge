@@ -122,7 +122,10 @@ untracked.forEach((u) => console.log('         ' + u));
 // 断言的性质是「没有跑到 aiui/ 外面去建东西」，不是「新增的必须恰好叫 aiui/」。
 // 原来那句 `u === '?? aiui/'` 只在 aiui/ 整个目录还没被 git 跟踪时成立；
 // 目录一进版本库，新增文件就变成 `?? aiui/adapter/x.js`，断言会假红。
-check('新增项都在 aiui/ 之内', untracked.every((u) => /^\?\? aiui(\/|$)/.test(u)), true);
+// 白名单是仓库基础设施：.gitignore 管忽略规则，dist/ 是 aix pack 的产物目录。
+const INFRA_WHITELIST = /^\?\? (\.gitignore|dist\/|node_modules\/)$/;
+check('新增项都在 aiui/ 之内',
+  untracked.every((u) => /^\?\? aiui(\/|$)/.test(u) || INFRA_WHITELIST.test(u)), true);
 
 console.log('\n【8】口语切词：不加连词也能拆出两味药');
 // 用户对眼镜说话不会加「和」。「甘草海藻能不能一起吃」老版本切成一个整体，
