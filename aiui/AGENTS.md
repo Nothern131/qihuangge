@@ -394,7 +394,7 @@ node tests/profile-store.js  # 18 条：档案读写、按人隔离、写失败�
 node tests/view.js           # 45 条：视图模型 + 播报出处 + 结论后标出处 + 原因上屏 + 屏幕字数预算 + 引擎缺失要报错
 node tests/vendor-parity.js  # 29 条：包装副本与原始引擎一致 + 经典数据未漂移
 node tests/parity.js         # 1 条：core/pipeline.js 与麻将那份一致
-node tests/platform.js       # 32 条：AIUI 平台合规（含 .answer 必须有 pre-line、收缩链三件套）
+node tests/platform.js       # 33 条：AIUI 平台合规（含 .answer 必须有 pre-line、收缩链三件套）
 node tests/reasons.js        # 66 条：十八反 16 对 + 十九畏 10 对都有原因 + 说了「研究」必须给文献 + 药名不外溢
 node tests/toxicity.js       # 21 条：药典 83 种名单完整 + 穷举查得到等级 + 名单外不说「无毒」
 node tests/med.js            # 38 条：用药时间解析 + 计划存入 + 端到端
@@ -403,7 +403,17 @@ node tests/food.js           # 40 条：102 味完整 + 锚点原文逐字比对
 node tests/pair.js           # 28 条：药典 49 组完整 + 别名展开 + 与歌诀差异只有已知 3 对
 node tests/practice.js       # 27 条：艾灸依据是原文 + 双向提醒 + 不该说时闭嘴
 node tests/advise.js         # 43 条：三道门槛 + 建议追得回药典原文 + 冲突剔除 + 屏幕预算
-# 合计 587 条
+node tests/decay.js          # 29 条：冷热记忆（衰减/资格线/core 慢衰减/事实不衰减/重提回基线）
+# 合计 590 条
+```
+
+## 用户视角走查（tools/demo-user-journey.js）
+
+测试管对错，走查管体验。模拟一个用户从开机到被提醒的完整一天，
+每步打印屏幕所见（patch）和眼镜所念（过同一套 toBrief 压缩路径）。
+改完任何话术/记忆逻辑后重跑一遍：`node tools/demo-user-journey.js`。
+判据不是绿不绿，是「听上去别扭吗」——2026-11-05 第一轮走查抓出
+衰减后重提被记浅、拒绝理由被裁成八个字两处断言测不到的体验伤。
 ```
 
 ## 打包（aix CLI）
