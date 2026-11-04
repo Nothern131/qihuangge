@@ -147,7 +147,9 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     if (!store) return [];
     let states = [];
     try {
-      states = store.getConcerns().flatMap((c) => extractStates(c.text));
+      // 用 active 而不是全部：冷掉的状况（60 天没提）不该再触发行为提醒。
+      // 数据还在，用户明确问起仍能查到——冷的只是「主动提」的资格。
+      states = store.activeConcerns().flatMap((c) => extractStates(c.text));
     } catch (err) {
       console.warn('[qihuang] 读状况失败，本次不做对照：', err && err.message);
       return [];
@@ -194,9 +196,13 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       throw err;
     }
     let added = 0;
+    let reinforced = 0;
     for (const st of states) {
-      const r = store.addConcern(st.raw);
+      // 孕期和出血倾向是 core：衰减率只有普通的 1/10，半年不提也不会冷掉。
+      // 依据写在 profile-store 的 addConcern 注释里——这两类漏提醒的代价最高。
+      const r = store.addConcern(st.raw, { core: st.key === 'pregnancy' || st.key === 'bleeding' });
       if (r.added) added += 1;
+      else if (r.reinforced) reinforced += 1;
     }
     const names = states.map((x) => x.tags[0]).join('、');
     // 记完状况立刻回头看一眼：有没有正在做的养生行为和这条冲突。
@@ -205,7 +211,10 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     const warns = practiceWarnings(states);
     const base = added
       ? `记下了：${names}。以后你问药的禁忌，我会先看一眼和你这条对不对得上`
-      : `${names} 已经记着了`;
+      : (reinforced
+        // 反复提起 = 这条变热了。如实说，但不说「我记牢了」这种拟人话。
+        ? `${names} 又记了一次，这条我看得更重了`
+        : `${names} 已经记着了`);
     // 前缀只用一次「另外要看一下」，不提「这一条要看」——那半句在
     // practiceWarnings 拼出来的每一句里已经有了，重复两次就成了绕口令。
     return {
@@ -282,7 +291,8 @@ export function createQihuangAgent(pack, { store = null } = {}) {
 
     if (store) {
       try {
-        for (const c of store.getConcerns()) for (const st of extractStates(c.text)) push(st);
+        // 食补建议只认热的状况：给一个已经冷掉（半年没提）的体质推荐食材，是在猜
+        for (const c of store.activeConcerns()) for (const st of extractStates(c.text)) push(st);
       } catch (err) {
         console.warn('[qihuang] 读状况失败，本次只用这句话里说的：', err && err.message);
       }
@@ -793,7 +803,8 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 一起出现时先说更急的那条。
       // 依据全部来自本草条目的 tabi 原文，一个字都没改；命中就念原话，没命中就闭嘴。
       const avoid = ctx.result && ctx.result.avoid;
-      const states = store.getConcerns().flatMap((c) => extractStates(c.text));
+      // 同上：交叉核对只看热记忆。这条在 decorate 里，每次查药都会走到。
+      const states = store.activeConcerns().flatMap((c) => extractStates(c.text));
       if (avoid && states.length) {
         const hits = cautionsFor(avoid, states);
         if (hits.length) {

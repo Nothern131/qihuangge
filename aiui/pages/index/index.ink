@@ -54,6 +54,13 @@ export default {
       if (!store.available()) {
         console.warn('[qihuang] 本机存储不可用，将无法记住用户说的东西');
         store = null;
+      } else {
+        // 冷热记忆的衰减在打开时跑一次：距上次打开过了几天，状况的重要度就掉多少。
+        // 放这里而不是每次查询时——衰减是「以天计」的，一次会话内反复算没有意义。
+        const d = store.decayConcernsAuto();
+        if (d.decayed > 0) {
+          console.info(`[qihuang] 状况记忆衰减：${d.days} 天未提，${d.decayed} 条重要度下降`);
+        }
       }
     } catch (err) {
       // 存储起不来不影响查资料，只影响「记住」。降级要说清楚，不装作能用。

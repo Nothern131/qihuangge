@@ -68,6 +68,15 @@ const MED_PLAN_LIMIT = 20;
 // 正是这类档案最常见的泄漏方式——它是唯一一个之前漏掉的。
 const PRACTICE_LIMIT = 10;
 
+// ── 状况的冷热（参考 SoulBrain memory.js，两处医疗化改造见 addConcern 注释）──
+// 初始 3.0：说一次就有资格参与交叉核对；重复提到加 1，封顶 5。
+const IMPORTANCE_BASE = 3.0;
+const IMPORTANCE_MAX = 5.0;
+// 每天掉 0.05：60 天没提就从 3.0 掉到 0（冷），而孕期这类 core 条目要 600 天。
+// 阈值 0.5：掉到线下就不再主动参与提醒，但数据保留。
+const CONCERN_DECAY_PER_DAY = 0.05;
+const IMPORTANCE_ACTIVE_MIN = 0.5;
+
 /**
  * @param {object} opts
  * @param {{get:Function,set:Function,remove:Function}} opts.backend 存储后端，必须注入
@@ -280,17 +289,102 @@ export function createProfileStore({ backend, userId = 'local' } = {}) {
       return { removed: true, profile: save(p) };
     },
 
-    addConcern(text) {
+    /**
+     * 记一条身体状况，带「冷热」——重要度随重复提起升高，随时间衰减。
+     *
+     * 这套机制参考了本地 SoulBrain 项目（智能脑_SoulBrain/src/core/memory.js）的
+     * 设计：importance 随时间衰减，core 类衰减率是正常的 1/10，低于阈值淘汰。
+     *
+     * 但有两处**不能照搬**，原因都和医疗场景有关：
+     *
+     *   ① SoulBrain 的记忆全是事件，低于阈值直接删掉，无妨。
+     *      这里的「身体状况」删掉的话，用户问「黄连我能吃吗」时就不再核对
+     *      他三个月前说过的脾胃虚寒——那是一次真实的漏提醒。所以这里衰减
+     *      只降低 importance（不再主动提醒、不参与交叉核对），**数据保留**，
+     *      用户明确问起时照样能查到。
+     *
+     *   ② SoulBrain 里所有记忆都衰减。这里只有「状态」类衰减（体质、感受）；
+     *      「事实」类（在吃什么、几点吃药）在另外的字段里，永不衰减——
+     *      药是事实，「在吃」就是「在吃」，除非用户亲口说停了。
+     *
+     * @param {string} text 用户原话
+     * @param {object} [opts]
+     * @param {boolean} [opts.core] 高风险状况（孕期、出血倾向），衰减率为 1/10
+     */
+    addConcern(text, opts) {
       const clean = String(text || '').trim();
       if (!clean) return { added: false };
+      const o = opts || {};
       const p = load();
-      if (p.concerns.some((c) => norm(c.text) === norm(clean))) return { added: false, profile: p };
-      p.concerns = [...p.concerns, { text: clean, addedAt: new Date().toISOString() }].slice(-20);
-      return { added: true, profile: save(p) };
+      const hit = p.concerns.find((c) => norm(c.text) === norm(clean));
+      if (hit) {
+        // 重复提起 = 强化。反复说的话这条就该一直热着。
+        hit.importance = Math.min(IMPORTANCE_MAX, (typeof hit.importance === 'number' ? hit.importance : IMPORTANCE_BASE) + 1);
+        hit.lastMentionedAt = new Date().toISOString();
+        if (o.core) hit.core = true;
+        return { added: false, reinforced: true, importance: hit.importance, profile: save(p) };
+      }
+      p.concerns = [...p.concerns, {
+        text: clean,
+        importance: IMPORTANCE_BASE,
+        core: o.core === true,
+        addedAt: new Date().toISOString(),
+      }].slice(-20);
+      return { added: true, importance: IMPORTANCE_BASE, profile: save(p) };
     },
 
     getConcerns() {
-      return load().concerns;
+      // 老数据没有 importance 字段（schema 改之前存的），按初始值补上。
+      // 不在这里补写存储：读路径补默认值，写路径只在真正变化时落盘。
+      return load().concerns.map((c) => ({
+        ...c,
+        importance: typeof c.importance === 'number' ? c.importance : IMPORTANCE_BASE,
+      }));
+    },
+
+    /** 参与提醒和食补交叉核对的资格线。掉到线下的只是「冷」了，数据还在。 */
+    activeConcerns(min) {
+      const m = typeof min === 'number' ? min : IMPORTANCE_ACTIVE_MIN;
+      return this.getConcerns().filter((c) => c.importance >= m);
+    },
+
+    /**
+     * 按经过的天数衰减所有状况。只降 importance，不删数据。
+     *
+     * @param {number} days 经过的天数，不足一天按 0 算（同一次会话里反复调不重复扣）
+     */
+    decayConcerns(days) {
+      const d = Math.max(0, Number(days) || 0);
+      if (d === 0) return { decayed: 0, profile: load() };
+      const p = load();
+      let n = 0;
+      for (const c of p.concerns) {
+        const base = typeof c.importance === 'number' ? c.importance : IMPORTANCE_BASE;
+        // core 类衰减 1/10（SoulBrain 同款比例）：孕期这类不能因为半年没提就冷掉
+        const rate = CONCERN_DECAY_PER_DAY * (c.core ? 0.1 : 1);
+        const next = Math.max(0, base - rate * d);
+        if (next !== base) n += 1;
+        c.importance = next;
+      }
+      p.lastDecayAt = new Date().toISOString();
+      return { decayed: n, profile: save(p) };
+    },
+
+    /**
+     * 按档案里记的上次衰减时间自动衰减。onLoad 调一次就够。
+     * 没记过 lastDecayAt 视为今天——刚装的档案不该一上来就衰减。
+     */
+    decayConcernsAuto() {
+      const p = load();
+      if (!p.lastDecayAt) {
+        p.lastDecayAt = new Date().toISOString();
+        save(p);
+        return { decayed: 0, days: 0 };
+      }
+      const days = Math.floor((Date.now() - new Date(p.lastDecayAt).getTime()) / 86400000);
+      if (days < 1) return { decayed: 0, days: 0 };
+      const r = this.decayConcerns(days);
+      return { decayed: r.decayed, days };
     },
 
     /** 记一条问过的。失败不影响本次回答，所以这里可以吞——但只吞这一处。 */
