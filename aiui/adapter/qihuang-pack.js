@@ -22,6 +22,16 @@ import { reconcileWei, CANON_HERBS, ALIASES } from './wei-canon.js';
 // 毒性分级以《中国药典》83 种名单为准。引擎那张表两个方向都错（半夏被判无毒、
 // 野菊花被判有毒），详见 toxicity-canon.js 顶部的对照结论。
 import { toxicityOf, NOT_LISTED, CANON_HERBS as TOX_HERBS, normalizeToxin } from './toxicity-canon.js';
+// 药食同源物品的性味、功效、禁忌，全部来自《中国药典》2025 年版一部原文。
+// 单独一份而不是塞进本草库：本草库是引擎自带的数据，出处不明、也有错（毒性表就错过两轮）；
+// 这一份每一句都能翻到药典第几页，出了分歧以它为准。
+// 别名重命名导入：wei-canon 里已经有一个 ALIASES（官桂→肉桂），同名会覆盖。
+import {
+  foodOf, foodWords, FOOD_SOURCE,
+} from './food-canon.js';
+// 药典口径的配伍禁忌（49 组）。引擎那两张表加起来 26 对，是明清歌诀；
+// 药典是现行国家标准，多出来的那些（党参反藜芦、三棱畏芒硝）歌诀里没有。
+import { canonPair, PAIR_SOURCE } from './pair-canon.js';
 
 // 出处不再手写在每个分支里，而是作为 source 字段回传，由页面挂到播报尾巴上。
 // 这么改是因为手写 19 处的结果必然是「改了 18 处，漏掉的那处静默地说了一句
@@ -166,8 +176,13 @@ export function createQihuangPack(engines) {
   // 第四份是药典毒性名单：山豆根、白屈菜、金铁锁这些既不在引擎表也不在本草库，
   // 不补的话「山豆根有毒吗」会被切成一味不认识的药，答「本草库还没收录」——
   // 而它的毒性恰恰是药典里写着的。
+  //
+  // 第五份是药食同源的 102 味和它们的俗称。日常养生说的「红枣」「桂圆」「薏米」
+  // 都不是药典正名（大枣、龙眼肉、薏苡仁），本草库也没有这几个写法；
+  // 不补的话「红枣有什么功效」会被切成一个不认识的词，答「没收录」——
+  // 而它其实查得到，只是名字不一样。
   const LEXICON = buildLexicon(InteractionEngine, BencaoEngine, [
-    ...CANON_HERBS, ...Object.keys(ALIASES), ...TOX_HERBS,
+    ...CANON_HERBS, ...Object.keys(ALIASES), ...TOX_HERBS, ...foodWords(),
   ]);
 
   /**
@@ -465,6 +480,34 @@ export function createQihuangPack(engines) {
     // 排在原因之前——把它往后放，用户先读到一大段机理，才发现机理讲的那条禁忌不成立。
     // 只有它、没有别的结论时（问「川乌草乌」），正文就是它：
     // 此时说「没查到禁忌」是错的，禁忌查到了，只是歌诀说不是这一对。
+    // 药典补充：引擎两张表都没有的时候，再问一次药典。
+    //
+    // 顺序不能反。引擎的十八反/十九畏带着分类（"属十八反，不可同用"）
+    // 和原因库能对上，这些药典没有；药典胜在覆盖面——
+    // 「党参反藜芦」歌诀里没有（诸参只列了人参、沙参、丹参、玄参、苦参），
+    // 而党参是日常煲汤最常用的一味参，这个漏洞是会被踩到的。
+    const canonHits = [];
+    // 判据用「前面有没有得出过配伍结论」，不能用 r.weis：
+    // 「人参畏五灵脂」引擎表里本来没有，是 wei-canon 按歌诀补上的，
+    // 所以 r.weis 为空而结论已经有了。用 r.weis 判会让同一对药说两遍。
+    if (speechParts.length === 0 && known.length >= 2) {
+      // 用户说的是俗称（红枣、桂圆），药典表里存的是正名（大枣、龙眼肉）。
+      // 不归一的话，「红枣郁金能一起用吗」会查空，而那正是要提醒的一对。
+      const canonName = (h) => (foodOf(h) ? foodOf(h).name : h);
+      for (let i = 0; i < known.length; i += 1) {
+        for (let j = i + 1; j < known.length; j += 1) {
+          const cp = canonPair(canonName(known[i]), canonName(known[j]));
+          if (cp) canonHits.push(cp);
+        }
+      }
+      if (canonHits.length) {
+        // 用 from + clause 拼：from 是药典写这句话的那一味，
+        // 而 clause 本身已经带着对手名（「不宜与赤石脂同用」）。
+        speechParts.push(`${canonHits.map((c) => `${c.from}${c.clause}`).join('；')}。属药典列出的配伍禁忌，不宜同用`);
+        cites.push('canon');
+      }
+    }
+
     const bodyParts = [...speechParts, ...corrections];
     // 有妊娠提示时，正文只回答「配伍禁忌」这一项，不再提妊娠。
     // 原来这种情况正文整个留空，理由是「妊娠禁用」后面接「没查到妊娠禁忌」自相矛盾——
@@ -706,6 +749,98 @@ export function createQihuangPack(engines) {
       && t.herb_keywords.includes(name)) || null;
   }
 
+  /**
+   * 药食同源物品：性味、功效、禁忌，全部照《中国药典》原文说。
+   *
+   * 为什么单独一条查询路径，而不是并进本草库：
+   * 本草库是引擎自带的，出处不明、也已经错过两轮（毒性表把半夏写成无毒）。
+   * 这一份每一句都能翻到药典第几页，所以只要命中就用它，不走引擎。
+   *
+   * 三处刻意的措辞：
+   *   ① 功效只说到「用于」之前。后面那串主治是最容易被当成诊断建议的一段，
+   *      和本草查询里「不念主治」是同一条原则。
+   *   ② tabi 为空时的说法是「药典没有为它列注意事项，这不等于它没有禁忌」。
+   *      药典不列，只说明药典没写，不说明它安全——
+   *      把「书里没写」说成「可以放心吃」，是这类应用最不该犯的错。
+   *   ③ 出处给到具体书名和版本，不给「中药学资料」这种含糊说法。
+   */
+  function viewFood(asked, wantsTabi) {
+    const food = foodOf(asked);
+    if (!food) return null;
+
+    // 「补中益气，养血安神。用于脾虚食少…」→ 只留前半句
+    const effect = String(food.functions || '').split('。用于')[0].replace(/。$/, '');
+
+    const parts = [];
+    if (food.nature) parts.push(`性味${food.nature}`);
+    if (effect) parts.push(`功效是${effect}`);
+
+    const tabiLine = food.tabi
+      ? `药典里写着：${food.tabi}`
+      // 一句说完。原来是两句——「没有为它列注意事项」加「只对部分品种列了【注意】项」，
+      // 说的是同一件事，在只有两行宽的屏幕上重复一遍，等于白占一行。
+      : `药典没有为${food.name}列注意事项，只说明药典没写，不等于它没有禁忌`;
+
+    // 用户说俗称时点一句正名。不说的话，他问「桂圆」得到「龙眼肉」，
+    // 会以为是答错了；说了，下次他自己就能对上。
+    // 放在括号里而不是单独一句：屏幕上每个字都要占位置，而这层信息只需要被扫到。
+    const aliasNote = food.name !== asked ? `${asked}即${food.name}` : '';
+
+    // 播报分两种问法：
+    //   问功效的（「红枣有什么功效」）——「药典没列注意事项」这句占掉一半字数，
+    //     而它答的不是用户问的事，所以只留在屏幕上；
+    //   问禁忌的（「红枣孕妇能吃吗」）——这句必须念出来，否则用户以为查到了「可以吃」。
+    // 古籍原文：当归、人参这几味既是食材又有经典条文，走食材这条路时不能把它丢掉。
+    // 不补的话，「当归有什么功效」换成食材路径之后就不再给原文了——
+    // 那是把一个已有能力弄没了，而不是新增功能。
+    const ancient = ancientFor(food.name);
+    const ancientSay = ancient ? ancientLine(ancient.source) : '';
+
+    const sayTabi = food.tabi || wantsTabi;
+    const speech = `${food.name}：${joinSentences([
+      aliasNote,
+      ...parts,
+      sayTabi ? tabiLine : '',
+      ancientSay,
+    ])}`;
+
+    // 屏幕总是完整的：戴上眼镜看的那一眼，比听一句更愿意读细。
+    // 而且「没列 ≠ 没有禁忌」这层意思，只靠语音听一遍很难留下印象。
+    const screenText = `${food.name}：${joinSentences([
+      aliasNote,
+      ...parts,
+      tabiLine,
+    ])}`;
+
+    return {
+      found: true,
+      name: food.name,
+      kind: 'food',
+      xingwei: food.nature,
+      effect,
+      dosage: food.dosage,
+      avoid: food.tabi ? [food.tabi] : [],
+      toxicity: null,
+      // 药典页码留着，屏幕上不显示（用户看的是书页码，不是 PDF 页码，
+      // 两者对不上会让人以为写错了），但排错时能直接翻回原句。
+      page: food.page,
+      aliasOf: aliasNote ? asked : '',
+      ancient: ancient
+        ? { source: ancient.source, chapter: ancient.chapter, text: ancient.original_text }
+        : null,
+      // 出处只写一份。原来这里拼了 citeLine(['bencao'])（「《中国药典》与中药学教材」）
+      // 再加一句「本条取自《中国药典》2025年版一部」——同一行两个书名，看着像没对齐。
+      // 有原文时必须分开标：性味功效是药典的，那段原文是古籍的，
+      // 合成一句会把原文也算成药典条目。
+      source: ancient
+        ? `出处：${FOOD_SOURCE}（性味功效）；原文引自《${ancient.source}》。`
+        : `出处：${FOOD_SOURCE}。`,
+      sourceTag: ancient ? `${FOOD_SOURCE}、《${ancient.source}》` : FOOD_SOURCE,
+      speech,
+      screenText,
+    };
+  }
+
   function viewHerb(payload) {
     const B = need('BencaoEngine', BencaoEngine);
     const name = readName(payload, '药名');
@@ -714,6 +849,13 @@ export function createQihuangPack(engines) {
     // 不让它进 search，否则 search('当归是什么') 必然空手而归，
     // 用户看到的是「本草库里没有当归是什么」——把句子当药名念回去了。
     const cleaned = extractOne(name) || name;
+
+    // 药食同源优先。它和本草库有重叠（山药、菊花、山楂都在两边），
+    // 重叠时用药典这一份：出处能回查，而本草库的出处谁也说不清。
+    const asked = String(payload.text || payload.query || cleaned);
+    const wantsTabi = /(禁忌|忌口|不能|能不能|可不可以|可以吃|能吃|孕妇|怀孕|副作用|注意|什么人)/.test(asked);
+    const food = viewFood(cleaned, wantsTabi);
+    if (food) return food;
 
     const hits = B.search(cleaned) || [];
     if (hits.length === 0) {
@@ -866,6 +1008,37 @@ export function createQihuangPack(engines) {
    * 为什么不复用 check：用户问「孕妇能吃桃仁吗」要的是这一味药的妊娠结论，
    * 而不是配伍提醒。混在一起答，最容易出现「问毒性答妊娠」这种答非所问。
    */
+  /**
+   * 从药典【注意】里抽妊娠相关的那一句。
+   *
+   * 为什么需要这一步：引擎自带一张妊娠禁忌表（来自妊娠用药禁忌歌），
+   * 但它和药典不是一套口径。实测「薏米孕妇能吃吗」——药典白纸黑字写着
+   * 「孕妇慎用」，而引擎表里没有，系统回了一句「没有查到妊娠禁忌记录」。
+   * 用户听到的是「没查到」，理解成「可以吃」，中间差的正好是药典那一行字。
+   *
+   * 只做抽取，不做推理：命中原句就报原句，不合并成「风险较高」这类结论。
+   * 判重交给 collapseByHerb，同一味药两条取更严的那条。
+   */
+  function pregnancyFromCanon(names) {
+    const out = [];
+    for (const n of names) {
+      const food = foodOf(n);
+      if (!food || !food.tabi) continue;
+      // 【注意】里可能写「有出血倾向者及孕妇慎用；不宜与赤石脂同用」，
+      // 按分号切开后只取含「孕妇/妊娠/哺乳」的那一段，
+      // 否则会把不相干的配伍禁忌一起挂到妊娠结论上。
+      const seg = String(food.tabi).split(/[；。]/).find((x) => /孕妇|妊娠|哺乳/.test(x));
+      if (!seg) continue;
+      out.push({
+        herb: food.name,
+        level: /禁用/.test(seg) ? 'strong' : 'moderate',
+        msg: `${food.name} ${seg.trim()}`,
+        fromCanon: true,
+      });
+    }
+    return out;
+  }
+
   function viewPregnancy(payload) {
     const I = need('InteractionEngine', InteractionEngine);
     const herbs = readHerbList(payload);
@@ -888,6 +1061,17 @@ export function createQihuangPack(engines) {
     if (typeof I.checkPregnancy === 'function') entries = I.checkPregnancy(known) || [];
     entries = collapseByHerb(entries);
 
+    // 药典【注意】里的妊娠条款并进来。引擎表没有的，这里可能写着，
+    // 而「查不到」和「书里写着不能用」是两件事，不能因为前者漏掉后者。
+    const canon = pregnancyFromCanon(known);
+    if (canon.length) {
+      const have = new Set(entries.map((e) => e.herb));
+      entries = [...entries, ...canon.filter((c) => !have.has(c.herb))];
+      entries = collapseByHerb(entries);
+    }
+    const fromCanonOnly = entries.length > 0 && entries.every((e) => e.fromCanon);
+    const mixed = entries.some((e) => e.fromCanon) && entries.some((e) => !e.fromCanon);
+
     if (entries.length === 0) {
       // 查不到记录 ≠ 可以用。这句必须说，否则「没查到」会被当成「安全」。
       // 但「去问医生」不是这里该给的答案：用户问的是「这味药记不记在禁忌歌里」，
@@ -903,13 +1087,18 @@ export function createQihuangPack(engines) {
     }
 
     const msgs = entries.map((e) => e.msg.replace(/\s*—\s*/g, '：'));
+    // 出处按实际用到的书给：只有药典命中时不能说「出自妊娠禁忌歌」，
+    // 那是另一本书，用户去翻会翻不到。
+    const sourceTag = fromCanonOnly
+      ? FOOD_SOURCE
+      : (mixed ? `妊娠用药禁忌歌、${FOOD_SOURCE}` : '妊娠用药禁忌歌');
     return {
       herbs: known,
       found: true,
       entries,
       strictest: entries.some((e) => e.level === 'strong') ? 'strong' : 'moderate',
-      source: citeLine(['pregnancy']),
-      sourceTag: '妊娠用药禁忌歌',
+      source: fromCanonOnly ? `出处：${FOOD_SOURCE}。` : citeLine(['pregnancy']),
+      sourceTag,
       speech: joinSentences([msgs.join('；'), '妊娠期间不要自行服用']),
     };
   }

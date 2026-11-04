@@ -206,6 +206,11 @@ export function createQihuangView({ engines, store = null } = {}) {
           patch.detail = /没收录|没有收录/.test(r.speech)
             ? '这味药不在本草库'
             : '换个说法，或者把药名说全';
+        } else if (r.kind === 'food') {
+          // 药食同源：副标题只给一句定位。
+          // 原来这里拼的是「性味 + 用量」，而性味在正文第一句里已经有了，
+          // 同一屏上说两遍，还占掉两行——那两行是从功效和出处里挤出来的。
+          patch.detail = '药食同源 · 药典收载';
         } else {
           const head = [r.xingwei, r.dosage].filter(Boolean).join('　｜　');
           // 「下方附原文」不加书名：出处行里已经列了，同一行出现两次书名
@@ -221,6 +226,11 @@ export function createQihuangView({ engines, store = null } = {}) {
         // 「原文见《X》，屏幕上可看」在屏幕上紧跟着就是原文，指着自己说，多余。
         if (r.ancient) {
           patch.answer = `${r.screenText || r.speech}\n《${r.ancient.source}·${r.ancient.chapter}》：${r.ancient.text}`;
+        } else if (r.screenText) {
+          // 播报和屏幕本来可以不一样，而这个分支以前只在有古籍原文时才用 screenText。
+          // 结果食材那条线两版内容一样，屏幕上就没机会多出「药典没列 ≠ 没有禁忌」
+          // 那半句——恰恰是最该让人看见的一句。
+          patch.answer = r.screenText;
         }
       }
 
