@@ -32,6 +32,10 @@ import {
 // 药典口径的配伍禁忌（49 组）。引擎那两张表加起来 26 对，是明清歌诀；
 // 药典是现行国家标准，多出来的那些（党参反藜芦、三棱畏芒硝）歌诀里没有。
 import { canonPair, PAIR_SOURCE } from './pair-canon.js';
+// 《本草纲目》谷/菜/果部 294 味（气味、主治）。**只做原文展示，不参与判断**——
+// 那是 1596 年的书，里面的说法多数没有经过现代验证，拿它下结论是拿用户做实验。
+// 只在「药典不收、本草库也没有」的时候出来当唯一可给的东西，并标明是古籍。
+import { gmOf, gmWords, GM_SOURCE, GM_NOTE } from './gm-canon.js';
 
 // 出处不再手写在每个分支里，而是作为 source 字段回传，由页面挂到播报尾巴上。
 // 这么改是因为手写 19 处的结果必然是「改了 18 处，漏掉的那处静默地说了一句
@@ -183,6 +187,12 @@ export function createQihuangPack(engines) {
   // 而它其实查得到，只是名字不一样。
   const LEXICON = buildLexicon(InteractionEngine, BencaoEngine, [
     ...CANON_HERBS, ...Object.keys(ALIASES), ...TOX_HERBS, ...foodWords(),
+    // 第六份是《本草纲目》的 294 味。加进来不是为了多认几味药，
+    // 是因为里面有大量**单字食材**（梨、桃、李、杏、梅、枣、栗、橘、柚、柿、
+    // 韭、葱、蒜、茄、芋）。不放进词表，切词器认不出「梨」，
+    // 后面那层「像不像药名（≥2 字）」再把它筛掉，用户问「梨有什么功效」只会得到
+    // 「没听出药名」——而他说的正是一个四百年前就写进书里的东西。
+    ...gmWords(),
   ]);
 
   /**
@@ -750,6 +760,49 @@ export function createQihuangPack(engines) {
   }
 
   /**
+   * 只有古籍记载的食材（绿豆、萝卜、梨这类，药典不收）。
+   *
+   * 这个函数存在的前提是**诚实地缺**：我们没有这味的现代标准数据，
+   * 唯一能给的是四百年前书上怎么写的。所以三件事必须说：
+   *   ① 药典没有收载（先说缺什么，再说有什么）
+   *   ② 这是《本草纲目》哪一部
+   *   ③ 古籍记载，未经现代验证
+   *
+   * 少了任何一条，用户都会把 1596 年的说法当成现行结论。
+   */
+  function viewAncientFood(name, gm) {
+    // 《本草纲目》的气味和主治都写得很长（桃那一味光气味就 130 字，
+    // 因为李时珍把各家说法都抄进去了）。屏幕上装不下，两头都要截。
+    // 截断处加省略号——不截断会挤掉出处，截断不说又像话没说完。
+    //
+    // 末尾那个句号要先去掉：拼的时候用「；」连接，不去掉会拼出「成渴病。；主治」。
+    const trim = (raw, max) => {
+      let t = String(raw || '').trim().replace(/[。；]+$/, '');
+      if (t.length <= max) return t;
+      const cut = t.slice(0, max);
+      const k = Math.max(cut.lastIndexOf('；'), cut.lastIndexOf('。'));
+      return (k > 16 ? cut.slice(0, k) : cut) + '…';
+    };
+
+    const parts = [`气味${trim(gm.qi, 46)}`];
+    const zhi = trim(gm.zhi, 40);
+    if (zhi) parts.push(`主治${zhi}`);
+
+    return {
+      found: true,
+      name,
+      kind: 'ancient-food',
+      speech: `${name}：《中国药典》没有收载。《${GM_SOURCE.replace(/^《|》$/g, '')}》`
+        + `${gm.vol || ''}记：${parts.join('；')}。这是${GM_NOTE}。`,
+      screenText: `${name}：《中国药典》没有收载。\n`
+        + `《本草纲目·${gm.vol || ''}》：${parts.join('；')}\n`
+        + `${GM_NOTE}。`,
+      source: `出处：${GM_SOURCE}。`,
+      sourceTag: `${GM_SOURCE}（古籍）`,
+    };
+  }
+
+  /**
    * 药食同源物品：性味、功效、禁忌，全部照《中国药典》原文说。
    *
    * 为什么单独一条查询路径，而不是并进本草库：
@@ -859,6 +912,11 @@ export function createQihuangPack(engines) {
 
     const hits = B.search(cleaned) || [];
     if (hits.length === 0) {
+      // 本草库没有，但《本草纲目》可能写着。
+      // 顺序是先药典（viewFood 已处理）、再本草库、最后才是古籍——
+      // 现行标准永远排在 1596 年的书前面。
+      const gm = gmOf(cleaned);
+      if (gm) return viewAncientFood(cleaned, gm);
       // 本草条目没有，但禁忌库认得它（桃仁就是这种：有妊娠禁忌和毒性记录，
       // 却没有性味功效条目）。这种情况必须说清楚「哪部分有、哪部分没有」，
       // 否则一句「没收录」会让用户以为这味药系统完全不认识。
