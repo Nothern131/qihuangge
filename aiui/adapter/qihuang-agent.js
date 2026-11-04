@@ -15,6 +15,9 @@ import { createPipeline } from '../core/pipeline.js';
 // 用药计划的解析与回显。「几点吃什么」是管家形态的入口，
 // 没有它，记忆就只是「你在吃什么」，永远产生不了「到点提醒」。
 import { parseMedPlans, humanTime, TIMING_LABEL } from './med-schedule.js';
+// 个人状况 × 本草禁忌的匹配。只在库里写着「什么人忌服」时才说话，
+// 不自己推「艾灸温热所以不能配寒凉」这类结论——那种推理的正确性要我们负责。
+import { extractStates, cautionsFor, cautionSpeech, cautionLine } from './advice.js';
 
 // 本版明确不做的事。这些不是说错了，是根本不该由这个作品回答——
 // 眼镜上一个只说三句话的助手给出剂量建议，比不给建议危险得多。
@@ -108,6 +111,35 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       speech: r.added
         ? `记下了：${name}。以后你问到它，我会先看一眼有没有冲突。`
         : `${name}已经记着了`,
+    };
+  }
+
+  /**
+   * 记下用户的状况（脾胃虚寒、怀孕、湿气重……）。
+   *
+   * 存的是**他的原话**，不是我们归一后的术语：下次复述时「喝凉的不舒服」
+   * 比「脾胃虚寒」更像他自己说的话。匹配时再统一抽术语，两边不冲突。
+   */
+  function doConcern(ctx) {
+    const states = extractStates(ctx.text);
+    if (!states.length) {
+      const err = new Error('没听出是哪方面的状况');
+      err.code = 'missing_item';
+      throw err;
+    }
+    let added = 0;
+    for (const st of states) {
+      const r = store.addConcern(st.raw);
+      if (r.added) added += 1;
+    }
+    const names = states.map((x) => x.tags[0]).join('、');
+    return {
+      found: true,
+      intent: 'concern',
+      states: states.map((x) => x.key),
+      speech: added
+        ? `记下了：${names}。以后你问药的禁忌，我会先看一眼和你这条对不对得上`
+        : `${names} 已经记着了`,
     };
   }
 
@@ -259,6 +291,23 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 因为交代用药时用户经常不重复动词——「早上八点吃二甲双胍，晚上八点吃阿托伐他汀」，
       // 后半句没有「记一下」，但它显然还在同一次交代里。
       // 不扩的话，后半句会掉进查询，回一句「这句没听懂」，用户得把整句重说一遍。
+      // 纯状况陈述（「我脾胃虚寒」「我在备孕」）记成档案，不走向查询。
+      // 判据要窄：带药名的（「我胃寒能吃黄连吗」）必须放去查询——
+      // 那是他真正想问的事，只记个状况等于没回答。
+      const states = extractStates(ctx.text);
+      // 判据用 known（库里认得的药名）而不是 herbs（切词切出来的）：
+      // 切词有个兜底，会把「脾胃虚寒」整串当成一味药名，herbs 就不为空了，
+      // 这条分支永远进不去——而这正是最常见的一句。
+      if (states.length && (!ctx.recog.known || ctx.recog.known.length === 0) && !/[?？]|吗|能不能|可不可以/.test(ctx.text)) {
+        if (!store) {
+          return {
+            stop: true,
+            speech: '这台设备上没法保存记录，我只能当场回答，记不住你的情况',
+          };
+        }
+        return { intent: 'concern', conf: 1 };
+      }
+
       const looksLikePlan = parseMedPlans(ctx.text).length > 0;
       if (MEMO_RE.test(ctx.text) || looksLikePlan) {
         if (!store) {
@@ -323,6 +372,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
 
     execute(ctx) {
       if (ctx.intent === 'memo') return { result: doMemo(ctx) };
+      if (ctx.intent === 'concern') return { result: doConcern(ctx) };
 
       // 营养素走独立动作：下游的 vitamin 分支只认单味营养素名，
       // 把整句「维生素C有什么作用」丢进去它只会答「库里没有这句话」。
@@ -353,7 +403,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 记住一件事不是查询结论：它没给任何健康建议，也就不需要就医提示。
       // 不豁免的话，每次「记一下」都会被自检判成「结论缺少就医提示」，
       // 然后降级成反问——用户会觉得这个助手连记东西都记不住。
-      if (r.intent === 'memo') return { issues: [] };
+      if (r.intent === 'memo' || r.intent === 'concern') return { issues: [] };
 
       const speech = String(r.speech || '');
 
@@ -441,7 +491,27 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 等于挂着一个永远空的字段。写失败不影响本次回答，所以这一处可以吞（存储层会记 warn）。
       if (ctx.intent !== 'memo') store.pushHistory(ctx.text);
 
-      if (ctx.intent === 'memo') return null;
+      if (ctx.intent === 'memo' || ctx.intent === 'concern') return null;
+
+      // ① 状况 × 本草禁忌，排在「你记着在吃 X」之前。
+      // 前者是「这一条你可能不该用」，后者是「你还有别的在吃」——
+      // 一起出现时先说更急的那条。
+      // 依据全部来自本草条目的 tabi 原文，一个字都没改；命中就念原话，没命中就闭嘴。
+      const avoid = ctx.result && ctx.result.avoid;
+      const states = store.getConcerns().flatMap((c) => extractStates(c.text));
+      if (avoid && states.length) {
+        const hits = cautionsFor(avoid, states);
+        if (hits.length) {
+          const herb = ctx.result.name || '';
+          // 屏幕也要有一行。只进播报的话，用户看到的是「黄连：性味苦寒…」，
+          // 而「你说过脾胃虚寒」这句只在语音里飘过去，回头屏幕上找不到。
+          if (ctx.result && typeof ctx.result.screenText === 'string') {
+            ctx.result.screenText += `\n${cautionLine(herb, hits)}`;
+          }
+          return { say: cautionSpeech(herb, hits) };
+        }
+      }
+
       const items = store.listItems();
       if (items.length === 0) return null;
 
