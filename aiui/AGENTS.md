@@ -406,6 +406,22 @@ node tests/advise.js         # 43 条：三道门槛 + 建议追得回药典原�
 # 合计 587 条
 ```
 
+## 打包（aix CLI）
+
+```bash
+npm install -g @yodaos-pkg/aix-cli
+cd aiui && aix pack . -o ../dist/qihuangge-v<版本>.aix
+aix show .      # 打包前看一眼元数据：名字/描述/版本
+aix list <包>   # 打包后核对清单：tests/ tools/ 不得入包
+```
+
+- `agentName` / `agentDesc` / `nativeVersion` 写在 `app.json`，缺省会回落到
+  「AIX Agent」和 AGENTS.md 第一段——审核方看到内部话术就是这里漏配了。
+- `.aixignore` 只管包内容（tests/tools 不入包）；git 忽略归根目录 `.gitignore`
+  （`.aix/` 是 CLI 本机状态，`dist/` 是产物）。
+- 版本号规则：Studio 已同步的版本是基线（1.0.2），本地每追加一批改动升一位
+  （当前 1.0.3 = 1.0.2 + 冷热记忆 + 播报抢占）。策划案附一同步更新。
+
 ## AIUI Studio 实测结果（2026-11-03）
 
 已经跑过的，都有截图/日志：
