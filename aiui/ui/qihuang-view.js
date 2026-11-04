@@ -198,6 +198,32 @@ export function createQihuangView({ engines, store = null } = {}) {
           : `现在记着 ${r.total || (r.items || []).length} 样`;
         patch.status = r.added === false ? '已记着' : '已记住';
         tone = 'ok';
+      } else if (r.intent === 'advice') {
+        // 食补建议。这是唯一一条正向建议，屏幕要多给一点——
+        // 用户是为了「照我这样该吃什么」来的，只念一句就没了等于没答。
+        const label = (r.stateNames || []).join('、') || '食补';
+        patch.title = label;
+        patch.status = r.ok ? '已找到' : '要先问清';
+        if (r.ok) {
+          patch.detail = `药典「用于」原文 · ${r.picks.length} 味`;
+          // 每条只留药名、性味和前三个适应证。
+          // 药典一条能写七个主治，全放上去三味就 200 字，把出处挤出屏幕。
+          const lines = r.picks.map((pk) => {
+            const use = String(pk.use || '').split('，').slice(0, 3).join('，');
+            const cor = pk.contrary ? '（性味偏反，不作首选）' : '';
+            return `${pk.name}（${pk.nature}）：用于${use}${cor}`;
+          });
+          if (r.blocked && r.blocked.length) {
+            lines.push(`未列入：${r.blocked.map((b) => b.name).join('、')}（与你在吃的相冲）`);
+          }
+          patch.answer = lines.join('\n');
+          // 出处不在这里拼：下面有一段统一用 r.sourceTag 加「出处：」前缀，
+          // 这里再设一次就会变成「出处：出处：…」。
+        } else {
+          patch.detail = '还缺一步';
+          patch.answer = r.speech;
+        }
+        tone = r.ok ? 'ok' : 'warn';
       } else if (r.intent === 'practice' || r.intent === 'concern') {
         // 这两类不接进来会落到下面的 else，标题变成「本草」——
         // 用户刚说完「我在做艾灸」，屏幕上写着「本草」，像是答错了题。

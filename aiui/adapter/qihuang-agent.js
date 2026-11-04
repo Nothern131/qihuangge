@@ -21,6 +21,9 @@ import { extractStates, cautionsFor, cautionSpeech, cautionLine } from './advice
 // 养生行为（艾灸这类）。它的禁忌依据是《伤寒论》原文，判定靠用户自述的状况，
 // 两者都不是这套系统自己推出来的——这一点在 practice-canon.js 顶部写清了。
 import { practiceOf, findPractices, practiceCautions } from './practice-canon.js';
+// 状况 → 食补建议。匹配用药典「用于」原文，排序用《素问》「寒者热之」，
+// 推荐前必须先知道用户在吃什么——这条门槛在 food-advice.js 里，不在这一层。
+import { adviseFor, adviceLine, adviceSource } from './food-advice.js';
 
 // 本版明确不做的事。这些不是说错了，是根本不该由这个作品回答——
 // 眼镜上一个只说三句话的助手给出剂量建议，比不给建议危险得多。
@@ -34,6 +37,19 @@ const REASSURE_RE = /(可以放心|放心吃|放心用|没问题|没事|安全|�
 // 答「没听懂」是最差的反应——听起来像不会，实际是不该答。
 // 这两件事对用户的意义完全不同：前者他会换个说法再试，后者他会去找会编的人。
 const WELLNESS_RE = /(调理|养生|怎么养|怎么预防|怎么缓解|怎么改善|如何改善|如何调理|能治好|能治吗|能治|怎么治|什么能治|吃什么能|吃什么好|有什么办法|食补|食疗|偏方)/;
+// 问「吃什么」这一类。它比 WELLNESS_RE 窄，而且能真正回答——
+// 只要知道他的身体状况、知道他在吃什么，药典里就写着什么情况适合吃什么。
+const ADVICE_RE = /(吃什么|吃点什么|吃啥|食补|食疗|怎么补|补什么|怎么吃好|吃什么好|能吃什么|吃哪些)/;
+// 用户回答「我在吃什么」这个问题时可能说「没在吃」。
+// 不认这一句，用户会被卡在「先告诉我你在吃什么」那一问上下不来。
+const NO_MED_RE = /(没在吃|没有在吃|没吃药|没有吃药|不吃药|什么都没吃|没吃任何|什么药都没)/;
+// 「想补气」「滋阴」这类需求描述。用户没说自己气虚，但意思到了。
+const TONIC_RE = [
+  { re: /(补气|益气)/, key: 'qi-deficiency', label: '气虚' },
+  { re: /(补阴|滋阴|养阴)/, key: 'yin-deficiency', label: '阴虚' },
+  { re: /(补阳|壮阳|温阳)/, key: 'yang-deficiency', label: '阳虚' },
+  { re: /(补血|养血)/, key: 'qi-deficiency', label: '气血虚' },
+];
 
 // 「记一下我在吃钙片」——这是「越用越懂你」唯一的入口。
 // 没有它，产品永远只能回答当下这一句，用户用三个月和用一天没有区别。
@@ -209,6 +225,145 @@ export function createQihuangAgent(pack, { store = null } = {}) {
   }
 
   /**
+   * 档案里正在吃的东西。返回 null 表示「不知道」，[] 表示「确实没在吃」。
+   * 这两个必须分开——见 food-advice.js 里那句注释。
+   */
+  /** 档案里有没有身体状况记录。读失败当作没有，不阻断回答。 */
+  function hasConcern() {
+    if (!store) return false;
+    try {
+      return store.getConcerns().length > 0;
+    } catch (err) {
+      console.warn('[qihuang] 读状况失败：', err && err.message);
+      return false;
+    }
+  }
+
+  function eatingList() {
+    if (!store) return null;
+    let items = [];
+    let plans = [];
+    try {
+      items = store.listItems() || [];
+      plans = store.listMedPlans() || [];
+    } catch (err) {
+      console.warn('[qihuang] 读用药记录失败，本次不给建议：', err && err.message);
+      return null;
+    }
+    if (!items.length && !plans.length) return null;
+    // ref 是规范名（calcium），name 是原话（钙片）。查配伍用规范名。
+    return [...new Set([
+      ...items.map((x) => x.ref || x.name),
+      ...plans.map((x) => x.name),
+    ].filter(Boolean))];
+  }
+
+  /**
+   * 状况 → 食补建议。这是整套东西里唯一一条**正向**建议：
+   * 别处都在说「这个别吃」，只有这里说「照你的情况，药典里写着这几样适合」。
+   *
+   * 三道门，缺一道就不给：
+   *   ① 知道身体情况（这次说的，或者档案里记着的）
+   *   ② 知道在吃什么（档案里有记录，或者他明确说了没在吃）
+   *   ③ 推荐的每一条都和 ② 交叉核对过，相冲的剔除
+   *
+   * 第 ② 道是核心。通用 AI 会直接甩一份「阴虚吃什么」的清单，
+   * 不管你在吃二甲双胍还是华法林；而这里推荐哪几味，取决于你的用药记录。
+   */
+  function doAdvice(ctx) {
+    const states = [];
+    const seen = new Set();
+    const push = (st) => {
+      if (st && st.key && !seen.has(st.key)) { states.push(st); seen.add(st.key); }
+    };
+
+    const here = extractStates(ctx.text);
+    for (const st of here) push(st);
+
+    if (store) {
+      try {
+        for (const c of store.getConcerns()) for (const st of extractStates(c.text)) push(st);
+      } catch (err) {
+        console.warn('[qihuang] 读状况失败，本次只用这句话里说的：', err && err.message);
+      }
+    }
+    // 「想补气」「滋阴」这类需求，用户没说自己气虚，但意思到了。
+    for (const t of TONIC_RE) if (t.re.test(ctx.text)) push({ key: t.key, tags: [t.label] });
+
+    // 这轮新说的状况顺手记下来——他既然说了，下次问别的也该用得上。
+    if (store) {
+      for (const st of here) {
+        try {
+          store.addConcern(st.raw);
+        } catch (err) {
+          // 存不上不影响这一轮回答，但要说清是「没记住」而不是「记住了」。
+          console.warn('[qihuang] 状况没存上：', err && err.message);
+        }
+      }
+    }
+
+    let eating = eatingList();
+    // 档案里没有记录，但他明确说了「我没在吃」——那就是知道，只是知道的是「没有」。
+    if (eating === null && NO_MED_RE.test(ctx.text)) eating = [];
+
+    const r = adviseFor(states, { eating, limit: 3 });
+
+    if (!r.ok) {
+      return {
+        found: true,
+        intent: 'advice',
+        ok: false,
+        code: r.code,
+        states: states.map((x) => x.key),
+        stateNames: states.map((x) => x.tags[0]),
+        speech: r.reason,
+      };
+    }
+
+    const stateLabel = states.map((x) => x.tags[0]).join('、');
+    const names = r.picks.map((p) => p.name).join('、');
+    // 播报只念前两条的适应证：第三条念完就超了，而用户听完最想知道的是
+    // 「为什么是这几样」，不是把七条适应证都听一遍。屏幕上是全的。
+    const brief = r.picks.slice(0, 2)
+      .map((p) => `${p.name}用于${p.use.split('，')[0]}`)
+      .join('，');
+
+    // 被剔除的单独说一句。不说不等于没发生——用户可能正奇怪
+    // 「我明明记得党参也补气，怎么没提」。
+    const blocked = r.skipped.filter((x) => x.blocked);
+    const blockNote = blocked.length
+      ? `另：${blocked.map((b) => b.name).join('、')}和你记着在吃的${blocked[0].why.match(/在吃的(.+?)相冲/) ? blocked[0].why.match(/在吃的(.+?)相冲/)[1] : '药'}相冲，没有列进来`
+      : '';
+
+    const speech = `${stateLabel}的话，药典里写着适合的有${names}。${brief}。`
+      + '具体吃多少我不给量，这些也只是食材方向，不是方子'
+      + (blockNote ? `。${blockNote}` : '');
+
+    return {
+      found: true,
+      intent: 'advice',
+      ok: true,
+      states: states.map((x) => x.key),
+      stateNames: states.map((x) => x.tags[0]),
+      picks: r.picks.map((pk) => ({
+        ...pk,
+        // 性味只留到归经之前。屏幕上一条只有一行，
+        // 「甘，微温。归肺、脾经」里归经那 6 个字帮不上「该不该吃」的判断。
+        nature: String(pk.nature || '').split('。')[0],
+      })),
+      blocked,
+      // 播报比默认 32 字长得多：三条药名加一句依据，压到 32 就只剩半句结论。
+      // 但也不能无限长——120 字大约是念 8 秒。
+      sayMax: 120,
+      // 出处分两段：适应证是药典的，排序是按《素问》的。
+      // 只写药典的话，「为什么偏凉的排前面」这件事就没主了。
+      source: adviceSource(),
+      sourceTag: '《中国药典》2025年版一部；排序依《素问》寒者热之',
+      speech,
+    };
+  }
+
+  /**
    * 记一个养生行为（艾灸）。
    *
    * 存两个字段的理由见 profile-store：name 是原话，ref 是规范名。
@@ -379,13 +534,28 @@ export function createQihuangAgent(pack, { store = null } = {}) {
         };
       }
 
-      // 「记一下」优先于查询：用户在交代一件事，不是在提问。
-      // 没有 store 时必须明说存不了，不能装作记住了——
-      // 用户以为记下了，明天再问「我记的都有什么」会得到空，这种失望比当场报错重得多。
-      // 判据扩过一次：除了「记一下 / 我在吃」这类明说的，**能解析出「几点吃什么」的也算**。
-      // 因为交代用药时用户经常不重复动词——「早上八点吃二甲双胍，晚上八点吃阿托伐他汀」，
-      // 后半句没有「记一下」，但它显然还在同一次交代里。
-      // 不扩的话，后半句会掉进查询，回一句「这句没听懂」，用户得把整句重说一遍。
+      // 问「吃什么」这一类，必须排在最前面判。
+      //
+      // 排在「状况陈述」后面时，这句会先被当成陈述吞掉：
+      // 实测「我阴虚吃什么好」得到的是「阴虚 已经记着了」——
+      // 用户问的是吃什么，答复是"记着了"，答非所问，而且看起来像系统在复读。
+      //
+      // 排在 memo 前面也是必须的：「我在吃」这个短语会命中记忆意图，
+      // 而「我没在吃什么药」恰恰是在**否认**在吃，不是要记东西。
+      //
+      // 两个入口：
+      //   ① 直接问「吃什么好」「食补」「想补气」
+      //   ② 他回答上一轮那句「你在吃什么」时说「我没在吃」，且档案里有状况
+      // 排掉认出了营养素的句子：「补钙怎么补」含「怎么补」，
+      // 但它问的是钙怎么补，该走营养素那条路。被食补抢走的话，
+      // 用户会得到一句「我还不知道你在吃什么」——完全答非所问。
+      const hasNutrient = (ctx.recog.nutrients || []).length > 0;
+      if (!hasNutrient
+        && (!ctx.recog.known || ctx.recog.known.length === 0) && (ADVICE_RE.test(ctx.text)
+        || (NO_MED_RE.test(ctx.text) && hasConcern()))) {
+        return { intent: 'advice', conf: 1 };
+      }
+
       // 纯状况陈述（「我脾胃虚寒」「我在备孕」）记成档案，不走向查询。
       // 判据要窄：带药名的（「我胃寒能吃黄连吗」）必须放去查询——
       // 那是他真正想问的事，只记个状况等于没回答。
@@ -393,7 +563,9 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 判据用 known（库里认得的药名）而不是 herbs（切词切出来的）：
       // 切词有个兜底，会把「脾胃虚寒」整串当成一味药名，herbs 就不为空了，
       // 这条分支永远进不去——而这正是最常见的一句。
-      if (states.length && (!ctx.recog.known || ctx.recog.known.length === 0) && !/[?？]|吗|能不能|可不可以/.test(ctx.text)) {
+      if (states.length && (!ctx.recog.known || ctx.recog.known.length === 0)
+        && !ADVICE_RE.test(ctx.text)
+        && !/[?？]|吗|能不能|可不可以/.test(ctx.text)) {
         if (!store) {
           return {
             stop: true,
@@ -420,6 +592,13 @@ export function createQihuangAgent(pack, { store = null } = {}) {
         return { intent: 'practice', conf: 1 };
       }
 
+      // 「记一下」优先于查询：用户在交代一件事，不是在提问。
+      // 没有 store 时必须明说存不了，不能装作记住了——
+      // 用户以为记下了，明天再问「我记的都有什么」会得到空，这种失望比当场报错重得多。
+      // 判据扩过一次：除了「记一下 / 我在吃」这类明说的，**能解析出「几点吃什么」的也算**。
+      // 因为交代用药时用户经常不重复动词——「早上八点吃二甲双胍，晚上八点吃阿托伐他汀」，
+      // 后半句没有「记一下」，但它显然还在同一次交代里。
+      // 不扩的话，后半句会掉进查询，回一句「这句没听懂」，用户得把整句重说一遍。
       const looksLikePlan = parseMedPlans(ctx.text).length > 0;
       if (MEMO_RE.test(ctx.text) || looksLikePlan) {
         if (!store) {
@@ -485,6 +664,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     execute(ctx) {
       if (ctx.intent === 'memo') return { result: doMemo(ctx) };
       if (ctx.intent === 'concern') return { result: doConcern(ctx) };
+      if (ctx.intent === 'advice') return { result: doAdvice(ctx) };
       if (ctx.intent === 'practice') return { result: doPractice(ctx.practice) };
 
       // 营养素走独立动作：下游的 vitamin 分支只认单味营养素名，
@@ -516,7 +696,8 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 记住一件事不是查询结论：它没给任何健康建议，也就不需要就医提示。
       // 不豁免的话，每次「记一下」都会被自检判成「结论缺少就医提示」，
       // 然后降级成反问——用户会觉得这个助手连记东西都记不住。
-      if (r.intent === 'memo' || r.intent === 'concern' || r.intent === 'practice') return { issues: [] };
+      if (r.intent === 'memo' || r.intent === 'concern' || r.intent === 'practice'
+        || r.intent === 'advice') return { issues: [] };
 
       const speech = String(r.speech || '');
 
@@ -604,7 +785,8 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 等于挂着一个永远空的字段。写失败不影响本次回答，所以这一处可以吞（存储层会记 warn）。
       if (ctx.intent !== 'memo') store.pushHistory(ctx.text);
 
-      if (ctx.intent === 'memo' || ctx.intent === 'concern') return null;
+      if (ctx.intent === 'memo' || ctx.intent === 'concern' || ctx.intent === 'practice'
+        || ctx.intent === 'advice') return null;
 
       // ① 状况 × 本草禁忌，排在「你记着在吃 X」之前。
       // 前者是「这一条你可能不该用」，后者是「你还有别的在吃」——
