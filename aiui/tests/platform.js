@@ -281,6 +281,15 @@ check('页面处理了识别失败（无静默失败）', () => {
   if (missing.length) throw new Error(`缺 onerror 处理：${missing.join('、')}`);
   return '都有 onSpeechError';
 });
+check('识别失败的提示说人话、给下一步（不上屏技术错误码）', () => {
+  const src = read('pages/index/index.ink');
+  const seg = src.slice(src.indexOf('onSpeechError'), src.indexOf('apply(out)'));
+  // 技术码（network 等）只能出现在 MESSAGES 的键里，绝不能拼进提示文案
+  if (/\+ code|'（识别失败：'\s*\+/.test(seg)) throw new Error('还在把原始错误码拼给用户看');
+  if (!/再按一次镜腿键|系统设置/.test(seg)) throw new Error('提示没有告诉用户下一步做什么');
+  if (!/aborted/.test(seg)) throw new Error('自己的 stop() 连带事件没有静默处理');
+  return '错误文案含行动引导 + aborted 静默';
+});
 check('页面在 onUnload / onHide 里释放识别与定时器', () => {
   const missing = Object.keys(CONFIG.pages).filter((p) => !/onUnload\s*\(/.test(read(p)));
   if (missing.length) throw new Error(`缺 onUnload：${missing.join('、')}`);

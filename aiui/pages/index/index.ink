@@ -232,7 +232,19 @@ export default {
     this._pending = '';
     const code = (event && event.error) || '未知';
     console.error('[qihuang] 识别失败：', code, event && event.message);
-    this.setData({ status: '没听清', answer: '（识别失败：' + code + '）', tone: 'warn' });
+    // 错误码不能直接上屏：那是给开发者的词，用户看到「network」只会更慌。
+    // 每一条都要回答用户真正的问题——「刚才怎么了，我现在该干什么」。
+    // aborted 是自己 stop() 的连带事件，不算失败，静默清状态就好。
+    const MESSAGES = {
+      network: '网络不给力，没连上识别服务。稍等一下，再按一次镜腿键说。',
+      'not-allowed': '麦克风权限没开。到系统设置里允许后再试。',
+      'service-not-allowed': '麦克风权限没开。到系统设置里允许后再试。',
+      'no-speech': '没听到你说话。再按一次镜腿键，凑近一点说。',
+      'audio-capture': '麦克风起不来。重启一下眼镜再试。',
+    };
+    const hint = MESSAGES[code] || '这回没听清。再按一次镜腿键说一次。';
+    this.setData({ status: '没听清', answer: hint, tone: 'warn' });
+    if (code !== 'aborted') speak(hint, { max: 40, mode: 'immediate' });
   },
 
   apply(out) {
