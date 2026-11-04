@@ -233,7 +233,15 @@ export default {
     const patch = out.patch || {};
     if (Object.keys(patch).length > 0) this.setData(patch);
     // tail 由视图模型给，页面不再复制一份免责声明
-    if (out.say) speak(out.say, { max: out.sayMax || 32, tail: out.tail || '' });
+    // 用 immediate 抢占，不排队。
+    //
+    // 默认的 enqueue 是给「连续练习」那种场景的（麻将那份共用这个 core）。
+    // 问答场景正好相反：用户连问三次，三条答案会排着队念完，他听到的是
+    // 前两次的旧答案——而 cancel() 在 AIUI 上不暴露，没办法中途清空队列。
+    // 所以每次提问都必须抢断上一条。实测依据见 core/speech.js 顶部注释。
+    if (out.say) {
+      speak(out.say, { max: out.sayMax || 32, tail: out.tail || '', mode: 'immediate' });
+    }
   },
 };
 </script>

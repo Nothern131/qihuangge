@@ -156,6 +156,28 @@ check('按 ref 找得到用户记着的东西', () => {
   assert.equal(st.findItemByRef(null), null);
 });
 
+// 养生行为也要有上限。它是唯一一个曾经漏掉的字段——
+// 检查这类档案有没有泄漏，就看每个数组字段是不是都有 slice 或上限判断。
+{
+  const st = createProfileStore({ backend: memoryBackend() });
+  let threw = null;
+  for (let i = 0; i < 15; i += 1) {
+    try {
+      st.addPractice('某行为' + i, '行为' + i);
+    } catch (e) {
+      threw = e;
+      break;
+    }
+  }
+  check('养生行为超出上限会报错，不静默挤掉最旧的', () => {
+    assert.ok(threw, '记了 15 条都没报错，说明没有上限');
+    assert.equal(threw.code, 'too_many');
+  });
+  check('上限之内仍然正常写入', () => {
+    assert.ok(st.listPractices().length <= 10);
+  });
+}
+
 console.log(`\n通过 ${pass} / ${pass + fail}`);
 if (fail > 0) {
   console.log('存在失败');

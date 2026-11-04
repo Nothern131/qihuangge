@@ -314,6 +314,22 @@ check('工程根没有 Node 专用产物，且声明了 .aixignore', () => {
   return '干净';
 });
 
+// 播报必须是抢占（immediate），不能排队。
+// 排队模式下连问三次，用户要听完三条旧答案才听到最后一条；
+// 而 cancel() 在 AIUI 上不暴露，中途清不掉队列——表现就是「越用越卡」。
+check('播报用 immediate 抢占，不排队', () => {
+  const src = read('pages/index/index.ink');
+  const call = src.match(/speak\(out\.say[\s\S]{0,200}?\)/);
+  if (!call) throw new Error('没找到播报调用');
+  // 不写 \s 这类转义：这段代码是从生成脚本里写进来的，
+  // 反斜杠过一次字符串拼接就容易坏（第一次就坏成了 //s）。
+  // 判据只需要「这一次 speak 调用里带了 immediate」，够用且不会误伤。
+  if (!/'immediate'/.test(call[0])) {
+    throw new Error('播报没传 mode: immediate，连问时会把旧答案排队念完');
+  }
+  return 'ok';
+});
+
 console.log('\n' + '='.repeat(60));
 console.log(`通过 ${PASSED.length} / ${PASSED.length + FAILED.length}`);
 if (FAILED.length > 0) {

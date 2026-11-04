@@ -63,6 +63,10 @@ const SUPPLEMENT_LIMIT = 30;
 // 20 条足够覆盖常见多病共存（高血压 + 糖尿病 + 血脂，每种早晚各一次也才 6 条）。
 // 定上限不是为了省空间，是为了让「记不下」这件事有明确的说法，而不是悄悄丢掉最旧的一条。
 const MED_PLAN_LIMIT = 20;
+// 养生行为目前只有艾灸一项（见 practice-canon.js），实际最多 1 条。
+// 但仍要上限：canon 表以后会加拔罐、刮痧这些，而「加一个字段忘了加上限」
+// 正是这类档案最常见的泄漏方式——它是唯一一个之前漏掉的。
+const PRACTICE_LIMIT = 10;
 
 /**
  * @param {object} opts
@@ -253,7 +257,14 @@ export function createProfileStore({ backend, userId = 'local' } = {}) {
       const hit = p.practices.find((x) => x.ref === key);
       if (hit) return { added: false, practice: hit, profile: p };
       const item = { name: clean, ref: key, addedAt: new Date().toISOString() };
-      p.practices = [...p.practices, item];
+      const next = [ ...p.practices, item ];
+      if (next.length > PRACTICE_LIMIT) {
+        // 和用药计划一样：满了要说出来，不能悄悄把最旧的一条挤掉。
+        const err = new Error(`最多记 ${PRACTICE_LIMIT} 项养生行为`);
+        err.code = 'too_many';
+        throw err;
+      }
+      p.practices = next;
       return { added: true, practice: item, profile: save(p) };
     },
 
