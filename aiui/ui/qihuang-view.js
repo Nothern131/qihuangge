@@ -211,12 +211,16 @@ export function createQihuangView({ engines, store = null } = {}) {
         patch.status = r.ok ? '已找到' : '要先问清';
         if (r.ok) {
           patch.detail = `药典「用于」原文 · ${r.picks.length} 味`;
-          // 每条只留药名、性味和前三个适应证。
-          // 药典一条能写七个主治，全放上去三味就 200 字，把出处挤出屏幕。
+          // 每条三行信息：药名性味、适应证（1 段）、药典用法。
+          // 「用法」是 1.0.5 补的断层——用户拿到方向后下一个问题一定是
+          // 「蒸它煮它怎么弄」，药典【用法与用量】原文是国标背书的答案。
+          // 适应证从 3 段压到 1 段给用法腾位：主打适应证本来就在第一段。
           const lines = r.picks.map((pk) => {
-            const use = String(pk.use || '').split('，').slice(0, 3).join('，');
+            const use = String(pk.use || '').split('，')[0];
             const cor = pk.contrary ? '（性味偏反，不作首选）' : '';
-            return `${pk.name}（${pk.nature}）：用于${use}${cor}`;
+            const usage = String(pk.usage || '').split(/[。；]/)[0];
+            const usagePart = usage ? `\n用法：${usage}` : '';
+            return `${pk.name}（${pk.nature}）：用于${use}${cor}${usagePart}`;
           });
           if (r.blocked && r.blocked.length) {
             lines.push(`未列入：${r.blocked.map((b) => b.name).join('、')}（与你在吃的相冲）`);
@@ -258,6 +262,8 @@ export function createQihuangView({ engines, store = null } = {}) {
           // 药食同源：副标题只给一句定位。
           // 原来这里拼的是「性味 + 用量」，而性味在正文第一句里已经有了，
           // 同一屏上说两遍，还占掉两行——那两行是从功效和出处里挤出来的。
+          // 1.0.5 起用量以「用法」独立行回到正文（那是用户最想要的「怎么吃」），
+          // 副标题维持定位句不变。
           patch.detail = '药食同源 · 药典收载';
         } else {
           const head = [r.xingwei, r.dosage].filter(Boolean).join('　｜　');
@@ -272,13 +278,26 @@ export function createQihuangView({ engines, store = null } = {}) {
         //
         // 正文用 screenText 而不是 speech：speech 末尾那句
         // 「原文见《X》，屏幕上可看」在屏幕上紧跟着就是原文，指着自己说，多余。
+        //
+        // 1.0.5：药典「用法」独立一行进正文（怎么入口）；有古籍食疗方时
+        // 再挂一段附方原文——出处与「不构成建议」声明一起给出，一条不能少。
+        let extra = '';
+        if (r.kind === 'food' && r.dosage) {
+          extra += `\n用法（药典）：${String(r.dosage).split(/[。；]/)[0]}`;
+        }
+        // gmFormulary 只在 food 路径追加：ancient-food 的 screenText 已自带附方段，
+        // 这里再拼就出现两份一样的「古籍食疗方」。
+        if (r.gmFormulary && r.kind === 'food') {
+          const srcPart = r.gmFormulary.src ? `引自《${r.gmFormulary.src}》` : `《${r.gmFormulary.book}》`;
+          extra += `\n古籍食疗方（${srcPart}）：${r.gmFormulary.text}\n${r.gmFormulary.note}`;
+        }
         if (r.ancient) {
-          patch.answer = `${r.screenText || r.speech}\n《${r.ancient.source}·${r.ancient.chapter}》：${r.ancient.text}`;
-        } else if (r.screenText) {
+          patch.answer = `${r.screenText || r.speech}${extra}\n《${r.ancient.source}·${r.ancient.chapter}》：${r.ancient.text}`;
+        } else if (r.screenText || extra) {
           // 播报和屏幕本来可以不一样，而这个分支以前只在有古籍原文时才用 screenText。
           // 结果食材那条线两版内容一样，屏幕上就没机会多出「药典没列 ≠ 没有禁忌」
           // 那半句——恰恰是最该让人看见的一句。
-          patch.answer = r.screenText;
+          patch.answer = (r.screenText || r.speech) + extra;
         }
       }
 

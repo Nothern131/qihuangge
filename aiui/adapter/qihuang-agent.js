@@ -382,9 +382,17 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     // 它比「不给量」的声明优先级高，必须放进播报，不能只在屏幕的 notes 里。
     const medNote = r.notes.find((n) => /看医生/.test(n)) || '';
 
+    // 用法是「用法断层」的答案：用户拿到方向后下一个问题一定是怎么入口。
+    // 只念第一条的用法（字数约束），屏幕上每条都有。
+    // 措辞边界：念药典【用法与用量】原文是引用国标，不是给个人剂量建议——
+    // 「遵医嘱」四个字必须跟在后面，两者缺一不可。
+    const usage0 = r.picks[0] && r.picks[0].usage
+      ? `药典写${r.picks[0].name}的用法是${String(r.picks[0].usage).split(/[。；]/)[0]}，`
+      : '';
+
     const speech = `${stateLabel}的话，药典里写着适合的有${names}。${brief}。`
       + (medNote ? `${medNote}。` : '')
-      + '具体吃多少我不给量，这些也只是食材方向，不是方子'
+      + `${usage0}个人用量遵医嘱，这些也只是食材方向，不是方子`
       + (blockNote ? `。${blockNote}` : '');
 
     return {

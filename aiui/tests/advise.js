@@ -90,12 +90,16 @@ for (const c of cases) {
 }
 eq('建议里不出现「治」', treatWord, []);
 
-// 剂量一个字都不给。
+// 剂量边界（1.0.5 起）：药典【用法与用量】原文可以展示（picks.usage，那是引用国标），
+// 但建议行（adviceLine）里不得出现剂量数字——「这味药煎汤9~15g」是资料，
+// 「你每天吃15g」是个人剂量建议。两件事，后者永远不做。
 for (const c of cases) {
   const r = adviseFor(st(c), { eating: [] });
   if (!r.ok) continue;
-  truthy(`「${c}」不给剂量`, !r.picks.some((p) => /\d+\s*(克|g|钱|两|毫升)/.test(adviceLine(p))));
+  truthy(`「${c}」建议行不给剂量`, !r.picks.some((p) => /\d+\s*(克|g|钱|两|毫升)/.test(adviceLine(p))));
 }
+truthy('建议的每味都带药典用法（用法断层已接）',
+  adviseFor(st('我便秘'), { eating: [] }).picks.every((p) => String(p.usage || '').length > 0));
 
 // ─────────────────────────────────────────────────────────
 console.log('\n[3] 方向排序：寒热对立');

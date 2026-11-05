@@ -35,7 +35,7 @@ import { canonPair, PAIR_SOURCE } from './pair-canon.js';
 // 《本草纲目》谷/菜/果部 294 味（气味、主治）。**只做原文展示，不参与判断**——
 // 那是 1596 年的书，里面的说法多数没有经过现代验证，拿它下结论是拿用户做实验。
 // 只在「药典不收、本草库也没有」的时候出来当唯一可给的东西，并标明是古籍。
-import { gmOf, gmWords, GM_SOURCE, GM_NOTE } from './gm-canon.js';
+import { gmOf, gmWords, GM_ITEMS, GM_SOURCE, GM_NOTE, GM_FU_FANG_NOTE } from './gm-canon.js';
 
 // 出处不再手写在每个分支里，而是作为 source 字段回传，由页面挂到播报尾巴上。
 // 这么改是因为手写 19 处的结果必然是「改了 18 处，漏掉的那处静默地说了一句
@@ -784,19 +784,38 @@ export function createQihuangPack(engines) {
       return (k > 16 ? cut.slice(0, k) : cut) + '…';
     };
 
-    const parts = [`气味${trim(gm.qi, 46)}`];
-    const zhi = trim(gm.zhi, 40);
+    // 1.0.5：主治摘录从 40 压到 22——腾出的字给「古籍食疗方」。
+    // 附方是用户真正要的「怎么做」，主治摘录只是气味主治的预览。
+    const parts = [`气味${trim(gm.qi, 30)}`];
+    const zhi = trim(gm.zhi, 22);
     if (zhi) parts.push(`主治${zhi}`);
 
+    // 附方（1.0.5）：古籍路径天然配附方——药典没收的味，用户想「怎么吃」
+    // 只能看古籍怎么记载。挑食治类（入口做法）第一条，治疗方不展示。
+    const COOK_RE = /粥|羹|汁|煮食|浸酒|酿酒|蜜|蒸|捣|擂|生食|炒/;
+    const formulary = ((gm.fufang || []).find((f) => COOK_RE.test(f.text))) || null;
+    const ffText = formulary
+      ? (formulary.text.length > 55 ? formulary.text.slice(0, 55) + '…' : formulary.text)
+      : '';
+    // 「不构成建议」的声明由上面合并行承载（古籍路径），这里不重复
+    const ffPart = formulary
+      ? `\n古籍食疗方${formulary.src ? `（引自《${formulary.src}》）` : ''}：${ffText}`
+      : '';
     return {
       found: true,
       name,
       kind: 'ancient-food',
+      gmFormulary: formulary
+        ? { text: formulary.text, src: formulary.src, note: GM_FU_FANG_NOTE, book: GM_SOURCE }
+        : null,
       speech: `${name}：《中国药典》没有收载。《${GM_SOURCE.replace(/^《|》$/g, '')}》`
         + `${gm.vol || ''}记：${parts.join('；')}。这是${GM_NOTE}。`,
       screenText: `${name}：《中国药典》没有收载。\n`
         + `《本草纲目·${gm.vol || ''}》：${parts.join('；')}\n`
-        + `${GM_NOTE}。`,
+        // 有附方时两行声明合并成一行：语义同为「古籍不可全信」，分开写是白占一行
+        + (formulary ? '古籍记载与附方均未经现代验证，不构成建议。' : `${GM_NOTE}。`) + ffPart,
+      // 食疗方的「引自《X》」已在附方行里给了，出处行不再重复书名——
+      // 一行两个书名占字数又像排版错误。
       source: `出处：${GM_SOURCE}。`,
       sourceTag: `${GM_SOURCE}（古籍）`,
     };
@@ -828,16 +847,29 @@ export function createQihuangPack(engines) {
     if (food.nature) parts.push(`性味${food.nature}`);
     if (effect) parts.push(`功效是${effect}`);
 
+    // 古籍食疗方（1.0.5 附方层）：这是「用法断层」的古籍答案——
+    // 用户拿到「适合吃什么」之后下一个问题一定是「怎么做着吃」。
+    // 只挑食治类（粥/羹/汁/酒等入口做法），治疗方（丸散汤剂）不展示；
+    // 展示时必须挂 GM_FU_FANG_NOTE，一条都不能少。
+    // 有附方时 tabiLine 压缩成短句腾屏幕位：附方比「没列≠没有」那句更有用，
+    // 而后者在食治方场景下可以由「不构成建议」声明兜底。
+    const gm = GM_ITEMS[food.name];
+    const COOK_RE = /粥|羹|汁|煮食|浸酒|酿酒|蜜|蒸|捣|擂|生食|炒/;
+    const gmFormulary = (gm && gm.fufang || []).find((f) => COOK_RE.test(f.text)) || null;
     const tabiLine = food.tabi
       ? `药典里写着：${food.tabi}`
       // 一句说完。原来是两句——「没有为它列注意事项」加「只对部分品种列了【注意】项」，
       // 说的是同一件事，在只有两行宽的屏幕上重复一遍，等于白占一行。
-      : `药典没有为${food.name}列注意事项，只说明药典没写，不等于它没有禁忌`;
+      // 有附方时再压成短句：那 20 个字让给古籍食疗方（用户更想知道怎么吃）。
+      : (gmFormulary
+        ? `药典未列注意事项`
+        : `药典没有为${food.name}列注意事项，只说明药典没写，不等于它没有禁忌`);
 
     // 用户说俗称时点一句正名。不说的话，他问「桂圆」得到「龙眼肉」，
     // 会以为是答错了；说了，下次他自己就能对上。
     // 放在括号里而不是单独一句：屏幕上每个字都要占位置，而这层信息只需要被扫到。
     const aliasNote = food.name !== asked ? `${asked}即${food.name}` : '';
+
 
     // 播报分两种问法：
     //   问功效的（「红枣有什么功效」）——「药典没列注意事项」这句占掉一半字数，
@@ -880,6 +912,9 @@ export function createQihuangPack(engines) {
       aliasOf: aliasNote ? asked : '',
       ancient: ancient
         ? { source: ancient.source, chapter: ancient.chapter, text: ancient.original_text }
+        : null,
+      gmFormulary: gmFormulary
+        ? { text: gmFormulary.text, src: gmFormulary.src, note: GM_FU_FANG_NOTE, book: GM_SOURCE }
         : null,
       // 出处只写一份。原来这里拼了 citeLine(['bencao'])（「《中国药典》与中药学教材」）
       // 再加一句「本条取自《中国药典》2025年版一部」——同一行两个书名，看着像没对齐。

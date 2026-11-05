@@ -297,6 +297,9 @@ export function adviseFor(states, opts = {}) {
         // 而这里要说的是「什么情况适合」，不是「治什么病」。
         effect: trimDot(String(h.food.functions || '').split('用于')[0]),
         use: trimDot(usePart(h.food)),
+        // 药典【用法与用量】原文。这是「抓了药怎么入口」的答案，
+        // 是引用国标原文不是个人剂量建议——个人用量遵医嘱在话术里另说。
+        usage: trimDot(h.food.dosage),
         tabi: trimDot(h.food.tabi),
         forState: rule.label,
         contrary: Boolean(rule.bias) && h.dir !== rule.bias && h.dir !== 'neutral',
@@ -330,6 +333,18 @@ export function adviseFor(states, opts = {}) {
 export function adviceLine(p) {
   const cor = p.contrary ? '；性味偏' + (p.dir === 'warm' ? '温' : '凉') + '，不作首选' : '';
   return `${p.name}（${p.nature}）：药典写用于${p.use}${cor}`;
+}
+
+/**
+ * 药典用法原文（怎么入口）。这是「用法断层」的第一层：
+ * 用户拿到方向之后，下一个问题一定是「蒸它煮它怎么弄」——
+ * 药典【用法与用量】是国标原文，引用它不构成个人剂量建议，
+ * 个人用量遵医嘱在播报里另说（见 doAdvice 的 speech）。
+ */
+export function usageLine(p) {
+  const u = String(p.usage || '').trim();
+  if (!u) return '';
+  return `药典用法：${u.split('。')[0]}`;
 }
 
 /** 一句话概括这次建议的依据，放在结尾。 */
