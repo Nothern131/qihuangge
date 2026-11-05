@@ -37,7 +37,9 @@ export const NATURE_RULE = '《素问·至真要大论篇第七十四》';
  * 措辞刻意用书里的原词，不用同义改写——改写一次，就可能把
  * 「气血两虚」说成「气虚」，而那两味药不是一回事。
  */
-const RULES = {
+export const RULES = {
+  // 审计脚本（tools/audit-food-coverage.js）与测试直接读这份，
+  // 改了词表必须重跑审计：断裂点就是下一次的补数据清单。
   'yin-deficiency': {
     label: '阴虚',
     // 「内热消渴」「津伤口渴」是药典写阴虚时常用的完整表述，
@@ -84,10 +86,49 @@ const RULES = {
     bias: null,
     why: '湿分寒湿和湿热，方向不定，这里只列药典写了适合的',
   },
+  constipation: {
+    label: '便秘',
+    // 「便秘」16 味、「肠燥」13 味——都是药典适应证段的原文用词
+    // （火麻仁「用于血虚津亏，肠燥便秘」）。偏置不设：热秘寒秘虚秘都有，
+    // 排序只按药典写的贴切度。识别侧刻意不收「大便干结」——
+    // 那是实热的指征，走 NO_ADVICE 拒答，同一个词不能既拒答又给建议。
+    primary: ['便秘', '肠燥'],
+    secondary: ['津亏'],
+    bias: null,
+    why: '便秘分寒热，这里只列药典写了适合的',
+  },
+  insomnia: {
+    label: '失眠',
+    // 只收药典写的「失眠/虚烦失眠/多梦」（龙眼肉、百合、酸枣仁等）。
+    // 持续失眠可能是疾病信号，这里给的是「药典写了适合吃的方向」，
+    // 不是解决失眠的方案——这句必须让用户听到（why 会进播报）。
+    primary: ['失眠', '虚烦', '多梦'],
+    secondary: ['心悸失眠'],
+    bias: null,
+    why: '老是睡不着要先看医生，这里只是药典写了适合吃的方向',
+  },
+  'food-stagnation': {
+    label: '食积腹胀',
+    // 「食积」6 味、「腹胀」9 味——山楂、麦芽、鸡内金、莱菔子全是
+    // 食品级消导药，药典适应证原文背书。
+    primary: ['食积', '腹胀', '脘腹胀'],
+    secondary: ['泻痢'],
+    bias: null,
+    why: '消食的方向都差不多，按药典写的适应证列',
+  },
+  'blood-deficiency': {
+    label: '血虚',
+    // 「血虚」5 味（当归「用于血虚萎黄」）。「贫血」是西医概念、
+    // 药典没写，不收——收了就是把西医词塞进中医证候，两头都不真实。
+    primary: ['血虚', '面色萎黄'],
+    secondary: [],
+    bias: 'warm',
+    why: '补血的东西多半偏温，吃了容易上火就减量',
+  },
 };
 
 /** 不给建议的状况。 */
-const NO_ADVICE = {
+export const NO_ADVICE = {
   pregnancy: '孕期和哺乳期的食补要按产检医生或儿科医生说的来，我不给这类建议',
   bleeding: '有出血倾向时吃什么，要先让医生看过再定，我不给这类建议',
   'excess-heat': '实热（正在发热、大便干结这类）先处理当下的问题，食补往后放',
@@ -110,8 +151,12 @@ function usePart(food) {
   //（「鲜地黄…用于…。生地黄…用于…」），全取会把两段拼成一句，
   // 屏幕上像重复，也白占字数。
   const rest = fx.slice(i + 2);
-  const j = rest.indexOf('。');
-  return j < 0 ? rest : rest.slice(0, j);
+  // 「；外治…」是药典正文的外用栏目，食补场景永不涉及；
+  // 而「外治」二字进了播报听着像在宣称治疗。截掉它，
+  // 内服段仍是逐字原文——这不是删改，是不念不相关的栏目。
+  const stops = [rest.indexOf('。'), rest.indexOf('；')].filter((x) => x >= 0);
+  if (!stops.length) return rest;
+  return rest.slice(0, Math.min(...stops));
 }
 
 /** 去掉末尾句号，拼句子时不出现「…。，」。 */
@@ -199,7 +244,7 @@ export function adviseFor(states, opts = {}) {
       const p2 = p1 ? '' : rule.secondary.find((x) => use.includes(x));
       const w = p1 || p2;
       if (!w) continue;
-      hits.push({ name, food, matched: w, tier: p1 ? 0 : 1, dir: NATURE_DIR(food.nature) });
+      hits.push({ name, food, matched: w, tier: p1 ? 0 : 1, dir: NATURE_DIR(food.nature), pos: use.indexOf(w) });
     }
 
     // 排序：方向合的先，平性的次，反向的最后。
@@ -210,9 +255,12 @@ export function adviseFor(states, opts = {}) {
       if (d === 'neutral') return 1;
       return 2;
     };
-    // 先按「命中主要适应证还是兼症」排，再按寒热方向排。
+    // 先按「命中主要适应证还是兼症」排，再按命中位置排，再按寒热方向排。
+    // 位置这条不是拍脑袋：药典把主打的适应证写在「用于」后面第一段，
+    // 越靠后越像附带提一句——同为命中，靠前的更贴切。
     // 顺序不能反：方向只是排序偏好，适应证对不对是硬条件。
     hits.sort((a, b) => a.tier - b.tier
+      || a.pos - b.pos
       || dirRank(a.dir) - dirRank(b.dir)
       || a.name.localeCompare(b.name, 'zh'));
 

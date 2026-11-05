@@ -229,12 +229,16 @@ export function createQihuangView({ engines, store = null } = {}) {
           patch.answer = r.speech;
         }
         tone = r.ok ? 'ok' : 'warn';
-      } else if (r.intent === 'practice' || r.intent === 'concern') {
-        // 这两类不接进来会落到下面的 else，标题变成「本草」——
+      } else if (r.intent === 'practice' || r.intent === 'concern' || r.intent === 'no-meds') {
+        // 这三类不接进来会落到下面的 else，标题变成「本草」——
         // 用户刚说完「我在做艾灸」，屏幕上写着「本草」，像是答错了题。
+        // no-meds 同理：说「我什么都没在吃」，屏幕显示「本草」像查了个什么东西。
         if (r.intent === 'practice') {
           patch.title = r.practice || '养生记录';
           patch.detail = r.added === false ? '之前就记着了' : '已记在档案里';
+        } else if (r.intent === 'no-meds') {
+          patch.title = '已交代';
+          patch.detail = '现在没在吃';
         } else {
           patch.title = (r.stateNames || r.states || []).join('、') || '个人状况';
           patch.detail = '已记在档案里';

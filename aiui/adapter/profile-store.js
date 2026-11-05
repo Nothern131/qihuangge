@@ -41,6 +41,10 @@ function emptyProfile(userId) {
     practices: [],
     // 问过什么。用于「上次那个」，也有上限，不无限长。
     history: [],
+    // 用户明确说过「没在吃药/保健品」的时间。第二道门的另一种通过方式：
+    // 不是我们记录了他在吃什么，而是他亲口说了「什么都没在吃」。
+    // 没有这个字段，拒答话术让他交代之后，下一问照样拒答——用户被耍一圈。
+    noMedsDeclaredAt: null,
     createdAt: null,
     updatedAt: null,
   };
@@ -354,6 +358,24 @@ export function createProfileStore({ backend, userId = 'local' } = {}) {
     activeConcerns(min) {
       const m = typeof min === 'number' ? min : IMPORTANCE_ACTIVE_MIN;
       return this.getConcerns().filter((c) => c.importance >= m);
+    },
+
+    /**
+     * 记下「用户明确说过没在吃药/保健品」这件事本身。
+     *
+     * 它不是一条记录，是一种**知情**：三道门第二道的通过凭证有两种——
+     * 「我们知道他在吃什么」和「他亲口说过什么都没在吃」。后者也是知道，
+     * 而且必须跨轮存活：拒答话术让他交代一句「没在吃」，如果只当成当轮
+     * 语气处理，下一问照样拒答，用户等于被话术耍了一圈。
+     */
+    declareNoMeds() {
+      const p = load();
+      p.noMedsDeclaredAt = new Date().toISOString();
+      save(p);
+    },
+
+    noMedsDeclared() {
+      return Boolean(load().noMedsDeclaredAt);
     },
 
     /**

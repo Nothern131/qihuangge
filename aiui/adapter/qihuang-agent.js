@@ -28,7 +28,7 @@ import { adviseFor, adviceLine, adviceSource } from './food-advice.js';
 // 本版明确不做的事。这些不是说错了，是根本不该由这个作品回答——
 // 眼镜上一个只说三句话的助手给出剂量建议，比不给建议危险得多。
 const DOSE_RE = /(吃多少|多少克|几克|几钱|几两|一天吃几次|一天几次|用量|剂量|每次用|怎么吃|服用多少)/;
-const PRESCRIBE_RE = /(开个方|开方|配个方|开副药|处方|给我治|怎么治|吃什么药能治|我头疼|我咳嗽|我失眠|我胃疼|辨证|把脉)/;
+const PRESCRIBE_RE = /(开个方|开方|配个方|开副药|处方|给我治|怎么治|吃什么药能治|我头疼|我咳嗽|我胃疼|辨证|把脉)/;
 
 // 安慰措辞。这些词出现在有风险项的结论里就是自相矛盾，必须拦住。
 const REASSURE_RE = /(可以放心|放心吃|放心用|没问题|没事|安全|可以一起|能一起吃)/;
@@ -40,6 +40,9 @@ const WELLNESS_RE = /(调理|养生|怎么养|怎么预防|怎么缓解|怎么�
 // 问「吃什么」这一类。它比 WELLNESS_RE 窄，而且能真正回答——
 // 只要知道他的身体状况、知道他在吃什么，药典里就写着什么情况适合吃什么。
 const ADVICE_RE = /(吃什么|吃点什么|吃啥|食补|食疗|怎么补|补什么|怎么吃好|吃什么好|能吃什么|吃哪些)/;
+// 「怎么调理/怎么改善」——诉求是方向，不是治疗。认出了状况时转食补给方向，
+// 没认出状况（「我头疼怎么办」）落在后面的拒答。比只说「记下了」有用。
+const TUNE_RE = /(怎么调理|如何调理|怎么改善|如何改善|怎么缓解|怎么办)/;
 // 用户回答「我在吃什么」这个问题时可能说「没在吃」。
 // 不认这一句，用户会被卡在「先告诉我你在吃什么」那一问上下不来。
 const NO_MED_RE = /(没在吃|没有在吃|没吃药|没有吃药|不吃药|什么都没吃|没吃任何|什么药都没)/;
@@ -48,7 +51,7 @@ const TONIC_RE = [
   { re: /(补气|益气)/, key: 'qi-deficiency', label: '气虚' },
   { re: /(补阴|滋阴|养阴)/, key: 'yin-deficiency', label: '阴虚' },
   { re: /(补阳|壮阳|温阳)/, key: 'yang-deficiency', label: '阳虚' },
-  { re: /(补血|养血)/, key: 'qi-deficiency', label: '气血虚' },
+  { re: /(补血|养血)/, key: 'blood-deficiency', label: '血虚' },
 ];
 
 // 「记一下我在吃钙片」——这是「越用越懂你」唯一的入口。
@@ -188,6 +191,18 @@ export function createQihuangAgent(pack, { store = null } = {}) {
    * 存的是**他的原话**，不是我们归一后的术语：下次复述时「喝凉的不舒服」
    * 比「脾胃虚寒」更像他自己说的话。匹配时再统一抽术语，两边不冲突。
    */
+  /**
+   * 用户明确说了「没在吃」。存的不是记录，是知情本身（见 declareNoMeds 注释）。
+   */
+  function doNoMeds() {
+    store.declareNoMeds();
+    return {
+      found: true,
+      intent: 'no-meds',
+      speech: '好，记着你现在没在吃药。身体有什么情况，说「我脾胃虚寒」这种，我按药典给食补方向。',
+    };
+  }
+
   function doConcern(ctx) {
     const states = extractStates(ctx.text);
     if (!states.length) {
@@ -259,7 +274,11 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       console.warn('[qihuang] 读用药记录失败，本次不给建议：', err && err.message);
       return null;
     }
-    if (!items.length && !plans.length) return null;
+    if (!items.length && !plans.length) {
+      // 档案里没有记录，但他明确说过「没在吃」——那就是知道，
+      // 只是知道的是「没有」。这个知情是跨轮的（见 declareNoMeds）。
+      return store.noMedsDeclared() ? [] : null;
+    }
     // ref 是规范名（calcium），name 是原话（钙片）。查配伍用规范名。
     return [...new Set([
       ...items.map((x) => x.ref || x.name),
@@ -315,7 +334,20 @@ export function createQihuangAgent(pack, { store = null } = {}) {
 
     let eating = eatingList();
     // 档案里没有记录，但他明确说了「我没在吃」——那就是知道，只是知道的是「没有」。
-    if (eating === null && NO_MED_RE.test(ctx.text)) eating = [];
+    // 当轮生效的同时持久化：下次再问，不再重问一遍「你在吃什么」。
+    if (eating === null && NO_MED_RE.test(ctx.text)) {
+      eating = [];
+      try {
+        store.declareNoMeds();
+      } catch (err) {
+        console.warn('[qihuang] 没在吃的声明没存上：', err && err.message);
+      }
+    }
+
+    // 标题只说这轮问的：档案全量参与候选与核对（半年前说的阴虚今天问也是核对记忆），
+    // 但话术主语对准本轮主题——否则问什么都是「全家桶」标题，
+    // 用户第三次听就不知道系统在回答谁的问题。
+    const topicLabels = (here.length ? here : states).map((x) => x.tags[0]);
 
     const r = adviseFor(states, { eating, limit: 3 });
 
@@ -325,13 +357,13 @@ export function createQihuangAgent(pack, { store = null } = {}) {
         intent: 'advice',
         ok: false,
         code: r.code,
-        states: states.map((x) => x.key),
-        stateNames: states.map((x) => x.tags[0]),
+        states: topicLabels,
+        stateNames: topicLabels,
         speech: r.reason,
       };
     }
 
-    const stateLabel = states.map((x) => x.tags[0]).join('、');
+    const stateLabel = topicLabels.join('、');
     const names = r.picks.map((p) => p.name).join('、');
     // 播报只念前两条的适应证：第三条念完就超了，而用户听完最想知道的是
     // 「为什么是这几样」，不是把七条适应证都听一遍。屏幕上是全的。
@@ -346,7 +378,12 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       ? `另：${blocked.map((b) => b.name).join('、')}和你记着在吃的${blocked[0].why.match(/在吃的(.+?)相冲/) ? blocked[0].why.match(/在吃的(.+?)相冲/)[1] : '药'}相冲，没有列进来`
       : '';
 
+    // 就医提醒是 RULES.why 里带「看医生」的那类（如失眠）——
+    // 它比「不给量」的声明优先级高，必须放进播报，不能只在屏幕的 notes 里。
+    const medNote = r.notes.find((n) => /看医生/.test(n)) || '';
+
     const speech = `${stateLabel}的话，药典里写着适合的有${names}。${brief}。`
+      + (medNote ? `${medNote}。` : '')
       + '具体吃多少我不给量，这些也只是食材方向，不是方子'
       + (blockNote ? `。${blockNote}` : '');
 
@@ -354,8 +391,9 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       found: true,
       intent: 'advice',
       ok: true,
-      states: states.map((x) => x.key),
-      stateNames: states.map((x) => x.tags[0]),
+      // 只给本轮主题（标题/播报主语），不是档案全家桶——理由见 topicLabels。
+      states: topicLabels,
+      stateNames: topicLabels,
       picks: r.picks.map((pk) => ({
         ...pk,
         // 性味只留到归经之前。屏幕上一条只有一行，
@@ -563,8 +601,19 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       const hasNutrient = (ctx.recog.nutrients || []).length > 0;
       if (!hasNutrient
         && (!ctx.recog.known || ctx.recog.known.length === 0) && (ADVICE_RE.test(ctx.text)
+        || (TUNE_RE.test(ctx.text) && extractStates(ctx.text).length > 0)
         || (NO_MED_RE.test(ctx.text) && hasConcern()))) {
         return { intent: 'advice', conf: 1 };
+      }
+
+      // 单独一句「我什么都没在吃」：不是要记东西（记不出条目），
+      // 是在回答「你在吃什么」这类追问。把「没在吃」本身当知情存下来，
+      // 否则按拒答话术交代的用户，下一问还是被拒——被话术耍一圈。
+      if (!hasNutrient
+        && (!ctx.recog.known || ctx.recog.known.length === 0)
+        && NO_MED_RE.test(ctx.text)
+        && !/[?？]|吗|能不能|可不可以/.test(ctx.text)) {
+        return { intent: 'no-meds', conf: 1 };
       }
 
       // 纯状况陈述（「我脾胃虚寒」「我在备孕」）记成档案，不走向查询。
@@ -642,10 +691,11 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       if (known.length === 0 && WELLNESS_RE.test(ctx.text)) {
         // 放在营养素之后：先把「补钙怎么补」这类能答的捞走，
         // 剩下的「失眠怎么调理」才落到这条边界上。
+        // 拒答要给出口：食补方向（吃什么好）是能做的，这里告诉用户怎么问。
         return {
           stop: true,
           speech: '调理和诊断这类我不做，涉及辨证，说错要负责。'
-            + '可以问我某味药有什么禁忌，或者两样东西能不能一起用',
+            + '想知道吃什么，可以说「我失眠吃什么好」这种，我按药典给方向',
         };
       }
 
@@ -674,6 +724,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
 
     execute(ctx) {
       if (ctx.intent === 'memo') return { result: doMemo(ctx) };
+      if (ctx.intent === 'no-meds') return { result: doNoMeds() };
       if (ctx.intent === 'concern') return { result: doConcern(ctx) };
       if (ctx.intent === 'advice') return { result: doAdvice(ctx) };
       if (ctx.intent === 'practice') return { result: doPractice(ctx.practice) };
@@ -707,7 +758,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 记住一件事不是查询结论：它没给任何健康建议，也就不需要就医提示。
       // 不豁免的话，每次「记一下」都会被自检判成「结论缺少就医提示」，
       // 然后降级成反问——用户会觉得这个助手连记东西都记不住。
-      if (r.intent === 'memo' || r.intent === 'concern' || r.intent === 'practice'
+      if (r.intent === 'memo' || r.intent === 'no-meds' || r.intent === 'concern' || r.intent === 'practice'
         || r.intent === 'advice') return { issues: [] };
 
       const speech = String(r.speech || '');
@@ -796,7 +847,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 等于挂着一个永远空的字段。写失败不影响本次回答，所以这一处可以吞（存储层会记 warn）。
       if (ctx.intent !== 'memo') store.pushHistory(ctx.text);
 
-      if (ctx.intent === 'memo' || ctx.intent === 'concern' || ctx.intent === 'practice'
+      if (ctx.intent === 'memo' || ctx.intent === 'no-meds' || ctx.intent === 'concern' || ctx.intent === 'practice'
         || ctx.intent === 'advice') return null;
 
       // ① 状况 × 本草禁忌，排在「你记着在吃 X」之前。
