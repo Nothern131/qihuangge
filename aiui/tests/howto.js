@@ -245,3 +245,31 @@ console.log('\n[9] 书架：知识在书里，不在代码里');
     assert.ok(new RegExp(String(shelfMod.SHELF.length)).test(r.speech || ''), r.speech);
   });
 }
+
+console.log('\n[10] 复杂方分级 + 泡水');
+{
+  const { commonHow } = await import('../adapter/recipe.js');
+  check('种子/果实类把泡水排第一', () => {
+    assert.ok(/^泡水/.test(commonHow('酸枣仁', FOODS['酸枣仁']) || ''), commonHow('酸枣仁', FOODS['酸枣仁']));
+  });
+  check('复杂方标了「做起来麻烦」', () => {
+    const agent = mk();
+    // 先交代没在吃，才过第二道门
+    const store = createProfileStore({ backend: memoryBackend() });
+    store.declareNoMeds();
+    const a = createQihuangAgent(pack, { store });
+    const r = askQihuang(a, '我脾胃虚寒吃什么好');
+    const f = r.result && r.result.formula;
+    assert.ok(f, '没有方');
+    assert.equal(f.hard, true, JSON.stringify(f));
+    // 复杂方不报工序，只说「做起来麻烦，想做再问我」
+    assert.ok(/做起来麻烦/.test(r.speech || ''), r.speech);
+  });
+  check('多味一起记（枸杞菊花茶记两味）', () => {
+    const store = createProfileStore({ backend: memoryBackend() });
+    const a = createQihuangAgent(pack, { store });
+    askQihuang(a, '记一下我在喝枸杞菊花茶');
+    const names = store.listItems().map((x) => x.name);
+    assert.ok(names.includes('枸杞') && names.includes('菊花'), names.join('、'));
+  });
+}

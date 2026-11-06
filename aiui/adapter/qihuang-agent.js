@@ -92,7 +92,8 @@ const TONIC_RE = [
 
 // 「记一下我在吃钙片」——这是「越用越懂你」唯一的入口。
 // 没有它，产品永远只能回答当下这一句，用户用三个月和用一天没有区别。
-const MEMO_RE = /(记一下|记住|记下|帮我记|我在吃|我在用|我常吃|我一直在吃|我平时吃|在吃|吃着)/;
+// 「我在喝枸杞菊花茶」「泡着黄芪」也算——泡水的东西一样入口、一样会撞。
+const MEMO_RE = /(记一下|记住|记下|帮我记|我在吃|我在用|我常吃|我一直在吃|我平时吃|在吃|吃着|我在喝|平时喝|在喝|泡水喝|泡着)/;
 // 「上次那个」「刚才问的」——跨句指代。
 // 只认这几种明确说法，不碰「它」「这个」：代词在语音里指代对象太模糊，
 // 补错了比不补更糟——用户会以为系统记错了东西。
@@ -143,32 +144,41 @@ export function createQihuangAgent(pack, { store = null } = {}) {
 
     const target = extractMemoTarget(ctx.text);
     const n = (ctx.recog.nutrients || [])[0];
-    const herb = (ctx.recog.known || [])[0];
+    const herbs = ctx.recog.known || [];
 
-    if (!n && !herb && !target) {
+    if (!n && !herbs.length && !target) {
       const err = new Error('没听清要记什么');
       err.code = 'missing_item';
       throw err;
     }
 
-    const name = n ? n.name : (herb || target);
-    const kind = n ? 'nutrient' : (herb ? 'herb' : 'other');
-    const ref = n ? n.id : (herb || null);
+    // 多味一起记：泡水常是几味配着（「枸杞菊花茶」），只记第一味
+    // 后面核对就是漏的——用户以为交代过了，其实只交代了一半。
+    const names = n ? [n.name] : (herbs.length ? herbs : [target]);
+    const kind = n ? 'nutrient' : (herbs.length ? 'herb' : 'other');
 
     // rememberItem 在存储写失败时会抛，交给 pipeline 的 onError 处理。
     // 这里不做 try：捕获了就只能「假装记下了」，那是最坏的结果。
-    const r = store.rememberItem(name, kind, ref);
+    let added = false;
+    let profile = null;
+    for (const nm of names) {
+      const ref = n ? n.id : (herbs.length ? nm : null);
+      const r = store.rememberItem(nm, kind, ref);
+      added = added || r.added;
+      profile = r.profile;
+    }
+    const label = names.join('、');
     return {
       found: true,
       intent: 'memo',
-      name,
+      name: label,
       kind,
-      added: r.added,
-      total: r.profile.supplements.length,
+      added,
+      total: profile ? profile.supplements.length : 0,
       items: store.listItems(),
-      speech: r.added
-        ? `记下了：${name}。以后你问到它，我会先看一眼有没有冲突。`
-        : `${name}已经记着了`,
+      speech: added
+        ? `记下了：${label}。以后你问到它，我会先看一眼有没有冲突。`
+        : `${label}已经记着了`,
     };
   }
 
@@ -478,6 +488,24 @@ export function createQihuangAgent(pack, { store = null } = {}) {
    * 在标点处截断，避免把句子切成半句。
    * 找不到合适标点时退回硬截——总比留半句强。
    */
+  /**
+   * 这首方子在家做起来费不费劲。
+   *
+   * 用户的原话：「做起来现实中比较复杂的，可以给他们提一嘴，但是不建议去做」。
+   * 判据不是玄学，看两样：
+   *   · 要不要处理整只/内脏（猪肚、羊头、猪脾、鸡）——这是最费工的一步
+   *   · 工序词数（缝、蒸、捣、研、炒、煨…）≥3 步
+   * 复杂的照样把食材说出来（用户有权知道古人用了什么），
+   * 但话术改成「偏麻烦，想做再问我」，不催着他动手。
+   */
+  function formulaHard(f) {
+    const ing = (f.ing || []).join('');
+    const method = String(f.method || '');
+    if (/猪肚|羊头|羊脊|猪脾|猪肪|鸡|鸭|鱼|肚|肠/.test(ing)) return true;
+    const steps = (method.match(/缝|蒸|煮|捣|研|炒|煨|浸|晒|焙|去骨|擘/g) || []).length;
+    return steps >= 3;
+  }
+
   function cutAtPunct(text, max) {
     const t = String(text || '').replace(/[。；]+$/, '');
     if (t.length <= max) return t;
@@ -599,8 +627,10 @@ export function createQihuangAgent(pack, { store = null } = {}) {
           : '';
         // 两个出口都要给：在吃的怎么交代、没在吃的怎么回答——
         // 只给一个出口时，另一半用户会卡在这里。
-        reason = `${head}但得先知道你在吃什么药，万一相冲比不给更糟。`
-          + '在吃的话说「记一下我在吃XX」，没在吃就说一句「我什么都没在吃」';
+        // 「泡什么水喝」必须一起问：枸杞菊花茶天天喝，和药一样会撞。
+        // 用户原话——「必须得事先知道他现在在用什么泡水喝」。
+        reason = `${head}但得先知道你在吃什么药、平时泡什么水喝，万一相冲比不给更糟。`
+          + '在吃在泡的说「记一下我在喝XX」，都没有就说一句「我什么都没在吃」';
       }
       return {
         found: true,
@@ -667,10 +697,14 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     // 两者不并列——并列会挤掉「不是方子」这类必须说的边界。
     // 有古籍方就先说方：用户要的是「几样东西配起来做」，不是单味药名。
     const formulaNote = formula
-      ? `${YANGLAO_SOURCE.replace('（宋·陈直，约 1085 年）', '')}里有${formula.name}：`
-        // 做法截断要落在标点上：硬切 40 字会切在词中间
-        //（实测「能作三两剂，兼」——「兼」后面的话没了，听着像说一半）
-        + `${formula.ing.join('、')}，${cutAtPunct(formula.method, 40)}`
+      ? (formulaHard(formula)
+        // 复杂方：报名字、报食材、说清楚麻烦在哪，不报工序。
+        // 用户「提一嘴但不建议去做」，真想做了会追问，那时再给细节。
+        ? `${YANGLAO_SOURCE.replace('（宋·陈直，约 1085 年）', '')}里有个${formula.name}，`
+          + `用${formula.ing.join('、')}，不过做起来麻烦，想做的话再问我详细步骤`
+        // 简单方：食材 + 做法都说
+        : `${YANGLAO_SOURCE.replace('（宋·陈直，约 1085 年）', '')}里有${formula.name}：`
+          + `${formula.ing.join('、')}，${cutAtPunct(formula.method, 40)}`)
       : '';
     const cook = r.picks.map((pk) => ({ name: pk.name, rec: pickShiliao(pk.name) }))
       .find((x) => x.rec && x.rec.cookable);
@@ -694,7 +728,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       + (cookNote || `${usage0}个人用量遵医嘱`)
       // 给了方还说「不是方子」是自相矛盾。有方时的边界是「原文含用量，别照抓」。
       + (formula
-        ? '，方是古籍原文，带用量和炮制，别照着抓'
+        ? '。方是古籍原文，带用量和炮制，别照着抓'
         : '，这些只是方向，不是方子')
       + (blockNote ? `。${blockNote}` : '');
 
@@ -720,7 +754,10 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       blocked,
       care: care ? { text: care.text, tag: care.tag, book: CARE_SOURCE } : null,
       formula: formula
-        ? { name: formula.name, effect: formula.effect, ing: formula.ing, method: formula.method, book: YANGLAO_SOURCE, note: YANGLAO_NOTE }
+        ? {
+          name: formula.name, effect: formula.effect, ing: formula.ing, method: formula.method,
+          hard: formulaHard(formula), book: YANGLAO_SOURCE, note: YANGLAO_NOTE,
+        }
         : null,
       unverifiable: unverified,
       // 播报比默认 32 字长得多：三条药名加一句依据，压到 32 就只剩半句结论。

@@ -244,7 +244,9 @@ export function createQihuangView({ engines, store = null } = {}) {
           // 古籍方单独一块：食材 + 做法。食材列表是重点——用户要看的是
           // 「哪几样配」，不是剂量（原方剂量在原文里，屏幕不给）。
           if (r.formula) {
-            lines.push(`古籍方·${r.formula.name}：${r.formula.ing.join('、')}`);
+            // 复杂的标出来：不藏，但也不催着做
+            const hardTag = r.formula.hard ? '（做起来麻烦）' : '';
+            lines.push(`古籍方·${r.formula.name}${hardTag}：${r.formula.ing.join('、')}`);
             // 做法截到 40 字并落在标点上：屏幕上剩的宽度不够写完整道工序，
             // 半句话（「能作三两剂，兼」）比截断更难受。
             const m = String(r.formula.method).replace(/[。；]+$/, '');
