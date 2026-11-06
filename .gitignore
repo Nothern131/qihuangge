@@ -2,3 +2,4 @@
 .aix/
 dist/
 node_modules/
+_gm_cache/
