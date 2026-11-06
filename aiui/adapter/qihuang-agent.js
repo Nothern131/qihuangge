@@ -25,6 +25,7 @@ import { practiceOf, findPractices, practiceCautions } from './practice-canon.js
 // 推荐前必须先知道用户在吃什么——这条门槛在 food-advice.js 里，不在这一层。
 import { adviseFor, adviceLine, adviceSource, RULES } from './food-advice.js';
 import { pickShiliao, commonHow, pickDish } from './recipe.js';
+import { formulasForState, YANGLAO_SOURCE, YANGLAO_NOTE } from './yanglao-canon.js';
 import { FOODS } from './food-canon.js';
 
 // 本版明确不做的事。这些不是说错了，是根本不该由这个作品回答——
@@ -414,6 +415,18 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     };
   }
 
+  /**
+   * 在标点处截断，避免把句子切成半句。
+   * 找不到合适标点时退回硬截——总比留半句强。
+   */
+  function cutAtPunct(text, max) {
+    const t = String(text || '').replace(/[。；]+$/, '');
+    if (t.length <= max) return t;
+    const head = t.slice(0, max);
+    const i = Math.max(head.lastIndexOf('。'), head.lastIndexOf('，'), head.lastIndexOf('；'), head.lastIndexOf('、'));
+    return i > max * 0.55 ? head.slice(0, i) : head;
+  }
+
   function doAdvice(ctx) {
     const states = [];
     const seen = new Set();
@@ -465,7 +478,28 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     // 用户第三次听就不知道系统在回答谁的问题。
     const topicLabels = (here.length ? here : states).map((x) => x.tags[0]);
 
-    const r = adviseFor(states, { eating, limit: 3 });
+    // 古籍方：按本轮主题的病类查《养老奉亲书》。
+    // 这是唯一从「病」出发的一层——前三本都只能从「东西」出发。
+    // 查不到就是空数组（便秘、失眠都查不到，因为原书没有对应章，
+    // 硬指一章等于替用户辨证，见 yanglao-canon 的映射表注释）。
+    const stateKeys = (here.length ? here : states).map((x) => x.key);
+    const formulas = stateKeys
+      .flatMap((k) => formulasForState(k))
+      .filter((x, i, a) => a.findIndex((y) => y.name === x.name) === i);
+    // 挑一条：食材少、做法短的更容易照着做
+    // 挑方规则：食材多的优先（≥3 样才像一道配起来的膳，单味的不是），
+    // 同档里选做法短的（屏幕放得下）。实测按「食材最少」挑会挑到
+    // 「煎猪肪方（猪肪+葱白）」——食材最少但什么也没配。
+    const formula = formulas
+      .slice()
+      .sort((a, b) => {
+        const rank = (x) => (x.ing.length >= 4 ? 0 : x.ing.length >= 3 ? 1 : 2);
+        return rank(a) - rank(b) || a.method.length - b.method.length;
+      })[0] || null;
+
+    // 有古籍方时药味只列 2 味：屏幕就 160 字，方子（食材+做法）比
+    // 第三味药更值钱。用户要的是「怎么配起来做」，不是药名清单。
+    const r = adviseFor(states, { eating, limit: formula ? 2 : 3 });
 
     if (!r.ok) {
       // 第二道门（不知道在吃什么）不给完整清单，但**先让用户闻到方向**——
@@ -553,6 +587,13 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     // 「怎么做」优先于「多少克」：用户拿到药名后第一个问题是蒸它煮它，
     // 不是精确到克。有食疗本草的做法就念做法，没有才退回药典用量。
     // 两者不并列——并列会挤掉「不是方子」这类必须说的边界。
+    // 有古籍方就先说方：用户要的是「几样东西配起来做」，不是单味药名。
+    const formulaNote = formula
+      ? `${YANGLAO_SOURCE.replace('（宋·陈直，约 1085 年）', '')}里有${formula.name}：`
+        // 做法截断要落在标点上：硬切 40 字会切在词中间
+        //（实测「能作三两剂，兼」——「兼」后面的话没了，听着像说一半）
+        + `${formula.ing.join('、')}，${cutAtPunct(formula.method, 40)}`
+      : '';
     const cook = r.picks.map((pk) => ({ name: pk.name, rec: pickShiliao(pk.name) }))
       .find((x) => x.rec && x.rec.cookable);
     // 古籍没写到做法时退到「常见吃法」——但必须说清这是常见吃法，
@@ -560,9 +601,9 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     const howFallback = r.picks
       .map((pk) => ({ name: pk.name, how: commonHow(pk.name, { tabi: pk.tabi }) }))
       .find((x) => x.how);
-    const cookNote = cook
+    const cookNote = formulaNote || (cook
       ? `《食疗本草》记${cook.rec.asked || cook.name}：${cook.rec.text}`
-      : (howFallback ? `${howFallback.name}常见吃法是${howFallback.how}` : '');
+      : (howFallback ? `${howFallback.name}常见吃法是${howFallback.how}` : ''));
 
     // 顺序即优先级：toBrief 超长时从尾部截。未核对与相冲声明是高危信息，
     // 必须排在「不是方子」这类免责声明之前，否则超长时先被裁掉。
@@ -593,6 +634,9 @@ export function createQihuangAgent(pack, { store = null } = {}) {
         commonHow: commonHow(pk.name, { tabi: pk.tabi }),
       })),
       blocked,
+      formula: formula
+        ? { name: formula.name, effect: formula.effect, ing: formula.ing, method: formula.method, book: YANGLAO_SOURCE, note: YANGLAO_NOTE }
+        : null,
       unverifiable: unverified,
       // 播报比默认 32 字长得多：三条药名加一句依据，压到 32 就只剩半句结论。
       // 但也不能无限长——120 字大约是念 8 秒。

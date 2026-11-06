@@ -223,7 +223,9 @@ export function createQihuangView({ engines, store = null } = {}) {
             // 做法只给第一味（贴在它下面），其余药名一行。
             // 三味都挂做法会超 160 字预算，而用户在屏幕上看的是「有没有路」，
             // 不是把三味都读一遍；想细问再单独问某味即可。
-            const withHow = r.picks.length && r.picks[0].name === pk.name;
+            // 有古籍方时，做法行让位给方子——方是用户真正要的东西，
+            // 三味药各挂一句单味吃法反而把方子挤出屏幕。
+            const withHow = !r.formula && r.picks.length && r.picks[0].name === pk.name;
             const rec = withHow ? pk.shiliao : null;
             // 古籍句 + 常见吃法两行都给（有就都给）：古籍那句常常是功效
             //（酸枣仁「疗不能眠」），只给这句用户还是不知道蒸还是煮。
@@ -234,6 +236,21 @@ export function createQihuangView({ engines, store = null } = {}) {
             const howPart = recLine + howLine;
             return `${pk.name}（${pk.nature}）：用于${use}${cor}${howPart}`;
           });
+          // 古籍方单独一块：食材 + 做法。食材列表是重点——用户要看的是
+          // 「哪几样配」，不是剂量（原方剂量在原文里，屏幕不给）。
+          if (r.formula) {
+            lines.push(`古籍方·${r.formula.name}：${r.formula.ing.join('、')}`);
+            // 做法截到 40 字并落在标点上：屏幕上剩的宽度不够写完整道工序，
+            // 半句话（「能作三两剂，兼」）比截断更难受。
+            const m = String(r.formula.method).replace(/[。；]+$/, '');
+            const head = m.length > 40 ? m.slice(0, 40) : m;
+            // 切在逗号处就把逗号也去掉再补句号，否则会出现「能作三两剂，。」
+            let cut = m.length > 40
+              ? head.slice(0, Math.max(head.lastIndexOf('。'), head.lastIndexOf('，'), head.lastIndexOf('；')) + 1 || 40)
+              : head;
+            cut = cut.replace(/[，、；。]+$/, '');
+            lines.push(`${cut}。`);
+          }
           if (r.blocked && r.blocked.length) {
             lines.push(`未列入：${r.blocked.map((b) => b.name).join('、')}（与你在吃的相冲）`);
           }

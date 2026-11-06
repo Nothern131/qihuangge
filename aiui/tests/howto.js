@@ -148,3 +148,33 @@ if (fail) {
   console.error('存在失败');
   process.exit(1);
 }
+
+console.log('\n[7] 古籍方：按病分类的膳方');
+{
+  const { formulasForState, YANGLAO_ITEMS, yanglaoCategories } = await import('../adapter/yanglao-canon.js');
+  check('16 个病类 98 方都在', () => {
+    assert.equal(YANGLAO_ITEMS.length, 98, String(YANGLAO_ITEMS.length));
+    assert.ok(yanglaoCategories().length >= 16, String(yanglaoCategories().length));
+  });
+  check('脾胃虚寒能查到方', () => {
+    const f = formulasForState('spleen-cold');
+    assert.ok(f.length > 0, '脾胃虚寒没有方');
+  });
+  check('便秘不映射到泻痢（方向相反）', () => {
+    assert.equal(formulasForState('constipation').length, 0);
+  });
+  check('失眠不硬指一章（原书没有失眠章）', () => {
+    assert.equal(formulasForState('insomnia').length, 0);
+  });
+  check('食材名已剥掉用量', () => {
+    const f = formulasForState('spleen-cold')[0];
+    assert.ok(f.ing.length >= 2, JSON.stringify(f.ing));
+    assert.ok(!/半两|二钱|枚/.test(f.ing.join('')), f.ing.join('、'));
+  });
+  check('气虚能查到方且食材够配一道', () => {
+    const f = formulasForState('qi-deficiency');
+    assert.ok(f.length > 0, '气虚没有方');
+    const withEnough = f.filter((x) => x.ing.length >= 3);
+    assert.ok(withEnough.length > 0, '没有一道是 3 样以上食材的');
+  });
+}
