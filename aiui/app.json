@@ -1,7 +1,7 @@
 {
   "agentName": "岐黄阁",
   "agentDesc": "私人养生助手：说一味药或食材，查性味功效与禁忌；记住你的身体状况与在用的东西，需要时提醒。只核对资料，不诊断、不开方。",
-  "nativeVersion": "1.0.10",
+  "nativeVersion": "1.0.11",
   "pages": ["pages/index/index"],
   "permissions": ["RECORD_AUDIO"],
   "window": {

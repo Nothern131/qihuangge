@@ -26,6 +26,7 @@ import { practiceOf, findPractices, practiceCautions } from './practice-canon.js
 import { adviseFor, adviceLine, adviceSource, RULES } from './food-advice.js';
 import { pickShiliao, commonHow, pickDish } from './recipe.js';
 import { formulasForState, YANGLAO_SOURCE, YANGLAO_NOTE } from './yanglao-canon.js';
+import { careForState, careForSeason, CARE_SOURCE } from './care-canon.js';
 import { FOODS } from './food-canon.js';
 
 // 本版明确不做的事。这些不是说错了，是根本不该由这个作品回答——
@@ -506,6 +507,12 @@ export function createQihuangAgent(pack, { store = null } = {}) {
 
     // 有古籍方时药味只列 2 味：屏幕就 160 字，方子（食材+做法）比
     // 第三味药更值钱。用户要的是「怎么配起来做」，不是药名清单。
+    // 调护：不吃药的那部分方法。目标人群是「忙到没条件看医生、想调理舒服点」
+    // 的人（程序员一类），对这类人只给「吃什么」不够——进食节奏、当季怎么吃，
+    // 才是明天就能改的事。
+    // 优先证候相关（脾胃→温热熟软），没有再取当季（秋→减辛增酸）。
+    const care = stateKeys.map((k) => careForState(k)).find(Boolean) || careForSeason();
+
     const r = adviseFor(states, { eating, limit: formula ? 2 : 3 });
 
     if (!r.ok) {
@@ -614,6 +621,8 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     const howFallback = r.picks
       .map((pk) => ({ name: pk.name, how: commonHow(pk.name, { tabi: pk.tabi }) }))
       .find((x) => x.how);
+    // 调护**不进播报**：文言句子念出来听不懂（「其枕宜用夹熟色帛」），
+    // 屏幕上看得懂。播报的字数留给「怎么做着吃」——那才是用户当下要的。
     const cookNote = formulaNote || (cook
       ? `《食疗本草》记${cook.rec.asked || cook.name}：${cook.rec.text}`
       : (howFallback ? `${howFallback.name}常见吃法是${howFallback.how}` : ''));
@@ -651,6 +660,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
         commonHow: commonHow(pk.name, { tabi: pk.tabi }),
       })),
       blocked,
+      care: care ? { text: care.text, tag: care.tag, book: CARE_SOURCE } : null,
       formula: formula
         ? { name: formula.name, effect: formula.effect, ing: formula.ing, method: formula.method, book: YANGLAO_SOURCE, note: YANGLAO_NOTE }
         : null,

@@ -236,6 +236,11 @@ export function createQihuangView({ engines, store = null } = {}) {
             const howPart = recLine + howLine;
             return `${pk.name}（${pk.nature}）：用于${use}${cor}${howPart}`;
           });
+          // 调护：不吃药的那条路。放在药名之后、方子之前——
+          // 对「忙到没空看病」的人，这条比药名更能当天用上。
+          if (r.care && !r.formula) {
+            lines.push(`古人的调护：${r.care.text}`);
+          }
           // 古籍方单独一块：食材 + 做法。食材列表是重点——用户要看的是
           // 「哪几样配」，不是剂量（原方剂量在原文里，屏幕不给）。
           if (r.formula) {
