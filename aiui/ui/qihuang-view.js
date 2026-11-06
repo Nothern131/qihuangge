@@ -272,6 +272,21 @@ export function createQihuangView({ engines, store = null } = {}) {
           patch.answer = r.speech;
         }
         tone = r.ok ? 'ok' : 'warn';
+      } else if (r.intent === 'books') {
+        // 「你能查什么」：把书架摊开。条数是真实数字，从数据模块里算的。
+        patch.title = `书架 · ${r.books.length} 本 ${r.books.reduce((n, b) => n + b.count, 0)} 条`;
+        patch.detail = '答案都从这几本来';
+        patch.answer = r.books.map((b) => `${b.name}（${b.count} 条）\n  ${b.ask}`).join('\n');
+        patch.status = '已查询';
+        patch.source = '出处：以上为系统收录的全部古籍，条数取自数据文件本身。';
+      } else if (r.intent === 'books-on') {
+        patch.title = r.screenTitle || '在哪本书里';
+        patch.detail = r.found === false ? '没收录' : '跨书查询';
+        patch.answer = r.found === false
+          ? (r.speech || '这几本书里没有')
+          : `收录于：${(r.hitBooks || []).join('、')}`;
+        patch.status = r.found === false ? '没查到' : '已查询';
+        patch.source = r.found === false ? '' : '出处：按各书条目索引查得，未综合判断。';
       } else if (r.intent === 'howto') {
         // 「这味怎么弄着吃」。三层各标各的来源，不许混成一句：
         // 药典只给用量，古籍给的是原文，常见吃法是生活常识。

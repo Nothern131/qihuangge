@@ -328,8 +328,10 @@ import { dishesWith, SHANJIA_SOURCE, SHANJIA_NOTE } from './shanjia-canon.js';
  * 这一层补的就是异名。只收确定同物的，不确定的不放：
  * 放错等于把两道不同的东西说成一道。
  */
-const SYN_GROUPS = [
+export const SYN_GROUPS = [
   ['山药', '薯蓣'],
+  // 本草纲目的条目名是「酸枣」，食疗本草也是；用户说酸枣仁
+  ['酸枣仁', '酸枣'],
   ['萝卜', '芦菔', '莱菔'],
   ['芝麻', '胡麻', '脂麻', '芝蔴'],
   ['白菜', '菘'],
@@ -350,8 +352,8 @@ const SYN_GROUPS = [
   ['芋头', '芋'],
 ];
 
-/** 一个词的同义扩展（含自己）。 */
-function synonyms(name) {
+/** 一个词的同义扩展（含自己）。书架层也要用，所以导出。 */
+export function synonyms(name) {
   const k = String(name || '').trim();
   if (!k) return [];
   const g = SYN_GROUPS.find((arr) => arr.includes(k));

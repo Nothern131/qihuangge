@@ -27,6 +27,7 @@ import { adviseFor, adviceLine, adviceSource, RULES } from './food-advice.js';
 import { pickShiliao, commonHow, pickDish } from './recipe.js';
 import { formulasForState, YANGLAO_SOURCE, YANGLAO_NOTE } from './yanglao-canon.js';
 import { careForState, careForSeason, CARE_SOURCE } from './care-canon.js';
+import { SHELF, shelfSummary, totalEntries, booksOn } from './bookshelf.js';
 import { FOODS } from './food-canon.js';
 
 // 本版明确不做的事。这些不是说错了，是根本不该由这个作品回答——
@@ -36,6 +37,15 @@ import { FOODS } from './food-canon.js';
 const DOSE_RE = /(吃多少|多少克|几克|几钱|几两|一天吃几次|一天几次|用量|剂量|每次用|服用多少)/;
 // 问做法：认出了药名就是「这味怎么弄着吃」，没认出药名会落到别处。
 const HOWTO_RE = /(怎么吃|怎么弄着吃|怎么做着吃|怎么做|怎么用|怎么喝|怎么熬|怎么煮|怎么泡|咋吃|教我|做法|怎么服)/;
+
+/**
+ * 问「你凭什么答」：书目、数据来源、收录范围。
+ *
+ * 这类问题必须答得出来而且是真数字——产品是「查书」不是「背答案」，
+ * 书架上有什么、各多少条，直接说。说不清就别声称有依据。
+ */
+const BOOKS_RE = /(能查什么|会查什么|有什么书|哪些书|收录了什么|收录哪些|资料来源|数据来源|数据从哪|依据是什么|凭什么|你懂什么|知识库)/;
+const BOOK_ONE_RE = /(这本书|那本书|哪本书).{0,8}(讲|说|有|写)/;
 
 /**
  * 从「X怎么吃」里取出 X。
@@ -352,6 +362,50 @@ export function createQihuangAgent(pack, { store = null } = {}) {
    *
    * 三层各标各的来源，不许混着说成「药典说这样吃」。
    */
+  /**
+   * 「你能查什么」——直接把书架报出来。
+   *
+   * 这不是炫技：产品的主张是「答案从这几本书来」，那用户就有权知道
+   * 是哪几本、各多少条。数字取自数据模块本身，不是写死的宣传语。
+   */
+  function doBooks() {
+    const lines = SHELF.map((b) => `${b.name}（${b.count} 条）：${b.ask}`);
+    return {
+      found: true,
+      intent: 'books',
+      sayMax: 140,
+      speech: `我查的是 ${SHELF.length} 本古籍，一共 ${totalEntries()} 条：`
+        + SHELF.map((b) => b.name).join('、')
+        + '。想知道某一本收什么，问我就行',
+      screenTitle: `书架 · ${SHELF.length} 本 ${totalEntries()} 条`,
+      books: SHELF.map((b) => ({ name: b.name, era: b.era, count: b.count, ask: b.ask })),
+      lines,
+      sourceTag: '书目与条数来自数据模块本身',
+    };
+  }
+
+  /** 「山药在哪本书里有」——跨书查一本。 */
+  function doBooksOn(ctx) {
+    const name = (ctx.recog && ctx.recog.known && ctx.recog.known[0]) || '';
+    const hits = booksOn(name);
+    if (!hits.length) {
+      return {
+        found: false,
+        intent: 'books-on',
+        speech: `这五本书里没有查到${name}。收录的是药食同源和常见食疗品种，太偏的没有`,
+      };
+    }
+    return {
+      found: true,
+      intent: 'books-on',
+      sayMax: 120,
+      speech: `${name}在${hits.length}本书里有：${hits.map((h) => h.name).join('、')}`,
+      screenTitle: `${name} 在 ${hits.length} 本书里`,
+      hitBooks: hits.map((h) => h.name),
+      sourceTag: '按各书条目索引查得',
+    };
+  }
+
   function doHowto(ctx) {
     // 优先用识别层的规范名（能把「桂圆」对上龙眼肉），
     // 认不出时用原句里取出的词——萝卜这种不在药典词表的食材靠这条路。
@@ -843,6 +897,14 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 不要求先认出药典词表里的药名：用户问「萝卜怎么吃」，
       // 萝卜不在药食同源 102 味里，但《山家清供》里有它的菜谱（玉糁羹）。
       // 从原句里直接取「X怎么吃」的 X，取不到再交给下游判。
+      if (BOOKS_RE.test(ctx.text)) {
+        return { intent: 'books', conf: 1 };
+      }
+      // 「山药在哪本书里有」——先认药名，再读书架
+      if (BOOK_ONE_RE.test(ctx.text) && ctx.recog && ctx.recog.known && ctx.recog.known.length) {
+        return { intent: 'books-on', conf: 1 };
+      }
+
       if (HOWTO_RE.test(ctx.text) && howtoSubject(ctx.text)) {
         return { intent: 'howto', conf: 1 };
       }
@@ -1008,6 +1070,8 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       if (ctx.intent === 'concern') return { result: doConcern(ctx) };
       if (ctx.intent === 'advice') return { result: doAdvice(ctx) };
       if (ctx.intent === 'howto') return { result: doHowto(ctx) };
+      if (ctx.intent === 'books') return { result: doBooks() };
+      if (ctx.intent === 'books-on') return { result: doBooksOn(ctx) };
       if (ctx.intent === 'practice') return { result: doPractice(ctx.practice) };
 
       // 营养素走独立动作：下游的 vitamin 分支只认单味营养素名，
@@ -1040,7 +1104,8 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 不豁免的话，每次「记一下」都会被自检判成「结论缺少就医提示」，
       // 然后降级成反问——用户会觉得这个助手连记东西都记不住。
       if (r.intent === 'memo' || r.intent === 'no-meds' || r.intent === 'concern' || r.intent === 'practice'
-        || r.intent === 'advice' || r.intent === 'howto') return { issues: [] };
+        || r.intent === 'advice' || r.intent === 'howto'
+        || r.intent === 'books' || r.intent === 'books-on') return { issues: [] };
 
       const speech = String(r.speech || '');
 

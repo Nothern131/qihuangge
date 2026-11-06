@@ -209,3 +209,39 @@ console.log('\n[8] 古籍方：按病分类的膳方');
     assert.ok(withEnough.length > 0, '没有一道是 3 样以上食材的');
   });
 }
+
+console.log('\n[9] 书架：知识在书里，不在代码里');
+{
+  const shelfMod = await import('../adapter/bookshelf.js');
+  check('五本书都登记了，条数取自数据文件', () => {
+    assert.equal(shelfMod.SHELF.length, 5, String(shelfMod.SHELF.length));
+    for (const b of shelfMod.SHELF) {
+      assert.ok(b.count > 0, `${b.name} 条数为 0`);
+      assert.ok(b.name && b.era && b.ask, `${b.name} 缺元数据`);
+    }
+  });
+  check('总条数与各书相加一致（不是写死的宣传数字）', () => {
+    const sum = shelfMod.SHELF.reduce((n, b) => n + b.count, 0);
+    assert.equal(shelfMod.totalEntries(), sum);
+  });
+  check('跨书查询能报出「哪几本有」', () => {
+    const hits = shelfMod.booksOn('山药');
+    assert.ok(hits.length >= 2, JSON.stringify(hits.map((h) => h.name)));
+  });
+  check('异名也查得到（萝卜 → 山家清供的芦菔）', () => {
+    const hits = shelfMod.booksOn('萝卜').map((h) => h.name);
+    assert.ok(hits.includes('山家清供'), hits.join('、'));
+  });
+  check('映射层是承认的，不是藏着的', () => {
+    assert.ok(Array.isArray(shelfMod.MAPPINGS) && shelfMod.MAPPINGS.length >= 4);
+    for (const m of shelfMod.MAPPINGS) {
+      assert.ok(m.what && m.basis, JSON.stringify(m));
+    }
+  });
+  check('「你能查什么」报真实书目', () => {
+    const agent = mk();
+    const r = askQihuang(agent, '你能查什么');
+    assert.equal(r.intent, 'books');
+    assert.ok(new RegExp(String(shelfMod.SHELF.length)).test(r.speech || ''), r.speech);
+  });
+}
