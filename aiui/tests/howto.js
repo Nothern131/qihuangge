@@ -12,7 +12,7 @@ import { loadEngines } from '../adapter/load-engines.js';
 import { createQihuangPack } from '../adapter/qihuang-pack.js';
 import { createQihuangAgent, askQihuang } from '../adapter/qihuang-agent.js';
 import { createProfileStore, memoryBackend } from '../adapter/profile-store.js';
-import { pickShiliao, commonHow } from '../adapter/recipe.js';
+import { pickShiliao, commonHow, pickDish } from '../adapter/recipe.js';
 import { FOODS } from '../adapter/food-canon.js';
 
 let pass = 0;
@@ -54,9 +54,17 @@ console.log('\n[2] 三层来源各归各位');
 {
   const agent = mk();
   const r = askQihuang(agent, '山药怎么吃');
-  check('山药有食疗本草原文', () => {
-    assert.ok(/食疗本草/.test(r.speech || ''), r.speech);
-    assert.ok(/熟煮和蜜|为汤煎|为粉/.test(r.speech || ''), r.speech);
+  // 播报只念一层（字数约束）：有菜谱就念菜谱，没有才念食疗本草。
+  // 屏幕上是两层都给。这里断言「至少有一层古籍依据」。
+  check('山药有古籍做法（菜谱或食疗本草）', () => {
+    assert.ok(/山家清供|食疗本草/.test(r.speech || ''), r.speech);
+  });
+  check('屏幕食谱层齐全', () => {
+    // askQihuang 返回的是外层结构，业务字段在 result 里
+    const d = (r.result && r.result.dish) || null;
+    const rec = (r.result && r.result.recipe) || null;
+    assert.ok(d && /金玉羹/.test(d.dish), JSON.stringify(d && d.dish));
+    assert.ok(rec && /熟煮|汤煎|作粉/.test(rec.text), rec && rec.text);
   });
   check('山药有常见吃法', () => {
     assert.ok(/常见吃法/.test(r.speech || ''), r.speech);
@@ -102,7 +110,31 @@ console.log('\n[4] 古籍做法只挑真能照着做的');
   });
 }
 
-console.log('\n[5] 查不到就说查不到');
+console.log('\n[5] 古籍菜谱：整道菜的配方');
+{
+  check('山药有金玉羹（山药+栗+羊汁）', () => {
+    const d = pickDish('山药');
+    assert.ok(d && /金玉羹/.test(d.dish), JSON.stringify(d && d.dish));
+    assert.ok(/山药与栗/.test(d.text), d && d.text);
+  });
+  check('萝卜走异名找到玉糁羹', () => {
+    const d = pickDish('萝卜');
+    assert.ok(d, '萝卜没有菜谱');
+    assert.ok(/芦菔|萝卜/.test(d.text), d.text);
+  });
+  check('菜谱不带考据尾巴（书名号处收）', () => {
+    const d = pickDish('百合');
+    assert.ok(d && !/鸡粪|岁时广记/.test(d.text), d && d.text);
+  });
+  check('不在药典词表的食材也能问', () => {
+    const agent = mk();
+    const r = askQihuang(agent, '萝卜怎么吃');
+    assert.equal(r.intent, 'howto', `intent=${r.intent}`);
+    assert.ok(/芦菔|玉糁羹|萝卜/.test(r.speech || ''), r.speech);
+  });
+}
+
+console.log('\n[6] 查不到就说查不到');
 {
   const agent = mk();
   const r = askQihuang(agent, '血竭怎么吃');

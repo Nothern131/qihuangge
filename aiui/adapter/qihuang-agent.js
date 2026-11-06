@@ -24,7 +24,7 @@ import { practiceOf, findPractices, practiceCautions } from './practice-canon.js
 // 状况 → 食补建议。匹配用药典「用于」原文，排序用《素问》「寒者热之」，
 // 推荐前必须先知道用户在吃什么——这条门槛在 food-advice.js 里，不在这一层。
 import { adviseFor, adviceLine, adviceSource, RULES } from './food-advice.js';
-import { pickShiliao, commonHow } from './recipe.js';
+import { pickShiliao, commonHow, pickDish } from './recipe.js';
 import { FOODS } from './food-canon.js';
 
 // 本版明确不做的事。这些不是说错了，是根本不该由这个作品回答——
@@ -34,6 +34,21 @@ import { FOODS } from './food-canon.js';
 const DOSE_RE = /(吃多少|多少克|几克|几钱|几两|一天吃几次|一天几次|用量|剂量|每次用|服用多少)/;
 // 问做法：认出了药名就是「这味怎么弄着吃」，没认出药名会落到别处。
 const HOWTO_RE = /(怎么吃|怎么弄着吃|怎么做着吃|怎么做|怎么用|怎么喝|怎么熬|怎么煮|怎么泡|咋吃|教我|做法|怎么服)/;
+
+/**
+ * 从「X怎么吃」里取出 X。
+ *
+ * 不用识别层的药名：那一层只认药典 102 味和本草纲目 863 条，
+ * 「萝卜」这种常见食材不在里面，可它确实有古籍菜谱。
+ * 取出来之后由 pickDish 判断有没有——查不到再回「没听过这味」。
+ */
+function howtoSubject(text) {
+  const t = String(text || '');
+  const m = t.match(/^(.{1,8}?)(?:怎么弄着吃|怎么做着吃|怎么吃|怎么做|怎么用|怎么喝|怎么熬|怎么煮|怎么泡|咋吃|做法|怎么服)/);
+  if (!m) return '';
+  // 去掉句首口头语和代词：「请问山药怎么吃」「那个山药怎么吃」
+  return m[1].replace(/^(请问|问一下|我想知道|那个|这个|帮我看看|教我|教我做)/, '').trim();
+}
 const PRESCRIBE_RE = /(开个方|开方|配个方|开副药|处方|给我治|怎么治|吃什么药能治|我头疼|我咳嗽|我胃疼|辨证|把脉)/;
 
 // 安慰措辞。这些词出现在有风险项的结论里就是自相矛盾，必须拦住。
@@ -336,15 +351,23 @@ export function createQihuangAgent(pack, { store = null } = {}) {
    * 三层各标各的来源，不许混着说成「药典说这样吃」。
    */
   function doHowto(ctx) {
-    const name = (ctx.recog && ctx.recog.known && ctx.recog.known[0]) || '';
+    // 优先用识别层的规范名（能把「桂圆」对上龙眼肉），
+    // 认不出时用原句里取出的词——萝卜这种不在药典词表的食材靠这条路。
+    const known = (ctx.recog && ctx.recog.known && ctx.recog.known[0]) || '';
+    const name = known || howtoSubject(ctx.text);
     if (!name) {
       return {
         found: false,
         intent: 'howto',
-        speech: '没听出是哪一味。直接说药名再问怎么吃，比如「山药怎么吃」',
+        speech: '没听出是哪一味。直接说名字再问怎么吃，比如「山药怎么吃」',
       };
     }
     const food = FOODS[name] || {};
+    // 三层来源，按「离用户要的东西有多近」排：
+    //   ① 古籍菜谱（一整道菜，有原料有下锅顺序）— 用户问「怎么做」最想要这个
+    //   ② 食疗本草（单味吃法：「熟煮和蜜」）
+    //   ③ 形态常见吃法（生活常识兜底）
+    const dish = pickDish(name);
     const rec = pickShiliao(name);
     const how = commonHow(name, { tabi: food.tabi });
     const dosage = String(food.dosage || '').split(/[。；]/)[0];
@@ -357,12 +380,21 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     const clean = (t) => String(t || '').replace(/[。；]+$/, '');
     const parts = [];
     if (dosage) parts.push(`药典写的用法是${clean(dosage)}`);
-    if (rec) parts.push(`《食疗本草》记：${clean(rec.text)}`);
+    if (dish) parts.push(`《山家清供》里有一道${dish.dish}：${clean(dish.text)}`);
+    else if (rec) parts.push(`《食疗本草》记：${clean(rec.text)}`);
     if (how) parts.push(`常见吃法是${how}`);
     // 有禁忌/毒性的必须先说：苦杏仁这类「怎么吃」问得越具体，
     // 照着做的人越多，只讲做法不讲禁忌是最危险的答法。
     const tabi = clean(food.tabi);
     const body = parts.length ? parts.join('。') : '资料里没有它的具体做法';
+    // 三层全空说明库里根本没有这味，不能假装查过
+    if (!parts.length) {
+      return {
+        found: false,
+        intent: 'howto',
+        speech: `库里没有${name}的做法记录。常见药食同源的品种我都能查，比如山药、百合、山楂`,
+      };
+    }
     const speech = `${name}。${tabi ? `${tabi}。` : ''}${body}。用量按药典，个人用量遵医嘱`;
 
     return {
@@ -371,6 +403,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       name,
       nature,
       dosage,
+      dish,
       recipe: rec,
       commonHow: how,
       tabi: String(food.tabi || ''),
@@ -733,10 +766,13 @@ export function createQihuangAgent(pack, { store = null } = {}) {
           speech: '我这边没有上次的记录，不知道你指的是哪一味。直接说药名就行，比如「甘草有毒吗」',
         };
       }
-      // 问「这味怎么做着吃」：认出药名就走做法，不能落到下面的剂量拒答。
+      // 问「这味怎么做着吃」：不能落到下面的剂量拒答。
       // 位置必须在 DOSE_RE 之前——两者都含「怎么吃」时，做法优先。
-      if (HOWTO_RE.test(ctx.text)
-        && ctx.recog && ctx.recog.known && ctx.recog.known.length > 0) {
+      //
+      // 不要求先认出药典词表里的药名：用户问「萝卜怎么吃」，
+      // 萝卜不在药食同源 102 味里，但《山家清供》里有它的菜谱（玉糁羹）。
+      // 从原句里直接取「X怎么吃」的 X，取不到再交给下游判。
+      if (HOWTO_RE.test(ctx.text) && howtoSubject(ctx.text)) {
         return { intent: 'howto', conf: 1 };
       }
 

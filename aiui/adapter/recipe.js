@@ -316,3 +316,120 @@ export function commonHow(name, food) {
   if (/毒/.test(tabi)) return '';
   return FORM_HOW[form];
 }
+
+// ───────────────────── 山家清供：一整道菜怎么做 ─────────────────────
+
+import { dishesWith, SHANJIA_SOURCE, SHANJIA_NOTE } from './shanjia-canon.js';
+
+/**
+ * 同义词组：用户说的现代名 ↔ 古籍里的写法。
+ *
+ * 繁简转换只对齐字面（雞→鸡），对不上异名（芦菔/萝卜、薯蓣/山药）——
+ * 这一层补的就是异名。只收确定同物的，不确定的不放：
+ * 放错等于把两道不同的东西说成一道。
+ */
+const SYN_GROUPS = [
+  ['山药', '薯蓣'],
+  ['萝卜', '芦菔', '莱菔'],
+  ['芝麻', '胡麻', '脂麻', '芝蔴'],
+  ['白菜', '菘'],
+  ['韭菜', '韭'],
+  ['芹菜', '芹'],
+  ['枣', '干枣', '大枣'],
+  // 不收单字「豆」：那会把豆豉、豆黄的菜当成赤小豆的（实测「当团参」是豆豉）
+  ['赤小豆', '赤豆', '红豆'],
+  ['黑大豆', '黑豆', '大豆'],
+  ['莲子', '莲肉', '藕'],
+  ['百合', '百合根'],
+  ['鸡', '鸡子', '鸡蛋'],
+  ['鱼', '鲫鱼', '鲤鱼'],
+  ['竹笋', '笋', '竹萌'],
+  ['姜', '生姜'],
+  ['蜂蜜', '蜜'],
+  ['栗子', '栗'],
+  ['芋头', '芋'],
+];
+
+/** 一个词的同义扩展（含自己）。 */
+function synonyms(name) {
+  const k = String(name || '').trim();
+  if (!k) return [];
+  const g = SYN_GROUPS.find((arr) => arr.includes(k));
+  return g ? [...new Set(g)] : [k];
+}
+
+/** 做法动词（含异体字：煑/燖/瀹/焯 这些在古籍里很常见）。 */
+const COOK_WORD_RE = /煮|煑|蒸|炒|煎|熬|渍|腌|拌|煠|烤|烧|爨|炊|煨|炖|瀹|焯|研|捣|磨|酿|作羹|作饭|作粥|作饼|为羹|为饼|燖|𬊈/;
+
+/**
+ * 从菜品原文里剥出「做法」那几句。
+ *
+ * 山家清供的写法是「考据 + 做法」混排：
+ * 碧涧羹「芹，楚菜也，又名水英。有二种…二月三月作羹时采之，洗净，入汤焯过取出…」
+ * 前半是名物考据，照做没用；从第一个做法动词那句起才是能下锅的部分。
+ */
+function cookPart(text, maxLen = 58) {
+  // 分割符不能只有句号：古籍里反问句、并列句都用「？」「；」断，
+  // 只按「。」切会把「况山居可无此乎？用沙缾烂煮赤豆」粘成一句，
+  // 于是典故被当成做法念出来。
+  const sents = String(text || '').split(/[。？！；]/);
+  const i = sents.findIndex((s) => COOK_WORD_RE.test(s));
+  if (i < 0) return '';
+  let out = sents[i].trim();
+  for (let j = i + 1; j < sents.length; j++) {
+    const nx = sents[j].trim();
+    if (!nx) continue;
+    // 引书名的句子（《岁时广记》：二月种，法宜鸡粪）讲的是典故和种植，
+    // 做法到这里就该收了——拼进去只会让用户读到「鸡粪」。
+    if (/《/.test(nx)) break;
+    if (out.length + nx.length + 1 > maxLen) break;
+    out += `，${nx}`;
+  }
+  // 古籍正文常带未闭合的引号（「」『』混排），句子截断后尤其明显。
+  // 展示前清掉首尾标点，正文中间的不动。
+  out = out.replace(/[「」『』“”‘’]/g, '').replace(/^[，、。；：？\s]+/, '');
+  return out.length > maxLen ? out.slice(0, maxLen) + '…' : out + '。';
+}
+
+/**
+ * 给一味食材找一道能照着做的古籍菜谱。
+ *
+ * 这是「配方」层：食疗本草给的是单味吃法（「熟煮和蜜」），
+ * 这里给的是一整道菜（「洗净，入汤焯过取出，以苦酒研芝麻，入盐少许」）。
+ * 用户要的「几样东西配起来做」，只有这一层给得出。
+ *
+ * 查不到返回 null——不拿近似的菜硬顶。
+ */
+export function pickDish(name) {
+  const terms = synonyms(name);
+  const seen = new Set();
+  const cands = [];
+  for (const t of terms) {
+    for (const d of dishesWith(t)) {
+      if (seen.has(d.dish)) continue;
+      seen.add(d.dish);
+      // 主料判定：菜名里有它，或正文开头就点它。
+      // 不做这层会误命中——实测「满山香」只是正文里提了一句「煮姜油菜羹」，
+      // 「玉延索饼」是山药饼、文中顺带提到枣，都被当成了「枣的菜谱」。
+      const head = String(d.text || '').slice(0, 20);
+      if (!d.dish.includes(t) && !head.includes(t)) continue;
+      const body = cookPart(d.text);
+      // 做法部分还得真的用到它，除非菜名就是它——
+      // 古籍常用代词省掉主料（碧涧羹下锅那几句全是「采之」「洗净」，
+      // 不点芹字），只看正文会把这种正主漏掉。
+      if (!body || body.length < 12) continue;
+      if (!body.includes(t) && !d.dish.includes(t)) continue;
+      cands.push({ dish: d.dish, text: body, hits: d.hits });
+    }
+  }
+  if (!cands.length) return null;
+  // 提到次数多的优先（主料），但太长的不适合上屏幕
+  cands.sort((a, b) => b.hits - a.hits || a.text.length - b.text.length);
+  const best = cands[0];
+  return {
+    dish: best.dish,
+    text: best.text,
+    book: SHANJIA_SOURCE,
+    note: SHANJIA_NOTE,
+  };
+}

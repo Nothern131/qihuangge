@@ -259,6 +259,9 @@ export function createQihuangView({ engines, store = null } = {}) {
         const lines = [];
         if (r.dosage) lines.push(`药典用法：${r.dosage}`);
         if (r.tabi) lines.push(`注意：${r.tabi}`);
+        // 菜谱排最前：用户问「怎么吃」，最想要的是一道能做的菜，
+        // 不是一句功效。单味吃法退到第二位。
+        if (r.dish) lines.push(`古籍菜谱·${r.dish.dish}：${r.dish.text}`);
         if (r.recipe) {
           lines.push(`${r.recipe.cookable ? '怎么做（食疗本草）' : '食疗本草'}：${r.recipe.text}`);
         }
@@ -266,11 +269,20 @@ export function createQihuangView({ engines, store = null } = {}) {
         if (!lines.length) lines.push('资料里没有它的具体做法');
         patch.answer = lines.join('\n');
         patch.status = '已查询';
-        patch.source = `出处：《中国药典》2025年版一部${r.recipe ? '；《食疗本草》（唐·孟诜）' : ''}。常见吃法为一般饮食习惯，不是典籍记载。`;
-        patch.sourceTag = '药典原文 + 食疗本草 + 常见吃法';
+        // 出处行按字数收费：书名全称加朝代能占 60 字，把「怎么做」挤出屏幕。
+        // 书名保留（那是可信度），朝代压成一个字（那是版本信息）。
+        const books = ['中国药典2025'];
+        if (r.dish) books.push('山家清供（宋）');
+        if (r.recipe) books.push('食疗本草（唐）');
+        patch.source = `出处：${books.join('；')}。常见吃法为一般饮食习惯，不是典籍记载。`;
+        patch.sourceTag = '药典原文 + 古籍菜谱 + 常见吃法';
         if (r.found === false) {
-          patch.title = '没听出药名';
+          // 查不到时屏幕上要把「为什么查不到」写出来。
+          // 只把标题改成「没听出药名」、正文还留着模板句，
+          // 用户看到的是「资料里没有它的具体做法」——它指谁？
+          patch.title = '库里没有';
           patch.status = '没查到';
+          patch.answer = r.speech || '库里没有这味的做法记录';
         }
       } else if (r.intent === 'practice' || r.intent === 'concern' || r.intent === 'no-meds') {
         // 这三类不接进来会落到下面的 else，标题变成「本草」——
@@ -396,7 +408,9 @@ export function createQihuangView({ engines, store = null } = {}) {
       // 把出处放 detail，屏幕上就是「先看出处、后看结论」——顺序反了，
       // 实测确实如此（共 1 条提示 ｜ 出处 …. 上面，结论在下面红字）。
       // 出处是结论的附属信息，位置必须跟在结论句之后。
-      if (r.sourceTag) {
+      // 已经在分支里拼好多本书出处的（howto 会列药典+山家清供+食疗本草），
+      // 这里不要拿单本 sourceTag 覆盖掉——实测百合那屏只剩「药典」一本书。
+      if (r.sourceTag && !patch.source) {
         // 单独一行、单独字段。见 INITIAL_STATE 里的说明。
         patch.source = `出处：${r.sourceTag}`;
         patch.sourceClass = 'source';
