@@ -22,6 +22,7 @@ import { createQihuangView, INITIAL_STATE, GUIDE } from '../../ui/qihuang-view.j
 import { speak, stopSpeak, readSpeech } from '../../core/speech.js';
 import { getEngines } from '../../adapter/engine-runtime.js';
 import { createProfileStore } from '../../adapter/profile-store.js';
+import { VISION_PROMPTS, parseNames, pickLookupName, visionFallback } from '../../adapter/vision.js';
 
 const LISTEN_TIMEOUT_MS = 12000;
 
@@ -261,6 +262,89 @@ export default {
     if (out.say) {
       speak(out.say, { max: out.sayMax || 32, tail: out.tail || '', mode: 'immediate' });
     }
+    // agent 说「我看一眼」之后，真正去调相机的是这里——只有页面有 wx 能力。
+    if (out.needCamera) this.captureAndLook();
+  },
+
+  // --- 拍一下，认出是什么，然后接查书 ---
+  //
+  // 这条链路是眼镜区别于手机的根：手机要掏出来、解锁、对准、拍四个动作，
+  // 眼镜只用「看一眼」。所以识别完不能只报个名字，要直接接上「怎么用」。
+  //
+  // 三步都可能失败（相机、模型、识别结果），每一步都退到「直接说名字」，
+  // 因为「没认出来」和「按了没反应」在眼镜上长得一模一样，后者最伤。
+  async captureAndLook() {
+    const bail = (why) => {
+      console.warn('[qihuang] 拍照识别不可用：', why);
+      this.setData({ status: '认不出', answer: visionFallback(), tone: 'warn' });
+      speak(visionFallback(), { max: 60, mode: 'immediate' });
+    };
+
+    // ① 相机
+    let cam = null;
+    try {
+      cam = wx.media.createCameraContext();
+    } catch (err) {
+      return bail('camera context: ' + (err && err.message));
+    }
+    if (!cam) return bail('camera context unavailable');
+
+    let photo = null;
+    try {
+      photo = await cam.takePhoto({ quality: 'high' });
+    } catch (err) {
+      // 用户取消授权、被别的进程占用、没有摄像头——都走这条
+      return bail('takePhoto: ' + (err && err.message));
+    }
+    if (!photo || !photo.data) return bail('empty photo');
+
+    // ② 转 base64（只做一次转码，全链路一种编码）
+    let dataUrl = '';
+    try {
+      dataUrl = 'data:image/jpeg;base64,' + wx.arrayBufferToBase64(photo.data);
+    } catch (err) {
+      return bail('base64: ' + (err && err.message));
+    }
+
+    // ③ 多模态：先客观描述，再挑名字。
+    // 一步到位问「这是不是黄芪」，模型会顺着你的话点头——分两步是为了
+    // 把它从「迎合」拉回「观察」（社区里做识花的人踩过这个坑）。
+    let session = null;
+    let names = [];
+    try {
+      const mod = await import('language-model');
+      const LanguageModel = mod.LanguageModel || mod.default;
+      if (!LanguageModel || (LanguageModel.availability && !LanguageModel.availability())) {
+        return bail('LanguageModel unavailable');
+      }
+      session = await LanguageModel.create();
+      const desc = await session.prompt([dataUrl, VISION_PROMPTS.describe]);
+      const idRaw = await session.prompt([dataUrl, VISION_PROMPTS.identify(String(desc || ''))]);
+      names = parseNames(idRaw);
+    } catch (err) {
+      return bail('model: ' + (err && err.message));
+    } finally {
+      // 会话立刻销毁：照片只用于这一次识别，不留在内存里
+      try { if (session && session.destroy) session.destroy(); } catch (e) { /* 销毁失败不影响结果 */ }
+    }
+
+    // ④ 认出来了但没有收录，要和「完全没认出来」分开说
+    const picked = pickLookupName(names);
+    if (!picked.name) return bail('no name in: ' + JSON.stringify(names));
+    if (!picked.lookupable) {
+      this.setData({
+        title: picked.name,
+        status: '没收录',
+        answer: `看着像${picked.name}，但这几本书里没有收它，我不敢瞎说。可以说个别的名字`,
+        tone: 'warn',
+        source: '',
+      });
+      speak(`看着像${picked.name}，但这几本书里没收，我不敢瞎说`, { max: 40, mode: 'immediate' });
+      return;
+    }
+
+    // ⑤ 认出来了就直接接查书：和用户说出名字走同一条链路，不另写一套
+    this.submit(`${picked.name}怎么吃`);
   },
 };
 </script>

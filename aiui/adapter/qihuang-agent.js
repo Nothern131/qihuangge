@@ -28,6 +28,7 @@ import { pickShiliao, commonHow, pickDish } from './recipe.js';
 import { formulasForState, YANGLAO_SOURCE, YANGLAO_NOTE } from './yanglao-canon.js';
 import { careForState, careForSeason, CARE_SOURCE } from './care-canon.js';
 import { SHELF, shelfSummary, totalEntries, booksOn } from './bookshelf.js';
+import { visionHint, visionFallback, visionScope, parseNames, pickLookupName } from './vision.js';
 import { FOODS } from './food-canon.js';
 
 // 本版明确不做的事。这些不是说错了，是根本不该由这个作品回答——
@@ -46,6 +47,16 @@ const HOWTO_RE = /(怎么吃|怎么弄着吃|怎么做着吃|怎么做|怎么用
  */
 const BOOKS_RE = /(能查什么|会查什么|有什么书|哪些书|收录了什么|收录哪些|资料来源|数据来源|数据从哪|依据是什么|凭什么|你懂什么|知识库)/;
 const BOOK_ONE_RE = /(这本书|那本书|哪本书).{0,8}(讲|说|有|写)/;
+
+/**
+ * 「看看这个」——把镜头当输入。
+ *
+ * 眼镜的载体优势就在这里：手里拿着一包药材，不用掏手机、不用打字，
+ * 看一眼就问。所以这句不是「拍照功能」，是**主入口之一**。
+ * agent 只负责说「我要看」，真去调相机的是页面（它才有 wx 能力）。
+ */
+const LOOK_RE = /(这是什么|这什么|看看这个|看一下这个|帮我看|认一认|认得吗|这是什么药|这是啥|拍一下)/;
+const LOOK_SCOPE_RE = /(能认什么|能识别什么|认得什么|能认出来)/;
 
 /**
  * 从「X怎么吃」里取出 X。
@@ -382,6 +393,36 @@ export function createQihuangAgent(pack, { store = null } = {}) {
    * 这不是炫技：产品的主张是「答案从这几本书来」，那用户就有权知道
    * 是哪几本、各多少条。数字取自数据模块本身，不是写死的宣传语。
    */
+  /**
+   * 收到「看看这个」：让页面去拍照。
+   *
+   * needCamera 是给页面看的指令，不是给用户的话——用户听到的是「我看一眼」。
+   * 页面拍完把识别出的名字再喂回来（「黄芪怎么吃」），走现有链路，
+   * 所以识别之后不用另写一套答题逻辑。
+   */
+  function doLook() {
+    return {
+      found: true,
+      intent: 'look',
+      needCamera: true,
+      speech: '好，我看一眼',
+      screenTitle: '正在看',
+      screenText: '对准要查的东西，保持两秒',
+      sourceTag: '识别只判断「是什么」，不判断「能不能吃」',
+    };
+  }
+
+  function doLookScope() {
+    return {
+      found: true,
+      intent: 'look-scope',
+      speech: visionScope(),
+      screenTitle: '能认出什么',
+      screenText: `${visionScope()}。\n做法：说「看看这个」，对着它停两秒`,
+      sourceTag: '按各书条目索引比对',
+    };
+  }
+
   function doBooks() {
     const lines = SHELF.map((b) => `${b.name}（${b.count} 条）：${b.ask}`);
     return {
@@ -938,6 +979,14 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 不要求先认出药典词表里的药名：用户问「萝卜怎么吃」，
       // 萝卜不在药食同源 102 味里，但《山家清供》里有它的菜谱（玉糁羹）。
       // 从原句里直接取「X怎么吃」的 X，取不到再交给下游判。
+      if (LOOK_SCOPE_RE.test(ctx.text)) {
+        return { intent: 'look-scope', conf: 1 };
+      }
+      // 「看看这个」要在药名识别之前判：这时候用户还没说是什么，
+      // 让切词层去猜只会猜出个奇怪的东西。
+      if (LOOK_RE.test(ctx.text)) {
+        return { intent: 'look', conf: 1 };
+      }
       if (BOOKS_RE.test(ctx.text)) {
         return { intent: 'books', conf: 1 };
       }
@@ -1112,6 +1161,8 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       if (ctx.intent === 'advice') return { result: doAdvice(ctx) };
       if (ctx.intent === 'howto') return { result: doHowto(ctx) };
       if (ctx.intent === 'books') return { result: doBooks() };
+      if (ctx.intent === 'look') return { result: doLook() };
+      if (ctx.intent === 'look-scope') return { result: doLookScope() };
       if (ctx.intent === 'books-on') return { result: doBooksOn(ctx) };
       if (ctx.intent === 'practice') return { result: doPractice(ctx.practice) };
 
@@ -1146,7 +1197,8 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 然后降级成反问——用户会觉得这个助手连记东西都记不住。
       if (r.intent === 'memo' || r.intent === 'no-meds' || r.intent === 'concern' || r.intent === 'practice'
         || r.intent === 'advice' || r.intent === 'howto'
-        || r.intent === 'books' || r.intent === 'books-on') return { issues: [] };
+        || r.intent === 'books' || r.intent === 'books-on'
+        || r.intent === 'look' || r.intent === 'look-scope') return { issues: [] };
 
       const speech = String(r.speech || '');
 

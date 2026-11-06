@@ -83,9 +83,13 @@ export function createQihuangView({ engines, store = null } = {}) {
   // source 就是播报末句的出处。它只从 pack 的返回值里来，页面不发明一句。
   // max 逐条给：查禁忌要说结论加原因，32 字装不下；
   // 而「没听清」这种一句话回答用 72 是浪费。长度跟着内容走，不跟应用走。
-  function emit(patch, speech = null, source = '', max = SAY_MAX) {
+  function emit(patch, speech = null, source = '', max = SAY_MAX, extra = null) {
     Object.assign(state, patch);
-    return { patch, say: speech, sayMax: max || SAY_MAX, tail: source };
+    const out = { patch, say: speech, sayMax: max || SAY_MAX, tail: source };
+    // extra 是给页面的指令，不是给用户的话。
+    // 比如 needCamera：agent 说「我看一眼」，但真正去调相机的是页面。
+    if (extra) Object.assign(out, extra);
+    return out;
   }
 
   function handle(text) {
@@ -274,6 +278,21 @@ export function createQihuangView({ engines, store = null } = {}) {
           patch.answer = r.speech;
         }
         tone = r.ok ? 'ok' : 'warn';
+      } else if (r.intent === 'look') {
+        // 「看看这个」：屏幕上先给取景提示，播报交给 agent 的「我看一眼」。
+        // needCamera 透给页面——只有页面能调 wx 的相机。
+        patch.title = r.screenTitle || '正在看';
+        patch.detail = '对准要查的东西';
+        patch.answer = r.screenText || '对准要查的东西，保持两秒';
+        patch.status = '取景中';
+        patch.source = '';
+        tone = 'idle';
+      } else if (r.intent === 'look-scope') {
+        patch.title = r.screenTitle || '能认出什么';
+        patch.detail = '说说能识别什么';
+        patch.answer = r.screenText || '';
+        patch.status = '已查询';
+        patch.source = '';
       } else if (r.intent === 'books') {
         // 「你能查什么」：把书架摊开。条数是真实数字，从数据模块里算的。
         patch.title = `书架 · ${r.books.length} 本 ${r.books.reduce((n, b) => n + b.count, 0)} 条`;
@@ -455,7 +474,9 @@ export function createQihuangView({ engines, store = null } = {}) {
         patch.sourceClass = 'source';
       }
       // 同一句话连问两次就不重播，避免「没听清 → 再说一遍」时被自己的播报盖住
-      return emit(patch, same ? null : r.speech, same ? '' : lastSource, r.sayMax);
+      // needCamera 透给页面：这是指令不是话术，别混进 speech。
+      const extra = r.needCamera ? { needCamera: true } : null;
+      return emit(patch, same ? null : r.speech, same ? '' : lastSource, r.sayMax, extra);
     } catch (err) {
       // 用户能自己改的（没给药名 / 没听清）念给他听；其余只记日志，不假装成功
       const fixable = ['missing_herbs', 'missing_name', 'missing_text'];

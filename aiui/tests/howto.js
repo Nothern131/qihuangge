@@ -273,3 +273,38 @@ console.log('\n[10] 复杂方分级 + 泡水');
     assert.ok(names.includes('枸杞') && names.includes('菊花'), names.join('、'));
   });
 }
+
+console.log('\n[11] 拍照识别：只判断「是什么」');
+{
+  const v = await import('../adapter/vision.js');
+  check('模型乱答也能清洗出名字', () => {
+    const cases = [
+      ['图中是黄芪和当归。', ['黄芪', '当归']],
+      ['主要有：山药、红枣、枸杞。', ['山药', '红枣', '枸杞']],
+      ['看起来像党参（一种补气药），还有几片生姜', ['党参', '生姜']],
+    ];
+    for (const [raw, want] of cases) {
+      const got = v.parseNames(raw);
+      assert.deepEqual(got, want, `${raw} → ${JSON.stringify(got)}`);
+    }
+  });
+  check('认不出就返回空，不猜', () => {
+    assert.deepEqual(v.parseNames('无'), []);
+    assert.deepEqual(v.parseNames(''), []);
+  });
+  check('三种结果分得开：能查 / 认出但没收录 / 没认出来', () => {
+    assert.equal(v.pickLookupName(['黄芪']).lookupable, true);
+    const noData = v.pickLookupName(['阿胶']);
+    assert.equal(noData.name, '阿胶');
+    assert.equal(noData.lookupable, false);
+    assert.equal(v.pickLookupName([]).name, null);
+  });
+  check('「看看这个」回 needCamera，由页面去拍', () => {
+    const agent = mk();
+    const r = askQihuang(agent, '看看这个');
+    assert.equal(r.intent, 'look');
+    assert.equal(r.result.needCamera, true);
+    // 播报是给用户听的，不能把 needCamera 这种事念出来
+    assert.ok(!/camera|识别|模型/i.test(r.speech || ''), r.speech);
+  });
+}
