@@ -225,6 +225,11 @@ export function createQihuangView({ engines, store = null } = {}) {
           if (r.blocked && r.blocked.length) {
             lines.push(`未列入：${r.blocked.map((b) => b.name).join('、')}（与你在吃的相冲）`);
           }
+          // 在吃但查不到配伍数据的（西药/保健品）——必须明示「没核对上」，
+          // 否则用户会以为已经替他和这些药核对过。
+          if (r.unverifiable && r.unverifiable.length) {
+            lines.push(`未核对：${r.unverifiable.join('、')}（不在药典数据里，同服先问医生）`);
+          }
           patch.answer = lines.join('\n');
           // 出处不在这里拼：下面有一段统一用 r.sourceTag 加「出处：」前缀，
           // 这里再设一次就会变成「出处：出处：…」。

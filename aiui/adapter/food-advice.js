@@ -24,7 +24,7 @@
 //   · 不把「药典没列禁忌」当成「可以放心吃」。推荐里附的是药典原话，
 //     不是「安全」的背书。
 
-import { FOODS } from './food-canon.js';
+import { FOODS, ALIASES, foodOf, foodWords } from './food-canon.js';
 import { canonPair } from './pair-canon.js';
 
 /** 《素问·至真要大论篇第七十四》原文，排序依据。 */
@@ -105,7 +105,7 @@ export const RULES = {
     primary: ['失眠', '虚烦', '多梦'],
     secondary: ['心悸失眠'],
     bias: null,
-    why: '老是睡不着要先看医生，这里只是药典写了适合吃的方向',
+    why: '老失眠要先看医生',
   },
   'food-stagnation': {
     label: '食积腹胀',
@@ -322,7 +322,15 @@ export function adviseFor(states, opts = {}) {
   }
 
   const notes = usable.map((s) => RULES[s.key].why).filter((v, i, a) => a.indexOf(v) === i);
-  return { ok: true, code: '', reason: '', picks, skipped, notes };
+
+  // 「核对不了就要说核对不了」：用户在吃的西药/保健品不在药食同源与配伍数据里，
+  // 逐味跳过等于让用户以为「已经和它核对过、没问题」。把查不到的名单列出来，
+  // 由话术层明说「和它有没有冲突我查不了」。
+  const unverifiable = [...new Set((opts.eating || [])
+    .filter((x) => x && !FOODS[x] && !ALIASES[x])
+    .map(String))];
+
+  return { ok: true, code: '', reason: '', picks, skipped, notes, unverifiable };
 }
 
 /**
@@ -347,7 +355,9 @@ export function usageLine(p) {
   return `药典用法：${u.split('。')[0]}`;
 }
 
-/** 一句话概括这次建议的依据，放在结尾。 */
+/** 一句话概括这次建议的依据，放在结尾。
+ *  播报尾巴按字数收费（不可裁剪），所以精简到两句能说完的量；
+ *  屏幕上的出处仍是完整版（view 层 source 不必等于这句）。 */
 export function adviceSource() {
-  return `匹配依据：《中国药典》2025 年版一部「用于」原文；排序依据：${NATURE_RULE}「寒者热之，热者寒之」`;
+  return `依据：药典2025「用于」原文`;
 }

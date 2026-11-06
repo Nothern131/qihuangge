@@ -45,6 +45,9 @@ function emptyProfile(userId) {
     // 不是我们记录了他在吃什么，而是他亲口说了「什么都没在吃」。
     // 没有这个字段，拒答话术让他交代之后，下一问照样拒答——用户被耍一圈。
     noMedsDeclaredAt: null,
+    // 因为「不知道在吃什么」被拒答的那一问。用户交代后的第一件事，
+    // 应该是接着把那一问答完，而不是要他再问一遍。
+    pendingAdvice: null,
     createdAt: null,
     updatedAt: null,
   };
@@ -376,6 +379,24 @@ export function createProfileStore({ backend, userId = 'local' } = {}) {
 
     noMedsDeclared() {
       return Boolean(load().noMedsDeclaredAt);
+    },
+
+    /** 记住被「缺在吃记录」挡下的那一问；交代后直接续答，不让用户重说。 */
+    setPendingAdvice(text) {
+      const p = load();
+      p.pendingAdvice = String(text || '').slice(0, 60) || null;
+      save(p);
+    },
+
+    getPendingAdvice() {
+      return load().pendingAdvice || null;
+    },
+
+    clearPendingAdvice() {
+      const p = load();
+      if (p.pendingAdvice === null) return;
+      p.pendingAdvice = null;
+      save(p);
     },
 
     /**

@@ -23,7 +23,8 @@ import { extractStates, cautionsFor, cautionSpeech, cautionLine } from './advice
 import { practiceOf, findPractices, practiceCautions } from './practice-canon.js';
 // 状况 → 食补建议。匹配用药典「用于」原文，排序用《素问》「寒者热之」，
 // 推荐前必须先知道用户在吃什么——这条门槛在 food-advice.js 里，不在这一层。
-import { adviseFor, adviceLine, adviceSource } from './food-advice.js';
+import { adviseFor, adviceLine, adviceSource, RULES } from './food-advice.js';
+import { FOODS } from './food-canon.js';
 
 // 本版明确不做的事。这些不是说错了，是根本不该由这个作品回答——
 // 眼镜上一个只说三句话的助手给出剂量建议，比不给建议危险得多。
@@ -42,7 +43,10 @@ const WELLNESS_RE = /(调理|养生|怎么养|怎么预防|怎么缓解|怎么�
 const ADVICE_RE = /(吃什么|吃点什么|吃啥|食补|食疗|怎么补|补什么|怎么吃好|吃什么好|能吃什么|吃哪些)/;
 // 「怎么调理/怎么改善」——诉求是方向，不是治疗。认出了状况时转食补给方向，
 // 没认出状况（「我头疼怎么办」）落在后面的拒答。比只说「记下了」有用。
-const TUNE_RE = /(怎么调理|如何调理|怎么改善|如何改善|怎么缓解|怎么办)/;
+const TUNE_RE = /(怎么调理|如何调理|怎么改善|如何改善|怎么缓解|怎么办|有(没有)?什么(好的?|好)?办法|有啥(好的?|好)?办法|有什么方法)/;
+// 「肚子胀，不消化」这类口语不适陈述：说出来就是在要方向，
+// 不带「怎么办/吃什么」也要接食补，否则只回「记下了」等于答非所问。
+const DISCOMFORT_RE = /(肚子胀|腹胀|肚子疼|肚子痛|不消化|消化不良|不舒服|难受|有点障碍)/;
 // 用户回答「我在吃什么」这个问题时可能说「没在吃」。
 // 不认这一句，用户会被卡在「先告诉我你在吃什么」那一问上下不来。
 const NO_MED_RE = /(没在吃|没有在吃|没吃药|没有吃药|不吃药|什么都没吃|没吃任何|什么药都没)/;
@@ -196,6 +200,23 @@ export function createQihuangAgent(pack, { store = null } = {}) {
    */
   function doNoMeds() {
     store.declareNoMeds();
+    // 接着把被「不知道在吃什么」挡下的那一问答完——这是用户视角的关键一步：
+    // 他答了「没在吃」，等的是答案，不是再问一遍。
+    let pending = null;
+    try {
+      pending = store.getPendingAdvice();
+      if (pending) store.clearPendingAdvice();
+    } catch (err) {
+      console.warn('[qihuang] 读 pendingAdvice 失败：', err && err.message);
+    }
+    if (pending) {
+      const out = doAdvice({ text: pending });
+      return {
+        ...out,
+        speech: `好，记着你现在没在吃药。${out.speech || ''}`,
+        sayMax: Math.max(140, out.sayMax || 0),
+      };
+    }
     return {
       found: true,
       intent: 'no-meds',
@@ -352,6 +373,34 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     const r = adviseFor(states, { eating, limit: 3 });
 
     if (!r.ok) {
+      // 第二道门（不知道在吃什么）不给完整清单，但**先让用户闻到方向**——
+      // 干巴巴的「我不给」是拒绝，「药典里写着酸枣仁这些适合，先确认你在吃什么」
+      // 是负责。这是用户实测后明确要的范式：先给方法层预告，再问用药，再给全量。
+      let reason = r.reason;
+      if (r.code === 'no-history') {
+        // 记住被挡下的这一问：用户交代完「在吃什么」后直接续答，不让他重说一遍。
+        try {
+          store.setPendingAdvice(ctx.text);
+        } catch (err) {
+          console.warn('[qihuang] pendingAdvice 没存上：', err && err.message);
+        }
+        const preview = [...new Set(states.filter((x) => RULES[x.key])
+          .flatMap((x) => RULES[x.key].primary)
+          .map((w) => Object.entries(FOODS).find(([, f]) => {
+            const u = String(f.functions || '');
+            const i = u.indexOf('用于');
+            return i >= 0 && u.slice(i + 2, i + 40).includes(w);
+          }))
+          .filter(Boolean)
+          .map(([n]) => n))].slice(0, 2);
+        const head = preview.length
+          ? `${topicLabels.join('、')}的话，药典里写着${preview.join('、')}这些方向适合——`
+          : '';
+        // 两个出口都要给：在吃的怎么交代、没在吃的怎么回答——
+        // 只给一个出口时，另一半用户会卡在这里。
+        reason = `${head}但得先知道你在吃什么药，万一相冲比不给更糟。`
+          + '在吃的话说「记一下我在吃XX」，没在吃就说一句「我什么都没在吃」';
+      }
       return {
         found: true,
         intent: 'advice',
@@ -359,7 +408,10 @@ export function createQihuangAgent(pack, { store = null } = {}) {
         code: r.code,
         states: topicLabels,
         stateNames: topicLabels,
-        speech: r.reason,
+        // 拒答话术必须能念完：默认 32 字会把「为什么」和「怎么办」全裁掉
+        // （实测只念出「我还不知道你在吃什么药或保健品，」半句）。
+        sayMax: 120,
+        speech: reason,
       };
     }
 
@@ -390,9 +442,20 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       ? `药典写${r.picks[0].name}的用法是${String(r.picks[0].usage).split(/[。；]/)[0]}，`
       : '';
 
+    // 核对不了就要说核对不了：在吃的西药/保健品不在药食同源数据里时，
+    // 逐味跳过会被理解成「已经核对过、没问题」——把查不到的明说出来，
+    // 并指向真正的判断人（医生/药师）。这句比「不是方子」重要，排在它前面。
+    const unverified = (r.unverifiable || []);
+    const unverifiedNote = unverified.length
+      ? `${unverified.join('、')}查不了和它的冲突，同服前问医生`
+      : '';
+
+    // 顺序即优先级：toBrief 超长时从尾部截。未核对与相冲声明是高危信息，
+    // 必须排在「不是方子」这类免责声明之前，否则超长时先被裁掉。
     const speech = `${stateLabel}的话，药典里写着适合的有${names}。${brief}。`
       + (medNote ? `${medNote}。` : '')
-      + `${usage0}个人用量遵医嘱，这些也只是食材方向，不是方子`
+      + (unverifiedNote ? `${unverifiedNote}。` : '')
+      + `${usage0}个人用量遵医嘱，这些只是方向，不是方子`
       + (blockNote ? `。${blockNote}` : '');
 
     return {
@@ -409,9 +472,10 @@ export function createQihuangAgent(pack, { store = null } = {}) {
         nature: String(pk.nature || '').split('。')[0],
       })),
       blocked,
+      unverifiable: unverified,
       // 播报比默认 32 字长得多：三条药名加一句依据，压到 32 就只剩半句结论。
       // 但也不能无限长——120 字大约是念 8 秒。
-      sayMax: 120,
+      sayMax: 160,
       // 出处分两段：适应证是药典的，排序是按《素问》的。
       // 只写药典的话，「为什么偏凉的排前面」这件事就没主了。
       source: adviceSource(),
@@ -555,6 +619,12 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     thresholds: { answer: 0.75, confirm: 0.5 },
 
     normalize(ctx) {
+      // 唤醒词剥离：真机上唤醒词由系统层吃掉，但用户习惯带出来说
+      //（「你好乐奇，我最近睡眠有点障碍」），模拟输入和部分机型也会把它
+      // 转成文字送进来。不剥的后果是把「你好乐奇」当药名去查——
+      // 实测输出过「本草库里还没有收录你好乐奇」，用户看到的是系统连门都没入。
+      // 只剥句首的整词，不动句中任何字。
+      ctx.text = String(ctx.text || '').replace(/^(你好|嗨|嘿)?[，,\s]*乐奇[，,\s]*/u, '').trim();
       // 「上次那个」这类指代，先换成上次说过的药名再识别。
       // 这是记忆唯一能被**听见**的另一条路：不是记住你吃什么，是记住你刚才问什么。
       // 放在 normalize 而不是 interpret：后面每一站都读 ctx.text，
@@ -609,7 +679,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       const hasNutrient = (ctx.recog.nutrients || []).length > 0;
       if (!hasNutrient
         && (!ctx.recog.known || ctx.recog.known.length === 0) && (ADVICE_RE.test(ctx.text)
-        || (TUNE_RE.test(ctx.text) && extractStates(ctx.text).length > 0)
+        || ((TUNE_RE.test(ctx.text) || DISCOMFORT_RE.test(ctx.text)) && extractStates(ctx.text).length > 0)
         || (NO_MED_RE.test(ctx.text) && hasConcern()))) {
         return { intent: 'advice', conf: 1 };
       }

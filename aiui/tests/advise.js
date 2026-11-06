@@ -135,8 +135,9 @@ truthy('记了「已经在吃」', already.skipped.some((x) => x.name === '黄�
 console.log('\n[5] 端到端：一句话到一条建议');
 
 const a1 = mk();
-eq('「我吃什么好」先问清在吃什么', askQihuang(a1, '我吃什么好').intent, 'advice');
-truthy('答复说的是缺在吃记录', /不知道你在吃什么/.test(askQihuang(a1, '我吃什么好').speech));
+const rAsk = askQihuang(a1, '我吃什么好');
+eq('「我吃什么好」先问清在吃什么', rAsk.intent, 'advice');
+truthy('答复说的是缺在吃记录（并要求交代）', /在吃什么/.test(rAsk.speech) && /没在吃/.test(rAsk.speech), rAsk.speech);
 
 const a2 = mk();
 askQihuang(a2, '我阴虚火旺');
@@ -239,8 +240,8 @@ console.log('\n【端到端】新证候走完整三道门 + 拒答给出口');
 {
   const agent = mk();
   const first = askQihuang(agent, '我便秘吃什么好');
-  truthy('不知道在吃什么时先要档案（拒答话术带记的入口）',
-    /记一下/.test(first.speech), first.speech);
+  truthy('不知道在吃什么时先要档案（拒答话术带两个交代出口）',
+    /记一下/.test(first.speech) && /没在吃/.test(first.speech), first.speech);
   askQihuang(agent, '我什么都没在吃');
   const second = askQihuang(agent, '我便秘吃什么好');
   truthy('交代没在吃之后给出建议', second.verdict === 'answer' && /用于/.test(second.speech || ''),
@@ -252,7 +253,7 @@ console.log('\n【端到端】新证候走完整三道门 + 拒答给出口');
   // 顺序：第二道门（在吃什么）先于给方向——连这个都不知道谈不上建议。
   // 拒答必须带出口（记一下），不能一句「瞎给」就完。
   truthy('失眠调理：先问在吃什么（第二道门在前），拒答带出口',
-    /记一下/.test(r.speech || ''), String(r.speech).slice(0, 60));
+    /记一下/.test(r.speech || '') && /没在吃/.test(r.speech || ''), String(r.speech).slice(0, 60));
   askQihuang(agent, '我什么都没在吃');
   const r2 = askQihuang(agent, '我失眠吃什么好');
   truthy('交代没在吃后，失眠的调理诉求给方向而不是拒答',
