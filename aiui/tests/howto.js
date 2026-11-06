@@ -149,7 +149,38 @@ if (fail) {
   process.exit(1);
 }
 
-console.log('\n[7] 古籍方：按病分类的膳方');
+console.log('\n[7] 调理 vs 治病：有的只能调，不给方');
+{
+  const { RULES } = await import('../adapter/food-advice.js');
+  check('失眠/气虚/血虚/阴虚/阳虚/湿盛 都标成 regulate', () => {
+    for (const k of ['insomnia', 'qi-deficiency', 'blood-deficiency', 'yin-deficiency', 'yang-deficiency', 'damp']) {
+      assert.equal(RULES[k].mode, 'regulate', k);
+    }
+  });
+  check('脾胃虚寒/食积/便秘 标成 remedy', () => {
+    for (const k of ['spleen-cold', 'food-stagnation', 'constipation']) {
+      assert.equal(RULES[k].mode, 'remedy', k);
+    }
+  });
+  check('失眠的答复明说「这类靠日常调理」且不给方', () => {
+    const agent = mk();
+    const r = askQihuang(agent, '我失眠吃什么好');
+    // 没交代在吃什么时会被第二道门拦，这里只断言话术里有调理说明
+    const say = String(r.speech || '');
+    assert.ok(/调理/.test(say) || /记一下|没在吃/.test(say), say);
+    assert.ok(!(r.result && r.result.formula), '失眠不该给方');
+  });
+  check('脾胃虚寒给了方，就不再说是「不是方子」', () => {
+    const agent = mk();
+    const r = askQihuang(agent, '我脾胃虚寒吃什么好');
+    const say = String(r.speech || '');
+    if (r.result && r.result.formula) {
+      assert.ok(!/这些只是方向，不是方子/.test(say), say);
+    }
+  });
+}
+
+console.log('\n[8] 古籍方：按病分类的膳方');
 {
   const { formulasForState, YANGLAO_ITEMS, yanglaoCategories } = await import('../adapter/yanglao-canon.js');
   check('16 个病类 98 方都在', () => {

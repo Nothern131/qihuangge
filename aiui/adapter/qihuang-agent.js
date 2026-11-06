@@ -480,12 +480,19 @@ export function createQihuangAgent(pack, { store = null } = {}) {
 
     // 古籍方：按本轮主题的病类查《养老奉亲书》。
     // 这是唯一从「病」出发的一层——前三本都只能从「东西」出发。
-    // 查不到就是空数组（便秘、失眠都查不到，因为原书没有对应章，
-    // 硬指一章等于替用户辨证，见 yanglao-canon 的映射表注释）。
+    //
+    // **只在「有对证方」的证候上查**。失眠、气虚、血虚、阴虚、阳虚、湿盛
+    // 属调理类：古籍里对证的方（酸枣仁汤这类）是治病的，有剂量有配伍，
+    // 让普通人照做要出事。这类只给方向——药典写适合什么、古籍写怎么吃。
+    // 用户原话：「有的只能调理，比方说失眠」。
     const stateKeys = (here.length ? here : states).map((x) => x.key);
-    const formulas = stateKeys
-      .flatMap((k) => formulasForState(k))
-      .filter((x, i, a) => a.findIndex((y) => y.name === x.name) === i);
+    const allRemedy = stateKeys.length > 0
+      && stateKeys.every((k) => RULES[k] && RULES[k].mode === 'remedy');
+    const formulas = allRemedy
+      ? stateKeys
+        .flatMap((k) => formulasForState(k))
+        .filter((x, i, a) => a.findIndex((y) => y.name === x.name) === i)
+      : [];
     // 挑一条：食材少、做法短的更容易照着做
     // 挑方规则：食材多的优先（≥3 样才像一道配起来的膳，单味的不是），
     // 同档里选做法短的（屏幕放得下）。实测按「食材最少」挑会挑到
@@ -568,6 +575,12 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       .map((k) => (RULES[k] ? RULES[k].why : ''))
       .find((w) => /看医生/.test(w)) || '';
 
+    // 调理类要把「为什么不给方」说出来。沉默不给，用户会当成系统没本事；
+    // 说明白「这类只能调，对证的方是治病的不能照做」，才是负责。
+    const regulateNote = !formula && topicKeys.some((k) => RULES[k] && RULES[k].mode === 'regulate')
+      ? '这类靠日常调理，对证的方是治病的，不能照着抓'
+      : '';
+
     // 用法是「用法断层」的答案：用户拿到方向后下一个问题一定是怎么入口。
     // 只念第一条的用法（字数约束），屏幕上每条都有。
     // 措辞边界：念药典【用法与用量】原文是引用国标，不是给个人剂量建议——
@@ -609,9 +622,13 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     // 必须排在「不是方子」这类免责声明之前，否则超长时先被裁掉。
     const speech = `${stateLabel}的话，药典里写着适合的有${names}。${brief}。`
       + (medNote ? `${medNote}。` : '')
+      + (regulateNote ? `${regulateNote}。` : '')
       + (unverifiedNote ? `${unverifiedNote}。` : '')
       + (cookNote || `${usage0}个人用量遵医嘱`)
-      + '，这些只是方向，不是方子'
+      // 给了方还说「不是方子」是自相矛盾。有方时的边界是「原文含用量，别照抓」。
+      + (formula
+        ? '，方是古籍原文，带用量和炮制，别照着抓'
+        : '，这些只是方向，不是方子')
       + (blockNote ? `。${blockNote}` : '');
 
     return {
