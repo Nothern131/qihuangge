@@ -277,8 +277,12 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     // 这个时机最好——用户刚说完自己的情况，正是他愿意听一句相关提醒的时候。
     // 等到下次问药才说，前面那句话早就过去了。
     const warns = practiceWarnings(states);
+    // 记完给一个「下一步能问什么」的出口。只说「记下了」就没了下文——
+    // 实测用户说完「我最近睡不好」听到这句就卡住了，不知道该接什么。
+    // 老中医不会只回一句「知道了」，他会接着往下问。
     const base = added
-      ? `记下了：${names}。以后你问药的禁忌，我会先看一眼和你这条对不对得上。`
+      ? `记下了：${names}。以后你问药，我会先看和这条对不对得上。`
+        + `想知道吃什么，问「${names}吃什么好」`
       : (reinforced
         // 反复提起 = 这条变热了。如实说，但不说「我记牢了」这种拟人话。
         ? `${names} 又记了一次，这条我看得更重了`
@@ -296,7 +300,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       warnings: warns,
       // 播报默认上限是 32 字，装不下「记下了什么 + 那一句提醒」。
       // 提醒里带着出处，被截掉就等于只说了半句禁忌——这半句比不说更糟。
-      sayMax: warns.length ? 140 : 80,
+      sayMax: warns.length ? 150 : 90,
       speech: warns.length ? `${base}。另外要看一下——${warns.join('；')}` : base,
     };
   }
@@ -755,7 +759,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       warnings: warns,
       // 播报默认上限是 32 字，装不下「记下了什么 + 那一句提醒」。
       // 提醒里带着出处，被截掉就等于只说了半句禁忌——这半句比不说更糟。
-      sayMax: warns.length ? 140 : 80,
+      sayMax: warns.length ? 150 : 90,
       speech: warns.length ? `${base}。另外要看一下——${warns.join('；')}` : base,
     };
   }
