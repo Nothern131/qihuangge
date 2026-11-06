@@ -103,7 +103,9 @@ check('开方请求也走 stop', () => assert.equal(r5b.verdict, 'stop'));
 check('明确不做辨证', () => assert.ok(/不辨证|不开方|只查/.test(r5b.speech)));
 
 console.log('\n[6] 未收录的真药名：说「没收录」，不能说「没问题」');
-const r6 = ask('三七');
+// 三七 1.0.7 起本草纲目草部收录了，不再是「未收录」的例子；
+// 换成血竭（药典有、本草纲目谷菜果木草五部都不收的品种）。
+const r6 = ask('血竭');
 check('走直接回答（没收录也是准确答案）', () => assert.equal(r6.verdict, 'answer'));
 check('说明没收录', () => assert.ok(/没收录|没有收录|还没收录/.test(r6.speech)));
 check('绝不说可以放心用', () => assert.ok(!/(放心|没问题|安全)/.test(r6.speech)));

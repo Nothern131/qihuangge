@@ -808,7 +808,9 @@ export function createQihuangPack(engines) {
       gmFormulary: formulary
         ? { text: formulary.text, src: formulary.src, note: GM_FU_FANG_NOTE, book: GM_SOURCE }
         : null,
-      speech: `${name}：《中国药典》没有收载。《${GM_SOURCE.replace(/^《|》$/g, '')}》`
+      // GM_SOURCE 本身带着书名号和朝代注（《本草纲目》（明·李时珍，1596）），
+      // 再套一层《》就成了「《本草纲目》（明·李时珍，1596）》」——书名号错位。
+      speech: `${name}：《中国药典》没有收载。${GM_SOURCE}`
         + `${gm.vol || ''}记：${parts.join('；')}。这是${GM_NOTE}。`,
       screenText: `${name}：《中国药典》没有收载。\n`
         + `《本草纲目·${gm.vol || ''}》：${parts.join('；')}\n`

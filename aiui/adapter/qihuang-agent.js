@@ -24,11 +24,16 @@ import { practiceOf, findPractices, practiceCautions } from './practice-canon.js
 // 状况 → 食补建议。匹配用药典「用于」原文，排序用《素问》「寒者热之」，
 // 推荐前必须先知道用户在吃什么——这条门槛在 food-advice.js 里，不在这一层。
 import { adviseFor, adviceLine, adviceSource, RULES } from './food-advice.js';
+import { pickShiliao, commonHow } from './recipe.js';
 import { FOODS } from './food-canon.js';
 
 // 本版明确不做的事。这些不是说错了，是根本不该由这个作品回答——
 // 眼镜上一个只说三句话的助手给出剂量建议，比不给建议危险得多。
-const DOSE_RE = /(吃多少|多少克|几克|几钱|几两|一天吃几次|一天几次|用量|剂量|每次用|怎么吃|服用多少)/;
+// 「怎么吃」曾经在这个表里，导致用户问「酸枣仁怎么吃」被回
+// 「用量我不给建议」——他问的是做法，不是克数。做法走 howto 意图。
+const DOSE_RE = /(吃多少|多少克|几克|几钱|几两|一天吃几次|一天几次|用量|剂量|每次用|服用多少)/;
+// 问做法：认出了药名就是「这味怎么弄着吃」，没认出药名会落到别处。
+const HOWTO_RE = /(怎么吃|怎么弄着吃|怎么做着吃|怎么做|怎么用|怎么喝|怎么熬|怎么煮|怎么泡|咋吃|教我|做法|怎么服)/;
 const PRESCRIBE_RE = /(开个方|开方|配个方|开副药|处方|给我治|怎么治|吃什么药能治|我头疼|我咳嗽|我胃疼|辨证|把脉)/;
 
 // 安慰措辞。这些词出现在有风险项的结论里就是自相矛盾，必须拦住。
@@ -319,6 +324,63 @@ export function createQihuangAgent(pack, { store = null } = {}) {
    * 第 ② 道是核心。通用 AI 会直接甩一份「阴虚吃什么」的清单，
    * 不管你在吃二甲双胍还是华法林；而这里推荐哪几味，取决于你的用药记录。
    */
+  /**
+   * 「这味怎么弄着吃」。
+   *
+   * 用户问的是**做法**，不是克数。药典只写「10~15g」，食疗专著才写
+   * 「熟煮和蜜，或为汤煎，或为粉，并佳」。所以答案按可靠度分三层排：
+   *   ① 药典【用法与用量】原文——一定有，但常常只有克数
+   *   ② 《食疗本草》原文一句——有就给，没有不强凑
+   *   ③ 按入口形态的常见吃法——生活常识，措辞上必须和上面两层分开说
+   *
+   * 三层各标各的来源，不许混着说成「药典说这样吃」。
+   */
+  function doHowto(ctx) {
+    const name = (ctx.recog && ctx.recog.known && ctx.recog.known[0]) || '';
+    if (!name) {
+      return {
+        found: false,
+        intent: 'howto',
+        speech: '没听出是哪一味。直接说药名再问怎么吃，比如「山药怎么吃」',
+      };
+    }
+    const food = FOODS[name] || {};
+    const rec = pickShiliao(name);
+    const how = commonHow(name, { tabi: food.tabi });
+    const dosage = String(food.dosage || '').split(/[。；]/)[0];
+    const nature = String(food.nature || '').split('。')[0];
+
+    // 播报：先用药典用法打底（可靠），再补古籍或常见吃法。
+    // 都不长，但合起来会超默认 32 字，所以给足 sayMax。
+    // 每一段自己可能已经带句号（古籍原文截的），拼接前统一剥掉再补，
+    // 否则播报里会出现「…疗不能眠。。常见吃法…」这种双句号。
+    const clean = (t) => String(t || '').replace(/[。；]+$/, '');
+    const parts = [];
+    if (dosage) parts.push(`药典写的用法是${clean(dosage)}`);
+    if (rec) parts.push(`《食疗本草》记：${clean(rec.text)}`);
+    if (how) parts.push(`常见吃法是${how}`);
+    // 有禁忌/毒性的必须先说：苦杏仁这类「怎么吃」问得越具体，
+    // 照着做的人越多，只讲做法不讲禁忌是最危险的答法。
+    const tabi = clean(food.tabi);
+    const body = parts.length ? parts.join('。') : '资料里没有它的具体做法';
+    const speech = `${name}。${tabi ? `${tabi}。` : ''}${body}。用量按药典，个人用量遵医嘱`;
+
+    return {
+      found: true,
+      intent: 'howto',
+      name,
+      nature,
+      dosage,
+      recipe: rec,
+      commonHow: how,
+      tabi: String(food.tabi || ''),
+      sayMax: 150,
+      speech,
+      screenTitle: `${name}怎么吃`,
+      sourceTag: '《中国药典》2025年版一部',
+    };
+  }
+
   function doAdvice(ctx) {
     const states = [];
     const seen = new Set();
@@ -430,9 +492,14 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       ? `另：${blocked.map((b) => b.name).join('、')}和你记着在吃的${blocked[0].why.match(/在吃的(.+?)相冲/) ? blocked[0].why.match(/在吃的(.+?)相冲/)[1] : '药'}相冲，没有列进来`
       : '';
 
-    // 就医提醒是 RULES.why 里带「看医生」的那类（如失眠）——
-    // 它比「不给量」的声明优先级高，必须放进播报，不能只在屏幕的 notes 里。
-    const medNote = r.notes.find((n) => /看医生/.test(n)) || '';
+    // 就医提醒只针对**本轮主题**，不是档案全家桶。
+    // 实测踩到的：先问过失眠、再问便秘，播报里仍然念「老失眠要先看医生」——
+    // 用户问的是便秘，听到这句只会以为系统答错了题。
+    // （r.notes 是全档案累积的，这里按本轮 states 重新取。）
+    const topicKeys = (here.length ? here : states).map((x) => x.key);
+    const medNote = topicKeys
+      .map((k) => (RULES[k] ? RULES[k].why : ''))
+      .find((w) => /看医生/.test(w)) || '';
 
     // 用法是「用法断层」的答案：用户拿到方向后下一个问题一定是怎么入口。
     // 只念第一条的用法（字数约束），屏幕上每条都有。
@@ -450,12 +517,27 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       ? `${unverified.join('、')}查不了和它的冲突，同服前问医生`
       : '';
 
+    // 「怎么做」优先于「多少克」：用户拿到药名后第一个问题是蒸它煮它，
+    // 不是精确到克。有食疗本草的做法就念做法，没有才退回药典用量。
+    // 两者不并列——并列会挤掉「不是方子」这类必须说的边界。
+    const cook = r.picks.map((pk) => ({ name: pk.name, rec: pickShiliao(pk.name) }))
+      .find((x) => x.rec && x.rec.cookable);
+    // 古籍没写到做法时退到「常见吃法」——但必须说清这是常见吃法，
+    // 不能让人以为本草纲目或药典写了这句。
+    const howFallback = r.picks
+      .map((pk) => ({ name: pk.name, how: commonHow(pk.name, { tabi: pk.tabi }) }))
+      .find((x) => x.how);
+    const cookNote = cook
+      ? `《食疗本草》记${cook.rec.asked || cook.name}：${cook.rec.text}`
+      : (howFallback ? `${howFallback.name}常见吃法是${howFallback.how}` : '');
+
     // 顺序即优先级：toBrief 超长时从尾部截。未核对与相冲声明是高危信息，
     // 必须排在「不是方子」这类免责声明之前，否则超长时先被裁掉。
     const speech = `${stateLabel}的话，药典里写着适合的有${names}。${brief}。`
       + (medNote ? `${medNote}。` : '')
       + (unverifiedNote ? `${unverifiedNote}。` : '')
-      + `${usage0}个人用量遵医嘱，这些只是方向，不是方子`
+      + (cookNote || `${usage0}个人用量遵医嘱`)
+      + '，这些只是方向，不是方子'
       + (blockNote ? `。${blockNote}` : '');
 
     return {
@@ -470,6 +552,12 @@ export function createQihuangAgent(pack, { store = null } = {}) {
         // 性味只留到归经之前。屏幕上一条只有一行，
         // 「甘，微温。归肺、脾经」里归经那 6 个字帮不上「该不该吃」的判断。
         nature: String(pk.nature || '').split('。')[0],
+        // 「怎么做着吃」——取《食疗本草》原文一句。查不到就是 null，
+        // 不拿别的书顶替（本草纲目附方多是治病方剂，见 recipe.js 注释）。
+        shiliao: pickShiliao(pk.name),
+        // 古籍没这味时的兜底：按入口形态给常见吃法。
+        // 措辞必须区分来源——这是生活常识，不是药典也不是古籍。
+        commonHow: commonHow(pk.name, { tabi: pk.tabi }),
       })),
       blocked,
       unverifiable: unverified,
@@ -645,6 +733,13 @@ export function createQihuangAgent(pack, { store = null } = {}) {
           speech: '我这边没有上次的记录，不知道你指的是哪一味。直接说药名就行，比如「甘草有毒吗」',
         };
       }
+      // 问「这味怎么做着吃」：认出药名就走做法，不能落到下面的剂量拒答。
+      // 位置必须在 DOSE_RE 之前——两者都含「怎么吃」时，做法优先。
+      if (HOWTO_RE.test(ctx.text)
+        && ctx.recog && ctx.recog.known && ctx.recog.known.length > 0) {
+        return { intent: 'howto', conf: 1 };
+      }
+
       // 能力边界优先于一切：这几类问题听懂了也不能答。
       if (DOSE_RE.test(ctx.text)) {
         return {
@@ -805,6 +900,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       if (ctx.intent === 'no-meds') return { result: doNoMeds() };
       if (ctx.intent === 'concern') return { result: doConcern(ctx) };
       if (ctx.intent === 'advice') return { result: doAdvice(ctx) };
+      if (ctx.intent === 'howto') return { result: doHowto(ctx) };
       if (ctx.intent === 'practice') return { result: doPractice(ctx.practice) };
 
       // 营养素走独立动作：下游的 vitamin 分支只认单味营养素名，
@@ -837,7 +933,7 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 不豁免的话，每次「记一下」都会被自检判成「结论缺少就医提示」，
       // 然后降级成反问——用户会觉得这个助手连记东西都记不住。
       if (r.intent === 'memo' || r.intent === 'no-meds' || r.intent === 'concern' || r.intent === 'practice'
-        || r.intent === 'advice') return { issues: [] };
+        || r.intent === 'advice' || r.intent === 'howto') return { issues: [] };
 
       const speech = String(r.speech || '');
 

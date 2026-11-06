@@ -2,7 +2,7 @@
 """
 《本草纲目》谷/菜/果部数据生成器（1.0.5 附方层）。
 
-抓维基文库《本草纲目》穀之一~四、菜之一~三、果之一~六 共 13 卷，
+抓维基文库《本草纲目》穀四+菜三+果六+木四+草十 共 27 卷，
 按 h2 条目切分，每条目抽【氣味】【主治】【附方】三段。
 
 附方定位（与 gm-canon.js 头注释同一条纪律）：
@@ -30,6 +30,13 @@ VOLUMES = [
     ("菜之一", "菜部"), ("菜之二", "菜部"), ("菜之三", "菜部"),
     ("果之一", "果部"), ("果之二", "果部"), ("果之三", "果部"),
     ("果之四", "果部"), ("果之五", "果部"), ("果之六", "果部"),
+    # 1.0.7：补木部与草部。上一版只抓了谷菜果——药膳真正的主力
+    #（酸枣仁、柏子仁、茯苓、枸杞、当归、黄芪、人参、甘草）全在木部草部，
+    # 导致「我失眠吃什么好」答出酸枣仁却拿不到它的附方。
+    ("木之一", "木部"), ("木之二", "木部"), ("木之三", "木部"), ("木之四", "木部"),
+    ("草之一", "草部"), ("草之二", "草部"), ("草之三", "草部"), ("草之四", "草部"),
+    ("草之五", "草部"), ("草之六", "草部"), ("草之七", "草部"), ("草之八", "草部"),
+    ("草之九", "草部"), ("草之十", "草部"),
 ]
 
 # 食治类做法白名单：附方条里命中任一才算「入口的吃法」。
@@ -69,29 +76,62 @@ def strip_tags(html: str) -> str:
 
 
 def parse_volume(vol: str, vol_group: str, html: str):
-    """按 h2 条目切分，条目内按【】段标记抽 气味/主治/附方。"""
+    """按条目切分，条目内按【】段标记抽 气味/主治/附方。
+
+    切分依据要看卷：谷菜果木部的条目是 h3（h2 只有目录之类 2 个），
+    草部反过来——药名是 h2，h3 是部位（釋名/集解/根/稍/頭/附方）。
+    上一版一律取 h2+h3，导致草部每味药的正文被「根」「稍」「頭」切碎，
+    甘草只剩三个字，整味被丢弃——人参黄芪当归全缺，就是这么来的。
+    """
     text = strip_tags(html)
-    # 条目可能是 h2 或 h3（维基文库不同卷标记不一）：只看药名标题
-    heads = [(m.start(), re.sub(r"<[^>]+>", "", m.group(1)))
-             for m in re.finditer(r"<h[23][^>]*>([\s\S]{1,160}?)</h[23]>", html)]
+    h2 = [(m.start(), re.sub(r"<[^>]+>", "", m.group(1)))
+          for m in re.finditer(r"<h2[^>]*>([\s\S]{1,160}?)</h2>", html)]
+    h3 = [(m.start(), re.sub(r"<[^>]+>", "", m.group(1)))
+          for m in re.finditer(r"<h3[^>]*>([\s\S]{1,160}?)</h3>", html)]
+    # 药名级标题：h2 够多就是 h2（草部），否则退到 h3（谷菜果木部）
+    heads = h2 if len(h2) >= 5 else h3
+
+    # 草部的段标记两种写法混着来：多数是【氣味】文本，甘草这类写成 <h3>氣味</h3>。
+    # 不统一的话甘草取不到气味与附方，整条被判为空丢弃（实测附方 0 条）。
+    # 只在药名用 h2 的卷做这个转换——谷菜果木部的 h3 本身就是药名，不能动。
+    if heads is h2:
+        html = re.sub(r"<h3[^>]*>([^<]{1,12})</h3>",
+                      lambda m: f"【{m.group(1).strip()}】", html)
+        h2 = [(m.start(), re.sub(r"<[^>]+>", "", m.group(1)))
+              for m in re.finditer(r"<h2[^>]*>([\s\S]{1,160}?)</h2>", html)]
+        heads = h2
+
     items = {}
     for idx, (pos, name) in enumerate(heads):
-        if name in ("目錄",) or "序" in name[:2]:
+        if name in ("目錄", "目录") or "序" in name[:2]:
             continue
         end = heads[idx + 1][0] if idx + 1 < len(heads) else len(html)
         body = strip_tags(html[pos:end])
-        # 繁体段标记 → 统一切分
+        # 繁体段标记 → 统一切分。
+        # 记录**每一次**出现而不是第一次：一味药常分根/稍/头几个部位，
+        # 每个部位各有【主治】，只取第一次会丢掉大半内容。
         marks = ["【氣味】", "【主治】", "【發明】", "【附方】", "【修治】", "【集解】", "【正誤】"]
-        found = sorted((body.find(m), m) for m in marks if body.find(m) >= 0)
-        seg = {}
+        found = []
+        for m in marks:
+            start = 0
+            while True:
+                i = body.find(m, start)
+                if i < 0:
+                    break
+                found.append((i, m))
+                start = i + len(m)
+        found.sort()
 
         def section_from(mark):
-            i = body.find(mark)
-            if i < 0:
-                return ""
-            starts = [pos for pos, m in found if pos > i]
-            stop = min(starts) if starts else len(body)
-            return body[i + len(mark):stop]
+            """取该标记下的全部段（一味药可能分根/稍/头几个部位，各有主治）。"""
+            out = []
+            for i, m in found:
+                if m != mark:
+                    continue
+                later = [p for p, _ in found if p > i]
+                stop = min(later) if later else len(body)
+                out.append(body[i + len(mark):stop])
+            return "".join(out)
 
         qi = section_from("【氣味】")
         zhi = section_from("【主治】")

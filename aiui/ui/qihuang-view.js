@@ -211,16 +211,28 @@ export function createQihuangView({ engines, store = null } = {}) {
         patch.status = r.ok ? '已找到' : '要先问清';
         if (r.ok) {
           patch.detail = `药典「用于」原文 · ${r.picks.length} 味`;
-          // 每条三行信息：药名性味、适应证（1 段）、药典用法。
-          // 「用法」是 1.0.5 补的断层——用户拿到方向后下一个问题一定是
-          // 「蒸它煮它怎么弄」，药典【用法与用量】原文是国标背书的答案。
-          // 适应证从 3 段压到 1 段给用法腾位：主打适应证本来就在第一段。
+          // 每条三行信息：药名性味、适应证（1 段）、怎么弄着吃。
+          //
+          // 「怎么吃」这一行排的是《食疗本草》原文而不是药典用量：用户拿到
+          // 方向后真正卡住的是「蒸它煮它」，不是精确到克。有做法句就写作法，
+          // 没有（书里只记了功效）就写功效并标明是功效，不含糊成做法。
+          // 用量退到最后一行由播报说一句「遵医嘱」，屏幕不重复占位。
           const lines = r.picks.map((pk) => {
             const use = String(pk.use || '').split('，')[0];
             const cor = pk.contrary ? '（性味偏反，不作首选）' : '';
-            const usage = String(pk.usage || '').split(/[。；]/)[0];
-            const usagePart = usage ? `\n用法：${usage}` : '';
-            return `${pk.name}（${pk.nature}）：用于${use}${cor}${usagePart}`;
+            // 做法只给第一味（贴在它下面），其余药名一行。
+            // 三味都挂做法会超 160 字预算，而用户在屏幕上看的是「有没有路」，
+            // 不是把三味都读一遍；想细问再单独问某味即可。
+            const withHow = r.picks.length && r.picks[0].name === pk.name;
+            const rec = withHow ? pk.shiliao : null;
+            // 古籍句 + 常见吃法两行都给（有就都给）：古籍那句常常是功效
+            //（酸枣仁「疗不能眠」），只给这句用户还是不知道蒸还是煮。
+            const recLine = rec
+              ? `\n${rec.cookable ? '怎么做' : '食疗本草'}：${rec.text}`
+              : '';
+            const howLine = withHow && pk.commonHow ? `\n常见吃法：${pk.commonHow}` : '';
+            const howPart = recLine + howLine;
+            return `${pk.name}（${pk.nature}）：用于${use}${cor}${howPart}`;
           });
           if (r.blocked && r.blocked.length) {
             lines.push(`未列入：${r.blocked.map((b) => b.name).join('、')}（与你在吃的相冲）`);
@@ -238,6 +250,28 @@ export function createQihuangView({ engines, store = null } = {}) {
           patch.answer = r.speech;
         }
         tone = r.ok ? 'ok' : 'warn';
+      } else if (r.intent === 'howto') {
+        // 「这味怎么弄着吃」。三层各标各的来源，不许混成一句：
+        // 药典只给用量，古籍给的是原文，常见吃法是生活常识。
+        // 混着说会让用户以为「煮粥」也是药典写的。
+        patch.title = r.screenTitle || `${r.name}怎么吃`;
+        patch.detail = '药典 · 食疗本草 · 常见吃法';
+        const lines = [];
+        if (r.dosage) lines.push(`药典用法：${r.dosage}`);
+        if (r.tabi) lines.push(`注意：${r.tabi}`);
+        if (r.recipe) {
+          lines.push(`${r.recipe.cookable ? '怎么做（食疗本草）' : '食疗本草'}：${r.recipe.text}`);
+        }
+        if (r.commonHow) lines.push(`常见吃法：${r.commonHow}`);
+        if (!lines.length) lines.push('资料里没有它的具体做法');
+        patch.answer = lines.join('\n');
+        patch.status = '已查询';
+        patch.source = `出处：《中国药典》2025年版一部${r.recipe ? '；《食疗本草》（唐·孟诜）' : ''}。常见吃法为一般饮食习惯，不是典籍记载。`;
+        patch.sourceTag = '药典原文 + 食疗本草 + 常见吃法';
+        if (r.found === false) {
+          patch.title = '没听出药名';
+          patch.status = '没查到';
+        }
       } else if (r.intent === 'practice' || r.intent === 'concern' || r.intent === 'no-meds') {
         // 这三类不接进来会落到下面的 else，标题变成「本草」——
         // 用户刚说完「我在做艾灸」，屏幕上写着「本草」，像是答错了题。
