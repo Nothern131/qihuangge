@@ -279,8 +279,11 @@ export function createQihuangView({ engines, store = null } = {}) {
           // 出处不在这里拼：下面有一段统一用 r.sourceTag 加「出处：」前缀，
           // 这里再设一次就会变成「出处：出处：…」。
         } else {
-          patch.detail = '还缺一步';
-          patch.answer = r.speech;
+          // 「还缺一步」像是在报系统缺件，用户会以为哪里坏了。
+          // 其实是「我得先问你一件事」，措辞跟着改。
+          patch.detail = '先问一句';
+          // 屏幕优先用 agent 给的 screen（分段版），没有再退回播报词。
+          patch.answer = r.screen || r.speech;
         }
         tone = r.ok ? 'ok' : 'warn';
       } else if (r.intent === 'look') {
