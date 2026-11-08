@@ -247,7 +247,7 @@ export function createQihuangPack(engines) {
 
   return {
     name: 'qihuang',
-    title: '岐黄阁 · 本草速查',
+    title: '本草 · 速查',
 
     actions() {
       return SAFE_ACTIONS;
