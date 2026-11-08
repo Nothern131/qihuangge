@@ -202,7 +202,8 @@ truthy('乱码不说「标为无毒」', !garbage.speech.includes('标注为无�
 const notRecorded = pack.invoke('toxicity', { name: '三七' });
 truthy('名单外药材不说「无毒」', !/无毒/.test(notRecorded.speech), notRecorded.speech);
 truthy('名单外药材要说清「不在名单」', notRecorded.speech.includes('不在《中国药典》'), notRecorded.speech);
-truthy('名单外药材要交代本草库也没有', notRecorded.speech.includes('本草库'), notRecorded.speech);
+// 原来查「本草库」——那是内部术语，用户看不懂。现在文案改成「本草书」。
+truthy('名单外药材要交代本草书也没有', notRecorded.speech.includes('本草书'), notRecorded.speech);
 console.log(`       ${notRecorded.speech}`);
 const real = pack.invoke('toxicity', { name: '附子' });
 truthy('真有毒的药照实说', real.found === true && real.toxicity === '有毒');

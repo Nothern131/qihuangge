@@ -24,8 +24,12 @@ if (!existsSync(origin)) {
   process.exit(1);
 }
 
-const a = readFileSync(origin, 'utf8');
-const b = readFileSync(copy, 'utf8');
+// 比对前统一行尾。Windows 上 git 的 autocrlf 会把 LF 换成 CRLF，
+// 于是同一个文件在两边行尾不同——逐行比会报「全篇都不一样」，
+// 实际内容一字未差（实测只差每行多出的 1 个字节）。
+const norm = (t) => t.replace(/\r\n/g, '\n');
+const a = norm(readFileSync(origin, 'utf8'));
+const b = norm(readFileSync(copy, 'utf8'));
 
 if (a === b) {
   console.log(`  [PASS] 与原件逐字符一致（${a.length} 字符）`);
