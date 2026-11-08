@@ -29,7 +29,17 @@ const LISTEN_TIMEOUT_MS = 12000;
 export default {
   data: { ...INITIAL_STATE },
 
-  onLoad() {
+  // 用户可能是「带着一句话」被唤起进来的。
+  // agentPrompt（意图描述）里约定：命中意图时把用户原话放进 query.text。
+  // 字段名由我们自己定，但多认几个写法——宿主换版本时字段名可能会变，
+  // 认不到就等于又回到「只播开场白」，那种错很难从现象上看出来。
+  _incoming(query) {
+    if (!query || typeof query !== 'object') return '';
+    const raw = query.text || query.q || query.query || query.utterance || '';
+    return String(raw || '').trim();
+  }
+
+  onLoad(query) {
     this._rec = null;
     this._listening = false;
     this._watchdog = null;
@@ -86,7 +96,25 @@ export default {
       return;
     }
 
+    // 带着原话进来的，**不播开场白**——他要的是答案，不是自我介绍。
+    // 之前没这条，所以每次说「枸杞有什么功效」都只播一段开场白，
+    // 用户以为卡住了，又说一遍，又播一遍，就是死循环。
+    const incoming = this._incoming(query);
+    if (incoming) {
+      console.info('[qihuang] 带话进来，直接答：', incoming);
+      this.submit(incoming);
+      return;
+    }
+
     speak(GUIDE, { max: 42 });
+
+    // 开场白播完自动开始听。
+    // 不这么做，用户听完自我介绍还得自己按一下镜腿——多数人不知道要按，
+    // 于是退出重喊，又听一遍开场白，一样是死循环。
+    // 7000ms：开场白 35 字，TTS 约 5.8 秒，留 1.2 秒余量。
+    setTimeout(() => {
+      if (!this._listening && !this._pending) this.startListen();
+    }, 7000);
   },
 
   onShow() {
