@@ -37,7 +37,7 @@ export default {
     if (!query || typeof query !== 'object') return '';
     const raw = query.text || query.q || query.query || query.utterance || '';
     return String(raw || '').trim();
-  }
+  },
 
   onLoad(query) {
     this._rec = null;
