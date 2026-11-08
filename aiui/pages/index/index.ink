@@ -244,7 +244,7 @@ export default {
       // 对话卡片模式下宿主不给录音权限（焦点在 AI 手里），这不是故障。
       // 此时不说话、不报错、不再重试——语音本来就该由 AI 接，页面只负责显示答案。
       // 判断依据只看错误内容，不看模式标志：模式标志得猜，错误是实测到的。
-      if (/not allowed|permission|denied|not supported|not implemented|undefined|null/i.test(msg)) {
+      if (/not allowed|permission|denied|not supported|not implemented|undefined|null|unavailable|lifetime/i.test(msg)) {
         this._cutMode = true;
         console.info('[qihuang] 拿不到麦克风（对话卡片模式），语音交给 AI：', msg);
         this.setData({ status: '按住说话' });
@@ -296,7 +296,21 @@ export default {
     this.clearWatchdog();
     this._pending = '';
     const code = (event && event.error) || '未知';
-    console.error('[qihuang] 识别失败：', code, event && event.message);
+    const rawMsg = String((event && event.message) || '');
+    console.error('[qihuang] 识别失败：', code, rawMsg);
+
+    // 对话卡片（CUT）模式下宿主不给页面麦克风。平台原文（模拟调试实测）：
+    //   network.MediaDevices.getUserMedia() is unavailable when app.config.lifetime is 'cut'
+    //
+    // 这不是故障，是模式决定的：焦点留在 AI 手里，语音本来就该由 AI 接。
+    // 所以不上屏、不播报、不再重试——把「网络不给力」这种假原因写给用户，
+    // 他会真的去查网络，那比不说话更糟。
+    if (/lifetime/i.test(rawMsg) || /lifetime/i.test(code)) {
+      this._cutMode = true;
+      console.info('[qihuang] 对话卡片模式：页面没有麦克风，语音交给 AI');
+      this.setData({ status: '问我吧', answer: '有什么想问的，直接说就行', tone: 'idle' });
+      return;
+    }
     // 错误码不能直接上屏：那是给开发者的词，用户看到「network」只会更慌。
     // 每一条都要回答用户真正的问题——「刚才怎么了，我现在该干什么」。
     // aborted 是自己 stop() 的连带事件，不算失败，静默清状态就好。
