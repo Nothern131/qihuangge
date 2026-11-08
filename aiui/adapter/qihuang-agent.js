@@ -103,12 +103,31 @@ const TONIC_RE = [
 
 // 「记一下我在吃钙片」——这是「越用越懂你」唯一的入口。
 // 没有它，产品永远只能回答当下这一句，用户用三个月和用一天没有区别。
-// 「我在喝枸杞菊花茶」「泡着黄芪」也算——泡水的东西一样入口、一样会撞。
-const MEMO_RE = /(记一下|记住|记下|帮我记|我在吃|我在用|我常吃|我一直在吃|我平时吃|在吃|吃着|我在喝|平时喝|在喝|泡水喝|泡着)/;
+//
+// 判据原来只有一个宽正则，把「怎么泡水喝」判成了记档——因为「泡水喝」在里面。
+// 那个词是为了接住「我泡着黄芪」，可它单独出现时是问句，不是交代。
+// 用户听到「记下了：怎么泡水喝」会直接判定这产品坏了。
+// 所以拆成三档：强触发优先，疑问优先于弱触发。
+const MEMO_STRONG = /(记一下|记住|记下|帮我记)/;
+// 疑问特征：带这些词就是在问，不是在交代。
+const ASK_MARK = /(怎么|怎样|如何|多少|能不能|可不可以|可以吗|行不行|吗|呢|什么|哪些|哪个|要不要|是不是|有没有|多久|几次)/;
+// 弱触发：没有「记」这个动作，但有「我」+ 持续状态。泡水的东西一样入口、一样会撞。
+const MEMO_WEAK = /(我在吃|我在用|我在喝|我常吃|我一直在吃|我平时吃|我平时喝|我吃着|我喝着|在吃|吃着|在喝|喝着|泡水喝|泡着)/;
+
+function isMemoIntent(text) {
+  const t = String(text || '');
+  if (MEMO_STRONG.test(t)) return true;   // 「记一下…」一定是交代
+  if (ASK_MARK.test(t)) return false;     // 带疑问词就是在问
+  return MEMO_WEAK.test(t);
+}
 // 「上次那个」「刚才问的」——跨句指代。
 // 只认这几种明确说法，不碰「它」「这个」：代词在语音里指代对象太模糊，
 // 补错了比不补更糟——用户会以为系统记错了东西。
 const ELLIPSIS_RE = /(上次|刚才)(那个|问的|说的|那味|那味药)/;
+// 省了主语的追问：「怎么泡水喝」「放多少」「能天天喝吗」。
+// 语音里省略主语是常态——刚问完枸杞，下一句只说「怎么泡水喝」。
+// 只认问吃法/用法/用量/频率的说法，不认「这个」「它」这类代词：指代太模糊，补错了更糟。
+const FOLLOWUP_RE = /(怎么泡|怎么喝|怎么吃|怎么用|怎么弄|咋吃|咋用|放多少|多少克|几克|能天天|天天喝|能天天喝|什么时候喝|什么时候吃|煮汤|能泡|泡几次|多久喝|连着喝|长期喝|一天喝|一天吃|还能怎么)/;
 const MEMO_STRIP = /(帮我)?(记一下|记住|记下|我一直在吃|我平时吃|我在吃|我在用|我常吃|吃着|在吃|在用|还有)/g;
 
 /** 从「记一下我在吃钙片」里取出「钙片」。取不出来就返回空串，交给上层的报错路径。 */
@@ -975,7 +994,27 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 放在 normalize 而不是 interpret：后面每一站都读 ctx.text，
       // 在这里换掉，等于整条链路都拿到了补全后的问题。
       resolveEllipsis(ctx);
-      const r = pack.recognize(ctx.text);
+      let r = pack.recognize(ctx.text);
+
+      // 省了主语的追问，接上一次查的那味药。
+      //
+      // 必须在这一步做：先确认这句话自己认不出药名（认出了就不能覆盖），
+      // 再补，补完立刻重认——不然带着旧结果往下走，等于白补。
+      // 不补的后果很具体：切词把「怎么泡水喝」当整体去查，
+      // 回一句「本草库还没收录怎么泡水喝」，用户听到的是这应用不认识中国话。
+      // 判断依据必须是 known（真在库里的药），不能用 herbs——
+      // 切词器会把「怎么泡水喝」整句当成一味药塞进 herbs，
+      // 拿 herbs 判空就永远判不出「这句话没提药名」。
+      const knownFirst = Array.isArray(r.known) ? r.known : [];
+      if (knownFirst.length === 0 && FOLLOWUP_RE.test(ctx.text)) {
+        const lastHerb = findLastHerb();
+        if (lastHerb) {
+          ctx.text = `${lastHerb}${ctx.text}`;
+          ctx.followup = { resolvedTo: lastHerb };
+          r = pack.recognize(ctx.text);
+        }
+      }
+
       ctx.recog = r;
       // tokens 在中药域是药名（字符串），不是牌索引。
       // 骨架不关心类型，只关心「这一站产出了什么结构」。
@@ -1108,8 +1147,9 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 因为交代用药时用户经常不重复动词——「早上八点吃二甲双胍，晚上八点吃阿托伐他汀」，
       // 后半句没有「记一下」，但它显然还在同一次交代里。
       // 不扩的话，后半句会掉进查询，回一句「这句没听懂」，用户得把整句重说一遍。
-      const looksLikePlan = parseMedPlans(ctx.text).length > 0;
-      if (MEMO_RE.test(ctx.text) || looksLikePlan) {
+      // 疑问句不当作交代：「早上八点吃什么好」能被解析出时间，但它是在问，不是在交代。
+      const looksLikePlan = !ASK_MARK.test(ctx.text) && parseMedPlans(ctx.text).length > 0;
+      if (isMemoIntent(ctx.text) || looksLikePlan) {
         if (!store) {
           return {
             stop: true,
