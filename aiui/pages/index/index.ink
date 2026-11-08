@@ -62,6 +62,7 @@ export default {
   onLoad(query) {
     this._rec = null;
     this._listening = false;
+    this._cutMode = false;
     this._watchdog = null;
     this._pending = '';
     this._view = null;
@@ -210,6 +211,10 @@ export default {
 
   startListen() {
     if (this._listening) return;
+    // 已经确认这个宿主不给麦克风就不要再试。
+    // 对话卡片（CUT）模式下焦点留在 AI 手里，页面本来就拿不到录音权限——
+    // 那不是故障，是模式决定的，反复重试只会让屏幕上一直挂着一条错误。
+    if (this._cutMode) return;
     if (!this._view) {
       this.setData({ status: '资料库不可用', tone: 'bad' });
       return;
@@ -235,6 +240,17 @@ export default {
         return;
       }
       this._listening = false;
+
+      // 对话卡片模式下宿主不给录音权限（焦点在 AI 手里），这不是故障。
+      // 此时不说话、不报错、不再重试——语音本来就该由 AI 接，页面只负责显示答案。
+      // 判断依据只看错误内容，不看模式标志：模式标志得猜，错误是实测到的。
+      if (/not allowed|permission|denied|not supported|not implemented|undefined|null/i.test(msg)) {
+        this._cutMode = true;
+        console.info('[qihuang] 拿不到麦克风（对话卡片模式），语音交给 AI：', msg);
+        this.setData({ status: '按住说话' });
+        return;
+      }
+
       console.error('[qihuang] 启动识别失败：', msg);
       this.setData({ status: '现在不能听', detail: '页面还没准备好，稍等一下再说', tone: 'warn' });
     }
