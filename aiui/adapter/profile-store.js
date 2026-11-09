@@ -89,10 +89,6 @@ const IMPORTANCE_ACTIVE_MIN = 0.5;
  * @param {{get:Function,set:Function,remove:Function}} opts.backend 存储后端，必须注入
  * @param {string} [opts.userId] 档案归属，默认 local（眼镜是个人设备）
  */
-// 默认名。改这个常量之前先想清楚：它是产品身份的第一层信息，
-// 用户在页面上第二行看到的就是它。多处引用时以 store.assistantName() 为准。
-export const DEFAULT_NAME = '小安';
-
 export function createProfileStore({ backend, userId = 'local' } = {}) {
   if (!backend || typeof backend.get !== 'function' || typeof backend.set !== 'function') {
     // 缺后端是接线错误，不是运行时状态。当场炸掉，别让它变成「查得到但记不住」。
@@ -154,43 +150,6 @@ export function createProfileStore({ backend, userId = 'local' } = {}) {
       }
     },
 
-    /**
-     * 用户给助手起的名字。
-     *
-     * 为什么单独存一个 key，不塞进 profile：
-     * profile 有 STORE_VERSION，版本一变旧档案整份丢弃（见 load() 的注释）。
-     * 名字和身体状况完全是两回事——为了加个名字把用户几个月的记录清掉，
-     * 是绝对不划算的买卖。独立 key 就躲开了这个耦合。
-     */
-    assistantName() {
-      try {
-        const raw = backend.get(`${key}:name`);
-        const n = String(raw || '').trim();
-        return n || DEFAULT_NAME;
-      } catch (err) {
-        console.warn('[profile] 读名字失败，用默认：', err && err.message);
-        return DEFAULT_NAME;
-      }
-    },
-
-    /**
-     * 改名。返回 true 表示存上了。
-     *
-     * 只收 2-4 个汉字：一个字太容易和别的词撞（「叫安」），
-     * 五个字以上不像称呼，读起来也别扭。
-     * 存不上要返回 false，让调用方老实说「没记住」——不能装作改了。
-     */
-    setAssistantName(name) {
-      const n = String(name || '').trim();
-      if (!/^[\u4e00-\u9fa5]{2,4}$/.test(n)) return false;
-      try {
-        backend.set(`${key}:name`, n);
-        return true;
-      } catch (err) {
-        console.warn('[profile] 存名字失败：', err && err.message);
-        return false;
-      }
-    },
 
     load,
     exists() {

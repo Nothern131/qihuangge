@@ -266,11 +266,7 @@ export default {
       return;
     }
 
-    // 用 view 的当前名字生成开场白。用户改过名之后，
-    // 开场白还念原来的名字，等于自我介绍和称呼对不上。
-    const hello = this._view.greeting();
-    this.setData({ detail: this._view.name() });
-    speak(hello, { max: 42 });
+    speak(GUIDE, { max: 42 });
 
     // 开场白播完自动开始听。
     // 不这么做，用户听完自我介绍还得自己按一下镜腿——多数人不知道要按，
