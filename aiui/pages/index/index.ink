@@ -56,43 +56,69 @@ const LLM_MAX_FAILURES = 8;
 let llmSession = null;
 let llmFailures = 0;
 
-const LLM_SYSTEM = `你是中医养生助手的「前端理解层」。用户戴着眼镜随口说话，你要判断：这句话在说哪一类身体状况。
+// ── 药典候选池 ──
+//
+// 这里不写任何证候标签。候选池是**从药典数据本身生成的**：
+// 每味药的「主治」字段就是它治什么，LLM 直接对着这个挑。
+//
+// 为什么这样比「九个标签」灵活：
+//   · 用户说第 10 种情况，标签方案只能回 none；这个方案照样能在主治里找到对应
+//   · 药典加一味药，这里自动多一行，零代码改动
+//   · 标签是我对中医的理解，主治是药典的原话——后者更可信
+//
+// 规模实测：123 味药，拼起来 2857 字，塞得进 prompt。
+let llmDB = null;
+let llmMateriaTable = '';
 
-【只能从下面十个里选一个，不许自己造词】
-阴虚 —— 口干咽燥、上火、手心热、盗汗、眼睛干涩、睡醒嘴苦
-脾胃虚寒 —— 胃怕凉、吃凉的不舒服、肚子怕凉、受凉就拉
-气虚 —— 乏力、容易累、没精神、气短、懒得说话
-阳虚 —— 怕冷、手脚冰凉、夜尿多、腰膝发凉
-湿盛 —— 身体沉、大便不成形、舌苔厚腻、痰多、脸油腻
-便秘 —— 排便困难、大便干结、好几天一次
-失眠 —— 睡不着、睡不好、多梦、易醒、入睡难
-食积腹胀 —— 胃胀、腹胀、不消化、吃一点就撑
-血虚 —— 面色差、掉头发、头晕眼花、唇色淡、指甲脆
-none —— 听不懂，或者说的是具体药名、怎么吃、配伍、无关话题
+/** 从药典数据生成「药名：主治」清单。页面初始化时调一次。 */
+function initMateria(engines) {
+  const db = engines && engines.BencaoEngine && engines.BencaoEngine.DB;
+  if (!db) {
+    console.warn('[qihuang] 拿不到药典数据，感知层退化成只能听药名');
+    return;
+  }
+  llmDB = db;
+  const lines = [];
+  for (const name of Object.keys(db)) {
+    // 「主治」是这个引擎里唯一描述「治什么」的字段，用它当检索依据。
+    // 句号分号换成顿号：省字数，读起来还是列举的样子。
+    const z = String(db[name].zhuji || '').replace(/[。；]/g, '、').trim();
+    if (z) lines.push(name + '：' + z);
+  }
+  llmMateriaTable = lines.join('\n');
+  console.info('[qihuang] 药典候选池就绪：' + lines.length + ' 味，' + llmMateriaTable.length + ' 字');
+}
 
-【输出 JSON，两个字段】
-{"state": "上面十个词之一", "why": "一句话依据，不超过20字"}
+const LLM_SYSTEM_BASE = `你是中医养生助手的「检索层」。用户戴着眼镜随口说身体哪儿不舒服，你要从下面这份药典名单里，找出**主治对得上**的药。
+
+【药典名单：药名：主治】
+`;
+
+const LLM_SYSTEM_RULES = `
+
+【输出 JSON】
+{"picks": ["药名1", "药名2"], "why": "依据，不超过20字"}
+挑不出就 {"picks": [], "why": "..."}
 
 【硬规则】
-1. 你在分类，不在诊断。绝对不要输出「你是阴虚」这种判断句，只输出标签。
-2. 拿不准就输出 none。错分类比不分类更糟——把「脸上长痘」说成阴虚，
-   用户会当养生方案照着吃。
-3. 用户问的是某味药、某个吃法、某个配伍（黄芪有什么功效、怎么泡水、
-   甘草和海藻能不能一起用），一律输出 none，不要抢药名那条路。
-4. 一句话里既有药材又有身体状况（「我气虚，吃点黄芪行吗」），输出 none，
-   让下游自己处理——这种句子需要的是查药，不是分类。
+1. 只能从上面名单里挑，一个字都不能改，不许写名单外的药，不许自己配方子。
+2. 你是按主治检索，不是诊断，也不是开方。不要给用量、不要组方、不要承诺疗效。
+3. 挑 2 到 3 味就够，不要多。挑多了用户不知道该吃哪个。
+4. 拿不准就少挑或者不挑。**挑错比不挑更糟**——用户会照着去药店买。
+5. 用户问的是具体药材、怎么吃、两样能不能一起用，picks 给空数组，
+   那些走查药那条路，不用你管。
+6. 一句话里既有药材又有身体状况（「我气虚，吃点黄芪行吗」），也给空数组。
 
 【例子】
-「我最近老是掉头发」 → {"state":"血虚","why":"掉头发，血虚常见"}
-「脸上老长痘」 → {"state":"湿盛","why":"长痘多与湿热相关"}
-「半夜总要起来上厕所」 → {"state":"阳虚","why":"夜尿多，阳虚常见"}
-「吃完饭就想躺着，特别累」 → {"state":"气虚","why":"饭后困倦乏力"}
-「睡醒嘴里发苦」 → {"state":"阴虚","why":"口苦咽干"}
-「手脚总是冰凉」 → {"state":"阳虚","why":"四肢不温"}
-「大便总是不成形」 → {"state":"湿盛","why":"便溏"}
-「决明子有什么功效」 → {"state":"none","why":"问的是药"}
-「怎么泡水喝」 → {"state":"none","why":"问的是吃法"}
-「你好」 → {"state":"none","why":"寒暄"}`;
+「我最近老是掉头发」 → {"picks":["当归","熟地黄"],"why":"发为血之余，二者主治血虚萎黄"}
+「脸上老长痘」 → {"picks":["黄芩","连翘"],"why":"长痘多属湿热，二者清热燥湿解毒"}
+「半夜总要起来上厕所」 → {"picks":["益智仁","覆盆子"],"why":"夜尿多属肾气不固"}
+「吃完饭就想躺着，特别累」 → {"picks":["黄芪","党参"],"why":"饭后困倦属脾气虚"}
+「睡醒嘴里发苦」 → {"picks":["龙胆","栀子"],"why":"口苦属肝胆湿热"}
+「决明子有什么功效」 → {"picks":[],"why":"问的是具体药"}
+「怎么泡水喝」 → {"picks":[],"why":"问的是吃法"}`;
+
+const LLM_SYSTEM = LLM_SYSTEM_BASE;
 
 /**
  * 翻译。返回 { standard, concern } 或 null。
@@ -122,8 +148,16 @@ async function llmTranslate(text, budget) {
     }
 
     if (!llmSession) {
+      // 候选池在页面初始化时生成好了。没有它这一层就是废的——
+      // 模型不知道自己能从哪些药里挑，只会凭记忆瞎报。
+      if (!llmMateriaTable) {
+        console.warn('[qihuang] 候选池为空，感知层跳过');
+        return null;
+      }
       llmSession = await LanguageModel.create({
-        initialPrompts: [{ role: 'system', content: LLM_SYSTEM }],
+        initialPrompts: [
+          { role: 'system', content: LLM_SYSTEM_BASE + llmMateriaTable + LLM_SYSTEM_RULES },
+        ],
       });
     }
 
@@ -137,15 +171,20 @@ async function llmTranslate(text, budget) {
 
     const parsed = pickLlmJson(answer);
     if (!parsed) return null;
-    const state = String(parsed.state || '').trim();
-    // none 就是「这句不该我管」——药名、吃法、寒暄都走这条路，不是错误
-    if (!state || state === 'none') return null;
-    // 模型偶尔会把整句复述回来，那不是分类
-    if (state === q) return null;
+
+    // picks 是药名数组。模型有时会加书名号、空格，或者报一个名单外的名字——
+    // 全部过滤掉，只留药典里真有的。宁可少挑，不能让用户听到一味不存在的药。
+    const raw = Array.isArray(parsed.picks) ? parsed.picks : [];
+    const picks = [];
+    for (const x of raw) {
+      const name = String(x || '').replace(/[《》「」\s]/g, '').trim();
+      if (name && llmDB && llmDB[name] && !picks.includes(name)) picks.push(name);
+    }
+    if (!picks.length) return null;
 
     llmFailures = 0;
-    console.info('[qihuang] 感知层归类：', q, '→', state, '（' + String(parsed.why || '') + '）');
-    return { state, why: String(parsed.why || '').trim() };
+    console.info('[qihuang] 感知层挑药：', q, '→', picks.join('、'), '（' + String(parsed.why || '') + '）');
+    return { picks: picks.slice(0, 3), why: String(parsed.why || '').trim() };
   } catch (err) {
     llmFailures += 1;
     console.warn('[qihuang] 感知层失败，本次降级：', err && err.message);
@@ -248,7 +287,11 @@ export default {
     }
 
     try {
-      this._view = createQihuangView({ engines: getEngines(), store });
+      const engines = getEngines();
+      this._view = createQihuangView({ engines, store });
+      // 药典候选池：只生成一次，之后每次感知层调用都用它。
+      // 必须在 create 会话之前跑，否则第一次问诊时池子是空的。
+      initMateria(engines);
     } catch (err) {
       // 资料库加载失败时**绝不能**让页面看起来能查。
       // 一个「查不到」的页面和「资料库没起来」的页面长得一样，
@@ -460,15 +503,28 @@ export default {
       } catch (err) {
         console.warn('[qihuang] 感知层异常，用原结果：', err && err.message);
       }
-      if (t && t.state) {
-        const retry = this._view.handle(t.state);
-        if (!this._notUnderstood(retry)) {
-          out = retry;
-          // 把「归到哪一类」放屏幕上，不念出来。
-          // 这是给用户一个纠正的机会：他说「掉头发」，屏幕上写「听成：血虚」，
-          // 归错了能自己发现；归对了这行也只是一行小字。
-          out = { ...out, patch: { ...(out.patch || {}), heard: t.state } };
-        }
+      if (t && t.picks && t.picks.length) {
+        // 模型从药典主治里挑到了药。这里**不替它组织医学结论**，
+        // 只把「哪几味主治对得上」摆出来，让用户自己决定要不要细看。
+        // 这么做的原因：挑药是检索，说「你就该吃这个」是诊断，后者我们不做。
+        const list = t.picks.map((n) => {
+          const z = String((llmDB[n] && llmDB[n].zhuji) || '').replace(/[。；]/g, '、');
+          return n + '（主治：' + z.slice(0, 24) + '）';
+        });
+        const text = list.join('；') + '。想细看哪味，说名字就行';
+        out = {
+          patch: {
+            title: '主治对得上的',
+            detail: t.why ? '依据：' + t.why : '按药典主治检索',
+            answer: text,
+            status: '按主治查',
+            tone: 'ok',
+            source: '《中国药典》主治项',
+          },
+          say: t.picks.join('、') + '，这几味主治对得上。想细看哪味，说名字就行',
+          sayMax: 72,
+          tail: '《中国药典》主治项',
+        };
       }
     }
 
