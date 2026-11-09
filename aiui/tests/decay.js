@@ -52,7 +52,13 @@ console.log('\n[1] 热记忆：提起就强化');
 
   const r = askQihuang(agent, '我脾胃虚寒');
   eq('重复提起 +1', store.getConcerns()[0].importance, 4.0);
-  truthy('强化要能被听见', /又记了一次/.test(r.speech), r.speech);
+  // 设计变更（2026-11-09，用户实测驱动）：
+  // 原来重复提起时播报「X 又记了一次，这条我看得更重了」——那是收据，不是答案。
+  // 用户原话：「它没有延续性，上下文过了就是直接过了」「再说失眠，它能很明显
+  // 的说又记了一遍」——记住得越清楚，越显得没在帮他。
+  // 现在改成记完直接给药典方向；强化依然生效（上一条断言已经验了 importance 4.0），
+  // 只是不再念给用户听。所以这里改判：重复提起时必须给出实质建议，而不是收据。
+  truthy('重复提起仍然给出实质建议（不再念收据）', /药典里写着/.test(r.speech), r.speech);
 
   for (let i = 0; i < 5; i += 1) askQihuang(agent, '我脾胃虚寒');
   truthy('封顶 5，不会无限涨', store.getConcerns()[0].importance <= 5,

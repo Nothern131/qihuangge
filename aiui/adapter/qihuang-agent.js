@@ -127,7 +127,11 @@ const ELLIPSIS_RE = /(上次|刚才)(那个|问的|说的|那味|那味药)/;
 // 省了主语的追问：「怎么泡水喝」「放多少」「能天天喝吗」。
 // 语音里省略主语是常态——刚问完枸杞，下一句只说「怎么泡水喝」。
 // 只认问吃法/用法/用量/频率的说法，不认「这个」「它」这类代词：指代太模糊，补错了更糟。
-const FOLLOWUP_RE = /(怎么泡|怎么喝|怎么吃|怎么用|怎么弄|咋吃|咋用|放多少|多少克|几克|能天天|天天喝|能天天喝|什么时候喝|什么时候吃|煮汤|能泡|泡几次|多久喝|连着喝|长期喝|一天喝|一天吃|还能怎么)/;
+// 用户实测补的两类：
+//   「主要是治什么的」——问用途，完全不含原表的词，于是整句被当药名去查，
+//     回「没查到是治什么这味药」。这句是最典型的追问，不能漏。
+//   「管什么用」「起什么作用」「干什么用的」同理。
+const FOLLOWUP_RE = /(怎么泡|怎么喝|怎么吃|怎么用|怎么弄|咋吃|咋用|放多少|多少克|几克|能天天|天天喝|能天天喝|什么时候喝|什么时候吃|煮汤|能泡|泡几次|多久喝|连着喝|长期喝|一天喝|一天吃|还能怎么|治什么|治啥|主治|管什么|有什么用|有啥用|干什么用|干嘛用|起什么作用|主要治|治哪|对什么好|有什么好处)/;
 const MEMO_STRIP = /(帮我)?(记一下|记住|记下|我一直在吃|我平时吃|我在吃|我在用|我常吃|吃着|在吃|在用|还有)/g;
 
 /** 从「记一下我在吃钙片」里取出「钙片」。取不出来就返回空串，交给上层的报错路径。 */
@@ -305,6 +309,9 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       err.code = 'missing_item';
       throw err;
     }
+    // 告诉 doAdvice「这轮的状况已经记过了」——它内部也有一次 addConcern，
+    // 不打招呼就会重复记，importance 直接 +1。
+    ctx.concernLogged = true;
     let added = 0;
     let reinforced = 0;
     for (const st of states) {
@@ -319,19 +326,22 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     // 这个时机最好——用户刚说完自己的情况，正是他愿意听一句相关提醒的时候。
     // 等到下次问药才说，前面那句话早就过去了。
     const warns = practiceWarnings(states);
-    // 记完给一个「下一步能问什么」的出口。只说「记下了」就没了下文——
-    // 实测用户说完「我最近睡不好」听到这句就卡住了，不知道该接什么。
-    // 老中医不会只回一句「知道了」，他会接着往下问。
-    const base = added
-      ? `记下了：${names}。以后你问药，我会先看和这条对不对得上。`
-        + `想知道吃什么，问「${names}吃什么好」`
-      : (reinforced
-        // 反复提起 = 这条变热了。如实说，但不说「我记牢了」这种拟人话。
-        ? `${names} 又记了一次，这条我看得更重了`
-        : `${names} 已经记着了`);
-    // 前缀只用一次「另外要看一下」，不提「这一条要看」——那半句在
-    // practiceWarnings 拼出来的每一句里已经有了，重复两次就成了绕口令。
+
+    // 记完**直接往下答**，不再只说「记下了」。
+    //
+    // 原来这里只回一句收据：
+    //   「记下了：失眠。想知道吃什么，问「失眠吃什么好」」
+    // 用户刚说完「我最近失眠」，要的是「那我吃什么」，得到的是一张收据 +
+    // 一句「请再问一遍」。用户原话：「它没有延续性，上下文过了就是直接过了」，
+    // 以及「再说失眠，它能很明显的说又记了一遍」——记住得越清楚，越显得没在帮他。
+    //
+    // doAdvice 里已经有完整的门槛（不知道在吃什么就先给方向预告、再问用药），
+    // 直接复用，不另写一套。记档是静默完成的：答案里说了「失眠的话，药典里
+    // 写着龙眼肉、百合适合」，本身就证明它知道你说的是什么，不需要再报一遍收据。
+    const out = doAdvice(ctx);
+
     return {
+      ...out,
       found: true,
       intent: 'concern',
       states: states.map((x) => x.key),
@@ -340,10 +350,12 @@ export function createQihuangAgent(pack, { store = null } = {}) {
       // 用户看到的是一串代码。
       stateNames: states.map((x) => x.tags[0]),
       warnings: warns,
-      // 播报默认上限是 32 字，装不下「记下了什么 + 那一句提醒」。
+      // 播报默认上限是 32 字，装不下「答案 + 那一句提醒」。
       // 提醒里带着出处，被截掉就等于只说了半句禁忌——这半句比不说更糟。
-      sayMax: warns.length ? 150 : 90,
-      speech: warns.length ? `${base}。另外要看一下——${warns.join('；')}` : base,
+      sayMax: warns.length ? Math.max(150, out.sayMax || 0) : (out.sayMax || 90),
+      speech: warns.length
+        ? `${out.speech || ''}另外要看一下——${warns.join('；')}`
+        : (out.speech || `记着了：${names}`),
     };
   }
 
@@ -599,7 +611,11 @@ export function createQihuangAgent(pack, { store = null } = {}) {
     for (const t of TONIC_RE) if (t.re.test(ctx.text)) push({ key: t.key, tags: [t.label] });
 
     // 这轮新说的状况顺手记下来——他既然说了，下次问别的也该用得上。
-    if (store) {
+    //
+    // 但 doConcern 进来的时候已经记过了（而且它带 core 参数：孕期和出血倾向
+    // 衰减慢 10 倍）。再记一次会让 importance 从 3 变 4，
+    // 表现是「记一次等于说两次」——衰减测试就是这么抓出来的（20/29）。
+    if (store && !ctx.concernLogged) {
       for (const st of here) {
         try {
           store.addConcern(st.raw);
