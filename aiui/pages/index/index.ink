@@ -30,6 +30,145 @@ import { getEngines } from '../../adapter/engine-runtime.js';
 import { createProfileStore } from '../../adapter/profile-store.js';
 import { VISION_PROMPTS, parseNames, pickLookupName, visionFallback } from '../../adapter/vision.js';
 
+// ─────────────── LLM 感知层 ───────────────
+//
+// 把用户的无限说法，翻译成我们查得到的标准表述。
+//
+// 为什么要有这一层（2026-11-09 用没参与调参的留出集测出来的）：
+//   36 条真实说法只过 16 条（44%）。失败全是同一类——整句被切词器当药名，
+//   回「本草库里还没有收录我这腰」「本草库还没收录老是犯困」。
+//   正则能枚举的说法是有限的，用户的说法是无限的；一直补词表就是用有限追无限。
+//
+// 架构照抄 GOSIM 2026 冠军队伍的做法（黑客松手册 33-41 行）：
+//   · 确定性内核（本草库查询、毒性、配伍）绝不交给 LLM
+//   · LLM 只做感知层（听懂用户说了什么）
+//   · LLM 挂了必须降级，不能成为单点故障
+//
+// 所以这里只做一件事：口语 → 标准表述。不诊断、不给建议、不碰事实。
+//
+// 为什么内联在页面里而不是单独一个文件：Studio 代码页新建文件不方便，
+// 而且会话生命周期本来就该和页面绑定——onUnload 释放最自然。
+const LLM_TIMEOUT_MS = 6000;
+// 冠军队伍的数：连续 8 次失败才认为 LLM 不可用。
+// 设太小会被一次网络抖动打成永久降级，设太大则会一直等一个已经死掉的服务。
+const LLM_MAX_FAILURES = 8;
+
+let llmSession = null;
+let llmFailures = 0;
+
+const LLM_SYSTEM = `你是中医养生助手的「前端理解层」。用户戴着眼镜随口说话，说法千变万化，你要把它翻译成我们能查的标准表述。
+
+【你只做翻译】
+- 不诊断（不说「你是阴虚」）
+- 不给建议（不说「你该吃百合」）
+- 不判断虚实寒热（那是医生的事）
+- 只把「用户怎么说」换成「中医书上怎么写」
+
+【输出 JSON，两个字段】
+{"standard": "标准表述", "concern": "涉及的身体部位"}
+
+standard 必须是中医基础理论里的通用表述，例如：
+  腰膝酸软 / 神疲乏力 / 两目干涩 / 口干咽燥 / 脘腹胀满 / 大便溏薄
+  手足不温 / 心悸失眠 / 头晕目眩 / 食欲不振 / 面色萎黄 / 咳嗽痰多
+concern 只写部位或症状名，例如：腰 / 眼 / 胃 / 睡眠 / 全身
+
+【几条硬规则】
+1. 用户问的是某味药、某个吃法、某个配伍（例如「黄芪有什么功效」「怎么泡水喝」），
+   standard 原样返回，一个字都不要改——那是查库用的关键词，改了查不到。
+2. 完全听不懂、或者只是打招呼，两个字段都填空字符串。
+3. 不要在 standard 里写剂量、方名、诊断结论。
+4. 只输出 JSON，不要解释，不要 markdown 代码块。
+
+【例子】
+「我这腰啊，一到阴天就又酸又沉」 → {"standard":"腰膝酸软","concern":"腰"}
+「老是犯困」 → {"standard":"神疲乏力","concern":"全身"}
+「对着电脑一天眼睛又干又涩」 → {"standard":"两目干涩","concern":"眼"}
+「吃点东西就堵在胃里下不去」 → {"standard":"脘腹胀满","concern":"胃"}
+「手脚老是冰凉」 → {"standard":"手足不温","concern":"四肢"}
+「晚上翻来覆去睡不着」 → {"standard":"心悸失眠","concern":"睡眠"}
+「黄芪有什么功效」 → {"standard":"黄芪有什么功效","concern":""}
+「你好」 → {"standard":"","concern":""}`;
+
+/**
+ * 翻译。返回 { standard, concern } 或 null。
+ * 返回 null 的意思是「这一层没帮上忙」，调用方继续用原来的结果——
+ * 不是错误，是设计内的降级。
+ */
+async function llmTranslate(text, budget) {
+  const q = String(text || '').trim();
+  if (!q) return null;
+  if (llmFailures >= LLM_MAX_FAILURES) return null;
+  const wait = Number(budget) > 0 ? Number(budget) : LLM_TIMEOUT_MS;
+
+  let timer = null;
+  try {
+    const mod = await import('language-model');
+    const LanguageModel = mod.LanguageModel || mod.default;
+    if (!LanguageModel) return null;
+
+    // availability 是异步的，官方写法是 await。当成同步用会永远拿到一个 Promise
+    //（truthy），于是「不可用」这种情况根本判断不出来。
+    if (typeof LanguageModel.availability === 'function') {
+      const status = await LanguageModel.availability();
+      if (status !== 'available') {
+        console.info('[qihuang] 感知层不可用：', status);
+        return null;
+      }
+    }
+
+    if (!llmSession) {
+      llmSession = await LanguageModel.create({
+        initialPrompts: [{ role: 'system', content: LLM_SYSTEM }],
+      });
+    }
+
+    // 超时就当没这回事。眼镜上等十秒等于卡死，宁可答得笨。
+    const answer = await Promise.race([
+      llmSession.prompt(q),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('llm timeout')), wait);
+      }),
+    ]);
+
+    const parsed = pickLlmJson(answer);
+    if (!parsed) return null;
+    const standard = String(parsed.standard || '').trim();
+    // 翻译结果和原句一样，说明模型没帮上忙
+    if (!standard || standard === q) return null;
+
+    llmFailures = 0;
+    return { standard, concern: String(parsed.concern || '').trim() };
+  } catch (err) {
+    llmFailures += 1;
+    console.warn('[qihuang] 感知层失败，本次降级：', err && err.message);
+    return null;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+function llmRelease() {
+  try {
+    if (llmSession && llmSession.destroy) llmSession.destroy();
+  } catch (err) {
+    console.warn('[qihuang] 释放感知层会话失败：', err && err.message);
+  }
+  llmSession = null;
+}
+
+/** 模型很爱在 JSON 外面裹一层 markdown 代码块，直接 parse 会炸。 */
+function pickLlmJson(raw) {
+  const m = String(raw || '').match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try {
+    return JSON.parse(m[0]);
+  } catch (err) {
+    return null;
+  }
+}
+
+// ─────────────── 感知层结束 ───────────────
+
 const LISTEN_TIMEOUT_MS = 12000;
 
 export default {
@@ -148,6 +287,8 @@ export default {
 
   onUnload() {
     this.stopListen();
+    // 不释放会让 LLM 会话一直挂着
+    try { llmRelease(); } catch (err) { /* 释放失败不影响退出 */ }
     if (this._rec) {
       this._rec.onresult = null;
       this._rec.onerror = null;
@@ -283,12 +424,66 @@ export default {
     if (final) this.submit(text);
   },
 
+  // 外面这一层保持同步：调用方有五六处（语音、按键、拍照回来），
+  // 全改成 await 只会多出几个忘记 await 的机会。异步在里面自己跑。
   submit(text) {
     this._pending = '';
     this._listening = false;
     this.clearWatchdog();
     if (!this._view) return;
-    this.apply(this._view.handle(text));
+    this._resolve(text);
+  },
+
+  /**
+   * 先跑本地规则，没听懂才请 LLM 翻译一次，再用翻译结果重跑。
+   *
+   * 为什么不每次都走 LLM：常见说法占大头，为它们多付 1-3 秒不值得。
+   * 为什么只重跑一次：再听不懂就是真听不懂，反复翻译只会更慢更乱。
+   * 为什么失败不影响主流程：translate 返回 null 就是「没帮上忙」，
+   * 直接把本地规则的原始结果交给用户——宁可答得笨，不能没有响应。
+   */
+  async _resolve(text) {
+    let out = this._view.handle(text);
+
+    if (this._notUnderstood(out)) {
+      let t = null;
+      try {
+        t = await llmTranslate(text);
+      } catch (err) {
+        console.warn('[qihuang] 感知层异常，用原结果：', err && err.message);
+      }
+      if (t && t.standard) {
+        const retry = this._view.handle(t.standard);
+        if (!this._notUnderstood(retry)) {
+          out = retry;
+          // 把「听成了什么」放屏幕上，不念出来。
+          // 用户看到「听成：腰膝酸软」就知道它是怎么理解的，答错了能自己纠正；
+          // 念出来会占掉两秒，而答对的时候这句话是废的。
+          out = { ...out, patch: { ...(out.patch || {}), heard: t.standard } };
+          console.info('[qihuang] 感知层翻译：', text, '→', t.standard);
+        }
+      }
+    }
+
+    this.apply(out);
+  },
+
+  /**
+   * 判断「这句没听懂」还是「听懂了但库里没有」。
+   *
+   * 这两种要分开：前者值得请 LLM 再翻译一次，后者翻译一百次也没用
+   * （库里确实没这味药，那是个准确答案）。
+   *
+   * 判据：整句被当药名时会说「本草库还没收录XXXXX」，
+   * 而 XXXXX 很长就说明那是整句，不是一味药——药名两到四个字。
+   */
+  _notUnderstood(out) {
+    const p = (out && out.patch) || {};
+    const t = `${p.title || ''} ${p.answer || ''}`;
+    if (/没听出|没听懂|这句没听|不知道你在说/.test(t)) return true;
+    const m = t.match(/还没收录([^，。；]{1,24})/);
+    if (m && m[1].length >= 4) return true;
+    return false;
   },
 
   onSpeechError(event) {

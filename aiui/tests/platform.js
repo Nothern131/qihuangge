@@ -283,7 +283,12 @@ check('页面处理了识别失败（无静默失败）', () => {
 });
 check('识别失败的提示说人话、给下一步（不上屏技术错误码）', () => {
   const src = read('pages/index/index.ink');
-  const seg = src.slice(src.indexOf('onSpeechError'), src.indexOf('apply(out)'));
+  // 切片终点不能用 'apply(out)'：submit 里也有 this.apply(out)，
+  // 而 submit 定义在 onSpeechError 之前——indexOf 会取到前面那个，
+  // slice 得到反的就成了空串。改成从 onSpeechError 之后找 apply 的定义。
+  const from = src.indexOf('onSpeechError');
+  const to = src.indexOf('\n  apply(', from);
+  const seg = src.slice(from, to > from ? to : from + 2000);
   // 技术码（network 等）只能出现在 MESSAGES 的键里，绝不能拼进提示文案
   if (/\+ code|'（识别失败：'\s*\+/.test(seg)) throw new Error('还在把原始错误码拼给用户看');
   if (!/再按一次镜腿键|系统设置/.test(seg)) throw new Error('提示没有告诉用户下一步做什么');
