@@ -44,6 +44,18 @@ export const SCREEN_BUDGET = 160;
 // 前者是请，后者是催。身份也要念出来，不然用户不知道自己在跟谁说话。
 export const GUIDE = '你好，我是小安，你的私人养生助手。哪儿不舒服，或者想查药，随时跟我说。';
 
+/**
+ * 按用户起的名字生成开场白。
+ *
+ * GUIDE 常量保留原样：它是默认名那一版，测试和文档都在引用。
+ * 真正上屏走这个函数——用户把名字改成「阿黄」之后，
+ * 开场白还念「我是小安」，等于自我介绍和称呼对不上。
+ */
+export function guideFor(name) {
+  const n = String(name || '').trim() || '小安';
+  return `你好，我是${n}，你的私人养生助手。哪儿不舒服，或者想查药，随时跟我说。`;
+}
+
 // 首屏第一行是**身份**不是功能说明。
 // 原来写「说药名，查禁忌」——那是一句使用说明，读起来像个查询工具；
 // 而策划案定的是「私人养生助手」，第一眼就该让他知道这不是又一个查药 APP。
@@ -131,13 +143,24 @@ export function createQihuangView({ engines, store = null } = {}) {
         // 拒绝理由放宽到 72：默认 32 字会把「用量我不给建议」后面的
         // 为什么不给全部裁掉，用户只听到一句生硬的「不给」，屏幕上的
         // 理由他是低着头看眼镜的，不会去读。拒绝要说得让人服气。
+        // 改名和问名也走 stop，但它们是「做完了一件事」，不是「做不了」。
+        // 原来这两种会被标成「这个不做 ｜ 本版只查资料，不给用量也不开方」，
+        // 下面紧接着「好，以后我就叫阿黄」——标题和正文自相矛盾。
+        const kind = a.stopKind || (refused ? 'refuse' : 'miss');
+        const LABEL = {
+          rename: { title: '改好了', detail: '想再换就说「以后你叫某某」', status: '记住了', tone: 'ok' },
+          whoami: { title: '我是谁', detail: '想换个名字就说「以后你叫某某」', status: '在', tone: 'idle' },
+          refuse: { title: '这个不做', detail: '本版只查资料，不给用量也不开方', status: '做不了', tone: 'bad' },
+          miss: { title: '没听出', detail: '换个说法再试', status: '没听懂', tone: 'idle' },
+        };
+        const lab = LABEL[kind] || LABEL.miss;
         return emit(
           {
-            title: refused ? '这个不做' : '没听出',
-            detail: refused ? '本版只查资料，不给用量也不开方' : '换个说法再试',
-            status: refused ? '做不了' : '没听懂',
+            title: lab.title,
+            detail: lab.detail,
+            status: lab.status,
             answer: a.speech,
-            tone: refused ? 'bad' : 'idle',
+            tone: lab.tone,
           },
           a.speech,
           '',
@@ -510,5 +533,23 @@ export function createQihuangView({ engines, store = null } = {}) {
   return {
     get state() { return state; },
     handle,
+
+    /**
+     * 当前名字。页面在 onLoad 里拿它去改标题、生成开场白。
+     * 没接存储就是默认名——不能因为读不到就显示空白。
+     */
+    name() {
+      try {
+        return store && store.assistantName ? store.assistantName() : '小安';
+      } catch (err) {
+        console.warn('[qihuang] 读名字失败：', err && err.message);
+        return '小安';
+      }
+    },
+
+    /** 按当前名字生成开场白。 */
+    greeting() {
+      return guideFor(this.name());
+    },
   };
 }

@@ -139,6 +139,17 @@ const ELLIPSIS_RE = /(上次|刚才)(那个|问的|说的|那味|那味药)/;
 // 给一个具体的出口（说说哪儿不舒服、什么时候开始的）比一句拒绝有用。
 const DIAGNOSE_ASK_RE = /(我|这|这个|我这样|我这).{0,5}(是不是|算不算|会不会是|有没有可能|是不是得了).{0,8}(虚|病|炎|寒|热|湿|火|亏|不足|瘀|堵)/;
 
+// ── 改名 / 问名 ──
+//
+// 为什么必须放在药名识别之前：「以后你叫阿黄」里的「阿黄」会被切词器
+// 当成一味没收录的药，于是答「本草库还没收录阿黄」——
+// 用户刚给它起的名字，它转头说不认识，这一句就把人劝退了。
+//
+// 一定要有「你/您」：「我叫张三」「知母叫什么」「这个叫什么」都不能触发。
+// 名字只收 2-4 个汉字，长度这条和唤醒词一个道理，太短会撞、太长不像称呼。
+const RENAME_RE = /(?:以后|从今以后|今后)?(?:你|您)(?:以后)?(?:就)?(?:改名)?叫(?!什么|啥|什么名字)([\u4e00-\u9fa5]{2,4})(?:吧|好不好|行吗|可以吗|好了|就行)?[。！？!?\s]*$/;
+const ASK_NAME_RE = /(?:你|您)(?:叫|的名字是|名字叫)(?:什么|啥)(?:名字)?|(?:你|您)叫什么/;
+
 const FOLLOWUP_RE = /(怎么泡|怎么喝|怎么吃|怎么用|怎么弄|咋吃|咋用|放多少|多少克|几克|能天天|天天喝|能天天喝|什么时候喝|什么时候吃|煮汤|能泡|泡几次|多久喝|连着喝|长期喝|一天喝|一天吃|还能怎么|治什么|治啥|主治|管什么|有什么用|有啥用|干什么用|干嘛用|起什么作用|主要治|治哪|对什么好|有什么好处|哪些人不能|什么人不能|谁不能吃|谁不适合|忌什么|什么情况不能|能不能常吃)/;
 const MEMO_STRIP = /(帮我)?(记一下|记住|记下|我一直在吃|我平时吃|我在吃|我在用|我常吃|吃着|在吃|在用|还有)/g;
 
@@ -1201,6 +1212,36 @@ export function createQihuangAgent(pack, { store = null } = {}) {
         return { intent: 'memo', conf: 1 };
       }
 
+      // 改名 / 问名，放在药名处理之前（理由见 RENAME_RE 上面那段注释）。
+      const renamed = RENAME_RE.exec(ctx.text);
+      if (renamed) {
+        const wanted = renamed[1];
+        if (!store) {
+          return { stop: true, reason: 'rename', speech: '这台设备上没法保存记录，改不了名字' };
+        }
+        const done = store.setAssistantName(wanted);
+        return {
+          stop: true,
+          // 用 reason 传标记：core 的 stop 分支只保留 speech，
+          // 但它是共用原件（麻将也在用）的副本，不能单方面加字段——
+          // parity 测试当场就拦住了。reason 是 core 本来就保留的通道。
+          reason: 'rename',
+          // 存不上要老实说，不能装作改了——否则用户下次喊这个名字没反应，
+          // 会以为是唤醒出了故障。
+          speech: done
+            ? `好，以后我就叫${wanted}。想再换，就说「以后你叫某某」`
+            : `${wanted}这两个字我记不住，换个两到四个汉字的说法`,
+        };
+      }
+      if (ASK_NAME_RE.test(ctx.text)) {
+        const now = store ? store.assistantName() : '小安';
+        return {
+          stop: true,
+          reason: 'whoami',
+          speech: `我叫${now}。想换个名字，就说「以后你叫某某」`,
+        };
+      }
+
       // 「我是不是肾虚」这类先拦下来。
       //
       // 位置很关键：必须在药名处理之前。因为「肾虚」会被切词器当成一味药，
@@ -1493,6 +1534,9 @@ export function askQihuang(agent, text, carry) {
   const ctx = agent.run(text, carry);
   return {
     verdict: ctx.verdict,
+    // stop 的类别：core 只保留 speech 和 reason，所以从 reason 取。
+    // 没有 reason 的 stop（比如「调理不做」）是拒绝，由 view 走默认档。
+    stopKind: ctx.verdict === 'stop' ? (ctx.reason || null) : null,
     intent: ctx.intent,
     conf: Number(ctx.conf.toFixed(2)),
     speech: ctx.speech,
