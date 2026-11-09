@@ -56,38 +56,43 @@ const LLM_MAX_FAILURES = 8;
 let llmSession = null;
 let llmFailures = 0;
 
-const LLM_SYSTEM = `你是中医养生助手的「前端理解层」。用户戴着眼镜随口说话，说法千变万化，你要把它翻译成我们能查的标准表述。
+const LLM_SYSTEM = `你是中医养生助手的「前端理解层」。用户戴着眼镜随口说话，你要判断：这句话在说哪一类身体状况。
 
-【你只做翻译】
-- 不诊断（不说「你是阴虚」）
-- 不给建议（不说「你该吃百合」）
-- 不判断虚实寒热（那是医生的事）
-- 只把「用户怎么说」换成「中医书上怎么写」
+【只能从下面十个里选一个，不许自己造词】
+阴虚 —— 口干咽燥、上火、手心热、盗汗、眼睛干涩、睡醒嘴苦
+脾胃虚寒 —— 胃怕凉、吃凉的不舒服、肚子怕凉、受凉就拉
+气虚 —— 乏力、容易累、没精神、气短、懒得说话
+阳虚 —— 怕冷、手脚冰凉、夜尿多、腰膝发凉
+湿盛 —— 身体沉、大便不成形、舌苔厚腻、痰多、脸油腻
+便秘 —— 排便困难、大便干结、好几天一次
+失眠 —— 睡不着、睡不好、多梦、易醒、入睡难
+食积腹胀 —— 胃胀、腹胀、不消化、吃一点就撑
+血虚 —— 面色差、掉头发、头晕眼花、唇色淡、指甲脆
+none —— 听不懂，或者说的是具体药名、怎么吃、配伍、无关话题
 
 【输出 JSON，两个字段】
-{"standard": "标准表述", "concern": "涉及的身体部位"}
+{"state": "上面十个词之一", "why": "一句话依据，不超过20字"}
 
-standard 必须是中医基础理论里的通用表述，例如：
-  腰膝酸软 / 神疲乏力 / 两目干涩 / 口干咽燥 / 脘腹胀满 / 大便溏薄
-  手足不温 / 心悸失眠 / 头晕目眩 / 食欲不振 / 面色萎黄 / 咳嗽痰多
-concern 只写部位或症状名，例如：腰 / 眼 / 胃 / 睡眠 / 全身
-
-【几条硬规则】
-1. 用户问的是某味药、某个吃法、某个配伍（例如「黄芪有什么功效」「怎么泡水喝」），
-   standard 原样返回，一个字都不要改——那是查库用的关键词，改了查不到。
-2. 完全听不懂、或者只是打招呼，两个字段都填空字符串。
-3. 不要在 standard 里写剂量、方名、诊断结论。
-4. 只输出 JSON，不要解释，不要 markdown 代码块。
+【硬规则】
+1. 你在分类，不在诊断。绝对不要输出「你是阴虚」这种判断句，只输出标签。
+2. 拿不准就输出 none。错分类比不分类更糟——把「脸上长痘」说成阴虚，
+   用户会当养生方案照着吃。
+3. 用户问的是某味药、某个吃法、某个配伍（黄芪有什么功效、怎么泡水、
+   甘草和海藻能不能一起用），一律输出 none，不要抢药名那条路。
+4. 一句话里既有药材又有身体状况（「我气虚，吃点黄芪行吗」），输出 none，
+   让下游自己处理——这种句子需要的是查药，不是分类。
 
 【例子】
-「我这腰啊，一到阴天就又酸又沉」 → {"standard":"腰膝酸软","concern":"腰"}
-「老是犯困」 → {"standard":"神疲乏力","concern":"全身"}
-「对着电脑一天眼睛又干又涩」 → {"standard":"两目干涩","concern":"眼"}
-「吃点东西就堵在胃里下不去」 → {"standard":"脘腹胀满","concern":"胃"}
-「手脚老是冰凉」 → {"standard":"手足不温","concern":"四肢"}
-「晚上翻来覆去睡不着」 → {"standard":"心悸失眠","concern":"睡眠"}
-「黄芪有什么功效」 → {"standard":"黄芪有什么功效","concern":""}
-「你好」 → {"standard":"","concern":""}`;
+「我最近老是掉头发」 → {"state":"血虚","why":"掉头发，血虚常见"}
+「脸上老长痘」 → {"state":"湿盛","why":"长痘多与湿热相关"}
+「半夜总要起来上厕所」 → {"state":"阳虚","why":"夜尿多，阳虚常见"}
+「吃完饭就想躺着，特别累」 → {"state":"气虚","why":"饭后困倦乏力"}
+「睡醒嘴里发苦」 → {"state":"阴虚","why":"口苦咽干"}
+「手脚总是冰凉」 → {"state":"阳虚","why":"四肢不温"}
+「大便总是不成形」 → {"state":"湿盛","why":"便溏"}
+「决明子有什么功效」 → {"state":"none","why":"问的是药"}
+「怎么泡水喝」 → {"state":"none","why":"问的是吃法"}
+「你好」 → {"state":"none","why":"寒暄"}`;
 
 /**
  * 翻译。返回 { standard, concern } 或 null。
@@ -132,12 +137,15 @@ async function llmTranslate(text, budget) {
 
     const parsed = pickLlmJson(answer);
     if (!parsed) return null;
-    const standard = String(parsed.standard || '').trim();
-    // 翻译结果和原句一样，说明模型没帮上忙
-    if (!standard || standard === q) return null;
+    const state = String(parsed.state || '').trim();
+    // none 就是「这句不该我管」——药名、吃法、寒暄都走这条路，不是错误
+    if (!state || state === 'none') return null;
+    // 模型偶尔会把整句复述回来，那不是分类
+    if (state === q) return null;
 
     llmFailures = 0;
-    return { standard, concern: String(parsed.concern || '').trim() };
+    console.info('[qihuang] 感知层归类：', q, '→', state, '（' + String(parsed.why || '') + '）');
+    return { state, why: String(parsed.why || '').trim() };
   } catch (err) {
     llmFailures += 1;
     console.warn('[qihuang] 感知层失败，本次降级：', err && err.message);
@@ -452,15 +460,14 @@ export default {
       } catch (err) {
         console.warn('[qihuang] 感知层异常，用原结果：', err && err.message);
       }
-      if (t && t.standard) {
-        const retry = this._view.handle(t.standard);
+      if (t && t.state) {
+        const retry = this._view.handle(t.state);
         if (!this._notUnderstood(retry)) {
           out = retry;
-          // 把「听成了什么」放屏幕上，不念出来。
-          // 用户看到「听成：腰膝酸软」就知道它是怎么理解的，答错了能自己纠正；
-          // 念出来会占掉两秒，而答对的时候这句话是废的。
-          out = { ...out, patch: { ...(out.patch || {}), heard: t.standard } };
-          console.info('[qihuang] 感知层翻译：', text, '→', t.standard);
+          // 把「归到哪一类」放屏幕上，不念出来。
+          // 这是给用户一个纠正的机会：他说「掉头发」，屏幕上写「听成：血虚」，
+          // 归错了能自己发现；归对了这行也只是一行小字。
+          out = { ...out, patch: { ...(out.patch || {}), heard: t.state } };
         }
       }
     }
@@ -481,8 +488,19 @@ export default {
     const p = (out && out.patch) || {};
     const t = `${p.title || ''} ${p.answer || ''}`;
     if (/没听出|没听懂|这句没听|不知道你在说/.test(t)) return true;
-    const m = t.match(/还没收录([^，。；]{1,24})/);
-    if (m && m[1].length >= 4) return true;
+
+    // 「本草库还没收录 X」也算没听懂，**不看 X 有几个字**。
+    //
+    // 原来要求 X ≥ 4 字（判据是「药名两到四个字，超过就是整句」）。
+    // 真机实测把这个假设打掉了：用户说「我最近老是掉头发」，
+    // 感知层归成「脱发」——两个字，又是个词，于是被判成「这是一味没收录的药」，
+    // 直接回「还没收录脱发」，再没往下走。
+    // 但脱发根本不是我库里的药，它是症状。两个字不等于药名。
+    //
+    // 现在只要出现「没收录」就交给感知层归一次类。最坏结果是多等一两秒，
+    // 比答「本草库还没收录脱发」好得多。
+    if (/还没收录|没收录|查不到/.test(t)) return true;
+
     return false;
   },
 
@@ -524,6 +542,21 @@ export default {
   apply(out) {
     if (!out) return;
     const patch = out.patch || {};
+
+    // 感知层归了类，就把归类结果显示出来。
+    //
+    // 为什么不占正文：正文是答案本身，480×400 的屏幕上每一行都贵。
+    // 放 status 那一行正好——它平时显示「在听…」「按住说话」，
+    // 现在改成「听成：血虚」，既告诉用户系统怎么理解的，又不挤掉答案。
+    //
+    // 为什么必须显示：归类可能是错的（用户说掉头发，归成血虚）。
+    // 不显示的话，用户只会觉得「它答的不对」，但不知道错在哪一步；
+    // 显示了就能自己判断：是听不懂，还是听懂了但归错了类。
+    if (patch.heard) {
+      patch.status = `听成：${patch.heard}`;
+      delete patch.heard;
+    }
+
     if (Object.keys(patch).length > 0) this.setData(patch);
     // tail 由视图模型给，页面不再复制一份免责声明
     // 用 immediate 抢占，不排队。
