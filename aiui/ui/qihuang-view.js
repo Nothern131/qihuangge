@@ -93,6 +93,17 @@ export function createQihuangView({ engines, store = null } = {}) {
   let lastQuery = '';
   let lastSource = '';
 
+  /**
+   * 上一轮认到的状况（血虚 / 阴虚 / 湿盛…）。
+   *
+   * 为什么要有这个：用户真机实测的对话是
+   *   ①「我最近老是掉头发」→「血虚的话…」
+   *   ②「我该怎么调理，能不能推荐药膳」→「没查到」
+   * 第二句是没有主语的追问，主语就是第一句那个状况。
+   * 不记住它，用户就得每句话都从头说一遍——那是查字典，不是对话。
+   */
+  let lastStates = [];
+
   // source 就是播报末句的出处。它只从 pack 的返回值里来，页面不发明一句。
   // max 逐条给：查禁忌要说结论加原因，32 字装不下；
   // 而「没听清」这种一句话回答用 72 是浪费。长度跟着内容走，不跟应用走。
@@ -120,7 +131,41 @@ export function createQihuangView({ engines, store = null } = {}) {
     // 全被当成本草条目去查，四个真实问法在真机上全部查不到。
     // 分流规则放在适配层还多一个好处：它能被 tests/smoke.js 直接测到。
     try {
-      const a = askQihuang(agent, t);
+      let a = askQihuang(agent, t);
+
+      // 追问「怎么调理 / 吃什么药膳」被拒答时，用上一轮的状况重跑一次。
+      //
+      // 用户问过「掉头发」，系统答了「血虚」，接着问「我该怎么调理」——
+      // 这句话的主语是血虚，不是「调理」这个词。
+      // 原来会落到 WELLNESS_RE 回「调理和诊断这类我不做」，
+      // 用户听到的是「它没有这个功能」。
+      //
+      // 药膳方子我们确实不给（涉及配伍和量），但「血虚适合什么食材」
+      // 是药典写着的，可以给——这两件事不能混成一句「不做」。
+      if (a.verdict !== 'answer' && lastStates.length > 0
+        && /(调理|药膳|食疗|怎么养|怎么改善|怎么补|吃什么)/.test(t)) {
+        const retry = askQihuang(agent, lastStates[0]);
+        // 只有重跑真的出了内容才换，否则保留原始拒答（说话算话）
+        if (retry.verdict === 'answer' || (retry.result && retry.result.intent === 'advice')) {
+          a = retry;
+          console.info('[qihuang] 追问接力：', t, '→ 用上文「' + lastStates[0] + '」重答');
+        }
+      }
+
+      // 记住这一轮认到的状况，供下一句追问接力用。
+      // doAdvice 的返回值里本来就有 states（血虚/阴虚…），只是以前没人接住它。
+      // 拒答档也记——「血虚的话…不过得先知道你在吃什么」这种回答里同样带状态，
+      // 用户接着答「我都没在吃」时还要用它。
+      // 必须用 stateNames（中文「血虚」），不能用 states（英文 key「blood-deficiency」）。
+      // 后者是内部标识，喂回 handle 会被当成一味没收录的药，追问立刻断掉——
+      // 这个坑是我第一版写错的地方：拿到 key 就直接重跑，结果永远是「没查到」。
+      if (a.result && Array.isArray(a.result.stateNames) && a.result.stateNames.length > 0) {
+        lastStates = a.result.stateNames;
+      } else if (a.verdict === 'answer') {
+        // 这轮答的是别的东西（查药、配伍），上一轮的状况就过期了。
+        // 不清掉的话，用户查完决明子再说「怎么调理」，会被接到很久以前的状况上。
+        lastStates = [];
+      }
 
       // 拒绝档和引导档没有查询结果可渲染，直接显示它给的话。
       // 这两档必须和「查到了」在视觉上分开：用户需要一眼看出「系统没答」，
