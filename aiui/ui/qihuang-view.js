@@ -108,6 +108,23 @@ export function createQihuangView({ engines, store = null } = {}) {
   // max 逐条给：查禁忌要说结论加原因，32 字装不下；
   // 而「没听清」这种一句话回答用 72 是浪费。长度跟着内容走，不跟应用走。
   function emit(patch, speech = null, source = '', max = SAY_MAX, extra = null) {
+    // 兜底：答案是「本草库还没收录 X」时，补一句出路。
+    //
+    // 这种情况多半不是真的在问一味冷门药，而是整句被切词器当成了药名：
+    // 「吃完饭就想躺着，特别困」→ 拿「特别困」去查，回「还没收录特别困」。
+    // 用户说的是身上难受，听到「没收录」只会觉得这东西不认识人话。
+    //
+    // 放在 emit 而不是页面里，是因为所有返回路径都经过这里，本地也能测到。
+    if (patch && typeof patch.answer === 'string'
+      // 注意「还没有收录」中间有个「有」，/没收录/ 匹配不到它——
+      // 第一版就是这么漏的：库里原话是「本草库里还没有收录X」。
+      && /没.{0,2}收录/.test(patch.answer)
+      && !/如果你说的是身上哪儿不舒服/.test(patch.answer)) {
+      patch.answer += '\n\n如果你说的是身上哪儿不舒服，直接说给我听，我按药典看看适合什么';
+      patch.status = '换个说法';
+      patch.tone = 'warn';
+    }
+
     Object.assign(state, patch);
     const out = { patch, say: speech, sayMax: max || SAY_MAX, tail: source };
     // extra 是给页面的指令，不是给用户的话。
@@ -178,13 +195,20 @@ export function createQihuangView({ engines, store = null } = {}) {
         // 拒绝理由放宽到 72：默认 32 字会把「用量我不给建议」后面的
         // 为什么不给全部裁掉，用户只听到一句生硬的「不给」，屏幕上的
         // 理由他是低着头看眼镜的，不会去读。拒绝要说得让人服气。
+        // 「缺信息」和「不干这个」要分开显示。
+        //
+        // 用户真机原话：「不能说什么不做这个」——他问「我该怎么调理」，
+        // 系统回「这个不做 ｜ 本版只查资料」，等于把「我没听清你在说哪儿」
+        // 说成了「我不想干」。前者该请他说清楚，后者才是拒绝。
+        const needInfo = a.stopKind === 'need-symptom';
         return emit(
           {
-            title: refused ? '这个不做' : '没听出',
-            detail: refused ? '本版只查资料，不给用量也不开方' : '换个说法再试',
-            status: refused ? '做不了' : '没听懂',
+            title: needInfo ? '说哪儿不舒服' : (refused ? '这个不做' : '没听出'),
+            detail: needInfo ? '说说哪儿难受，我按药典看适合什么'
+              : (refused ? '本版只查资料，不给用量也不开方' : '换个说法再试'),
+            status: needInfo ? '等你说' : (refused ? '做不了' : '没听懂'),
             answer: a.speech,
-            tone: refused ? 'bad' : 'idle',
+            tone: needInfo ? 'warn' : (refused ? 'bad' : 'idle'),
           },
           a.speech,
           '',
@@ -557,6 +581,18 @@ export function createQihuangView({ engines, store = null } = {}) {
   return {
     get state() { return state; },
     handle,
+
+    /**
+     * 让外部（页面的感知层）告诉 view「这轮是什么状况」。
+     *
+     * 为什么需要这个口子：感知层挑完药是直接拼答案的，没走 handle，
+     * 所以 lastStates 记不上。用户接着说「我该怎么调理」时，
+     * 接力条件不成立，又掉回「不做」——最后一环就是这么断的。
+     */
+    rememberState(name) {
+      const n = String(name || '').trim();
+      if (n) lastStates = [n];
+    },
 
 
   };

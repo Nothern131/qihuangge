@@ -97,8 +97,15 @@ const LLM_SYSTEM_BASE = `你是中医养生助手的「检索层」。用户戴�
 const LLM_SYSTEM_RULES = `
 
 【输出 JSON】
-{"picks": ["药名1", "药名2"], "why": "依据，不超过20字"}
-挑不出就 {"picks": [], "why": "..."}
+{"picks": ["药名1", "药名2"], "state": "共同主治词", "why": "依据，不超过20字"}
+挑不出就 {"picks": [], "state": "", "why": "..."}
+
+【state 是干什么的】
+从你挑的那几味药的主治里，摘一个它们共有的词填进 state。
+比如挑了当归和熟地黄，它们主治里都有「血虚萎黄」，state 就填「血虚萎黄」。
+这个字段是给**下一轮追问**用的：用户接着说「我该怎么调理」时，
+系统要靠它接上刚才那个状况，不然就得让用户从头再说一遍。
+所以 state 必须是从主治原文里摘的词，不要自己另造一个说法。
 
 【硬规则】
 1. 只能从上面名单里挑，一个字都不能改，不许写名单外的药，不许自己配方子。
@@ -110,13 +117,13 @@ const LLM_SYSTEM_RULES = `
 6. 一句话里既有药材又有身体状况（「我气虚，吃点黄芪行吗」），也给空数组。
 
 【例子】
-「我最近老是掉头发」 → {"picks":["当归","熟地黄"],"why":"发为血之余，二者主治血虚萎黄"}
-「脸上老长痘」 → {"picks":["黄芩","连翘"],"why":"长痘多属湿热，二者清热燥湿解毒"}
-「半夜总要起来上厕所」 → {"picks":["益智仁","覆盆子"],"why":"夜尿多属肾气不固"}
-「吃完饭就想躺着，特别累」 → {"picks":["黄芪","党参"],"why":"饭后困倦属脾气虚"}
-「睡醒嘴里发苦」 → {"picks":["龙胆","栀子"],"why":"口苦属肝胆湿热"}
-「决明子有什么功效」 → {"picks":[],"why":"问的是具体药"}
-「怎么泡水喝」 → {"picks":[],"why":"问的是吃法"}`;
+「我最近老是掉头发」 → {"picks":["当归","熟地黄"],"state":"血虚萎黄","why":"发为血之余"}
+「脸上老长痘」 → {"picks":["黄芩","连翘"],"state":"湿热","why":"长痘多属湿热"}
+「半夜总要起来上厕所」 → {"picks":["益智仁","覆盆子"],"state":"肾气不固","why":"夜尿多"}
+「吃完饭就想躺着，特别累」 → {"picks":["黄芪","党参"],"state":"脾气虚","why":"饭后困倦"}
+「睡醒嘴里发苦」 → {"picks":["龙胆","栀子"],"state":"肝胆湿热","why":"口苦"}
+「决明子有什么功效」 → {"picks":[],"state":"","why":"问的是具体药"}
+「怎么泡水喝」 → {"picks":[],"state":"","why":"问的是吃法"}`;
 
 const LLM_SYSTEM = LLM_SYSTEM_BASE;
 
@@ -183,8 +190,9 @@ async function llmTranslate(text, budget) {
     if (!picks.length) return null;
 
     llmFailures = 0;
-    console.info('[qihuang] 感知层挑药：', q, '→', picks.join('、'), '（' + String(parsed.why || '') + '）');
-    return { picks: picks.slice(0, 3), why: String(parsed.why || '').trim() };
+    const state = String(parsed.state || '').trim();
+    console.info('[qihuang] 感知层挑药：', q, '→', picks.join('、'), '｜state=' + state);
+    return { picks: picks.slice(0, 3), state, why: String(parsed.why || '').trim() };
   } catch (err) {
     llmFailures += 1;
     console.warn('[qihuang] 感知层失败，本次降级：', err && err.message);
@@ -512,6 +520,14 @@ export default {
           return n + '（主治：' + z.slice(0, 24) + '）';
         });
         const text = list.join('；') + '。想细看哪味，说名字就行';
+        // 把「这轮是什么状况」交给 view 记住。
+        //
+        // 这一步之前缺了，导致最后一环断掉：
+        // 规则层听完「掉头发」给的是 miss（没有 result），
+        // LLM 挑完药又是直接拼答案（没走 handle），
+        // 于是 view 里的 lastStates 一直是空的 ——
+        // 用户接着说「我该怎么调理」，接力条件不成立，又掉回「不做」。
+        if (t.state) this._view.rememberState(t.state);
         out = {
           patch: {
             title: '主治对得上的',
