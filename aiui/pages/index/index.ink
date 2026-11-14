@@ -522,12 +522,33 @@ export default {
         const text = list.join('；') + '。想细看哪味，说名字就行';
         // 把「这轮是什么状况」交给 view 记住。
         //
-        // 这一步之前缺了，导致最后一环断掉：
-        // 规则层听完「掉头发」给的是 miss（没有 result），
-        // LLM 挑完药又是直接拼答案（没走 handle），
-        // 于是 view 里的 lastStates 一直是空的 ——
-        // 用户接着说「我该怎么调理」，接力条件不成立，又掉回「不做」。
-        if (t.state) this._view.rememberState(t.state);
+        // ⚠️ 第一版这里写的是 `if (t.state)`，直接信模型给的 state 字段。
+        // 真机实测证明靠不住：用户说完「掉头发」，下一句「我该怎么调理」
+        // 照样回「说哪儿不舒服」——说明 t.state 是空的，lastStates 没写进去。
+        // 不能把链路的生死押在模型肯不肯多吐一个字段上。
+        //
+        // 现在改成**从挑中的药反推**：当归的主治里就写着「血虚萎黄」，
+        // 这是药典数据，不依赖模型格式，100% 有值。
+        const fromData = (() => {
+          const first = t.picks[0];
+          const z = String((llmDB[first] && llmDB[first].zhuji) || '');
+          // 主治是顿号分隔的一串证候，取第一个当本轮状况。
+          const head = z.split(/[、，。；]/).map((x) => x.trim()).filter(Boolean)[0];
+          return head || '';
+        })();
+        // 反推出来的词不一定被下游认得。
+        //   「血虚萎黄」「肝肾阴虚」「脾气虚证」→ 能落进词表 ✓
+        //   「眩晕心悸」→ 不含任何证候关键词，handle 会当成一味药去查，回「没收录」✗
+        // 所以先过一道：含证候关键词才用，否则退回挑中的药名——
+        // 药名喂回去会走查药，答「当归：血虚萎黄，常见吃法炖汤」，也是有用的答案。
+        // 宁可给一味具体的药，也不给一句「没查到」。
+        const HINT = /(血虚|阴虚|阳虚|气虚|湿|寒|热|便秘|失眠|食积|腹胀|痰|瘀|脾|肾|肝|心|肺)/;
+        const state = (t.state && HINT.test(t.state) ? t.state : '')
+          || (HINT.test(fromData) ? fromData : '')
+          || t.picks[0];
+        this._view.rememberState(state);
+        console.info('[qihuang] 记住状况：', state,
+          '（来源：' + (t.state && HINT.test(t.state) ? '模型' : (HINT.test(fromData) ? '药典主治' : '药名兜底')) + '）');
         out = {
           patch: {
             title: '主治对得上的',
