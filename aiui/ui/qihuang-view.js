@@ -159,7 +159,17 @@ export function createQihuangView({ engines, store = null } = {}) {
       //
       // 药膳方子我们确实不给（涉及配伍和量），但「血虚适合什么食材」
       // 是药典写着的，可以给——这两件事不能混成一句「不做」。
-      if (a.verdict !== 'answer' && lastStates.length > 0
+      // 判据不能写「只有拒答才接力」。
+      //
+      // 「要不要食疗」「吃什么能改善」这两句不会走拒答——它们直接进食补流程，
+      // 回一句「不过得先知道你在吃什么」，然后停在那儿。用户听到的是
+      // 「答了一点但没接上我前面说的」，比干净利落的拒绝更迷惑。
+      //
+      // 正确的判据是：**这轮到底有没有用上状态**。
+      // a.result.stateNames 为空 = 这一轮压根没认到状况 = 需要拿上文补。
+      const usedState = !!(a.result && Array.isArray(a.result.stateNames)
+        && a.result.stateNames.length > 0);
+      if (!usedState && lastStates.length > 0
         && /(调理|药膳|食疗|怎么养|怎么改善|怎么补|吃什么)/.test(t)) {
         const retry = askQihuang(agent, lastStates[0]);
         // 只有重跑真的出了内容才换，否则保留原始拒答（说话算话）
