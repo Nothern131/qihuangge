@@ -611,7 +611,21 @@ export default {
     // 这不是故障，是模式决定的：焦点留在 AI 手里，语音本来就该由 AI 接。
     // 所以不上屏、不播报、不再重试——把「网络不给力」这种假原因写给用户，
     // 他会真的去查网络，那比不说话更糟。
-    if (/lifetime/i.test(rawMsg) || /lifetime/i.test(code)) {
+    // 判据不能只认 "lifetime" 这个词。
+    //
+    // 平台文档写的原文是：
+    //   MediaDevices.getUserMedia() is unavailable when app.config.lifetime is 'cut'
+    // 但真机/模拟器实际回调给的是：
+    //   code="network", message="Failed to open browser media stream"
+    // ——**不含 lifetime**，判据落空，于是把「模式限制」当成了「网络故障」，
+    // 回用户一句「网络不给力，稍等再按一次」。用户会真的去查网络。
+    //
+    // 所以按「拿不到麦克风」这个事实判断，不按文案：
+    //   getUserMedia / media stream / NotAllowed / NotFound 都归这一档。
+    // 这些是浏览器媒体设备的标准错误特征，比平台的一句话稳。
+    if (/lifetime/i.test(rawMsg) || /lifetime/i.test(code)
+      || /getUserMedia|media\s*stream|NotAllowedError|NotFoundError/i.test(rawMsg)
+      || /not-allowed/i.test(code)) {
       this._cutMode = true;
       console.info('[qihuang] 对话卡片模式：页面没有麦克风，语音交给 AI');
       this.setData({ status: '问我吧', answer: '有什么想问的，直接说就行', tone: 'idle' });
