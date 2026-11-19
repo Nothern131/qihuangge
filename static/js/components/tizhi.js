@@ -537,6 +537,11 @@
         _renderBianzhengFlow(bianzhengResult);
         runCorrelationCheck();
 
+        // 辨证结果归档到用户档案，保证「分析 → 档案」链路完整；首次使用自动建档
+        if (window.archiveResult) {
+            window.archiveResult('bianzheng', '辨证推演：' + (r.final_syndrome || '结果'), bianzhengResult);
+        }
+
         // 更新流程指示
         document.getElementById('flow-step-1').classList.remove('active');
         document.getElementById('flow-step-1').classList.add('done');
