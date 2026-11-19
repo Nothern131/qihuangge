@@ -27,6 +27,9 @@ let pass = 0;
 let fail = 0;
 const byGroup = {};
 const fails = [];
+// 逐条留档，最后导出成表给用户看。
+// 只留「用户说的 / 系统答的 / 判定」三样——多留字段反而难读。
+const rows = [];
 
 const mk = (uid) =>
   createQihuangView({
@@ -74,6 +77,15 @@ function run(group, items, opts = {}) {
     }
     console.log(`  ${good ? '✓' : '✗'} ${q}`);
     if (!good) console.log(`      → ${r.title} ｜ ${r.answer.slice(0, 60)}`);
+
+    rows.push({
+      group,
+      q: String(q),
+      kind,
+      title: r.title,
+      answer: r.answer.replace(/\s+/g, ' ').trim(),
+      ok: good,
+    });
   }
   byGroup[group] = { pass: gp, total: items.length };
 }
@@ -236,4 +248,54 @@ if (fail) {
   console.log(`\n失败 ${fail} 条：`);
   for (const f of fails) console.log(`  · [${f.group}] ${f.q}\n      ${f.got}`);
   process.exitCode = 1;
+}
+
+// ───────────── 导出 Markdown 表 ─────────────
+// 一张表比一串 console 有用：能一眼看出是哪一类在错，而不是逐条读。
+if (process.argv.includes('--md')) {
+  const { writeFileSync } = await import('node:fs');
+  const KIND = { answer: '要答', refuse: '该拒', any: '随便' };
+  const lines = [];
+
+  lines.push('# 岐黄阁 · 真实场景 96 条逐条结果');
+  lines.push('');
+  lines.push(`> 跑的是 1.1.15 的规则层（不含感知层 LLM）。`);
+  lines.push(`> 总计 **${pass} / ${total}**，失败 **${fail}** 条。`);
+  lines.push('>');
+  lines.push('> 判据三档：**要答** = 必须给出实质内容；**该拒** = 必须明确拒绝并给出路；**随便** = 不崩就行。');
+  lines.push('');
+
+  const groups = [...new Set(rows.map((r) => r.group))];
+  for (const g of groups) {
+    const list = rows.filter((r) => r.group === g);
+    const p0 = list.filter((r) => r.ok).length;
+    lines.push(`## ${g}　${p0}/${list.length}`);
+    lines.push('');
+    lines.push('| # | 用户说的 | 判据 | 系统答的 | 结果 |');
+    lines.push('|---|---|---|---|---|');
+    list.forEach((r, i) => {
+      const q = r.q.replace(/\|/g, '\\|');
+      const a = (r.title ? `**${r.title}** ｜ ` : '') + r.answer.slice(0, 60);
+      const an = (a || '（空）').replace(/\|/g, '\\|');
+      lines.push(`| ${i + 1} | ${q} | ${KIND[r.kind] || r.kind} | ${an} | ${r.ok ? '✅' : '❌'} |`);
+    });
+    lines.push('');
+  }
+
+  // 失败集中列一遍，方便拿去修
+  lines.push('## 全部失败项（按组）');
+  lines.push('');
+  for (const g of groups) {
+    const bad = rows.filter((r) => r.group === g && !r.ok);
+    if (!bad.length) continue;
+    lines.push(`**${g}**（${bad.length} 条）`);
+    for (const r of bad) {
+      lines.push(`- 「${r.q}」→ ${r.title || '（无标题）'} ｜ ${r.answer.slice(0, 50)}`);
+    }
+    lines.push('');
+  }
+
+  const out = 'E:/岐黄阁/真实场景96条-逐条结果.md';
+  writeFileSync(out, lines.join('\n'), 'utf-8');
+  console.log(`\n已导出：${out}`);
 }

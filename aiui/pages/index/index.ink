@@ -29,6 +29,7 @@ import { speak, stopSpeak, readSpeech } from '../../core/speech.js';
 import { getEngines } from '../../adapter/engine-runtime.js';
 import { createProfileStore } from '../../adapter/profile-store.js';
 import { VISION_PROMPTS, parseNames, pickLookupName, visionFallback } from '../../adapter/vision.js';
+import { matchFangji, formatFangji } from '../../adapter/fangji.js';
 
 // ─────────────── LLM 感知层 ───────────────
 //
@@ -549,19 +550,58 @@ export default {
         this._view.rememberState(state);
         console.info('[qihuang] 记住状况：', state,
           '（来源：' + (t.state && HINT.test(t.state) ? '模型' : (HINT.test(fromData) ? '药典主治' : '药名兜底')) + '）');
-        out = {
-          patch: {
-            title: '主治对得上的',
-            detail: t.why ? '依据：' + t.why : '按药典主治检索',
-            answer: text,
-            status: '按主治查',
-            tone: 'ok',
-            source: '《中国药典》主治项',
-          },
-          say: t.picks.join('、') + '，这几味主治对得上。想细看哪味，说名字就行',
-          sayMax: 72,
-          tail: '《中国药典》主治项',
-        };
+        // ── 输出结构重做 ──
+        //
+        // 原来标题写「主治对得上的」——那是系统语言，用户看不懂，也不知道
+        // 自己到底是什么状况。真机反馈原话：「我个人不太明白主治对得上的什么意思，
+        // 你就给我标题说可能是什么症状，什么阴虚啊阳虚啊，让我心里有个底」。
+        //
+        // 所以标题改成证型。正文不再是「药名 + 主治」的清单，而是：
+        //   证型（白话） → 古籍里的方 → 君臣佐使 → 药典里对得上的药
+        //
+        // 这里的关键判断：**证型和药名不能混着说**。
+        // state 可能是「血虚」（证型），也可能是「当归」（药名兜底）。
+        // 前者能配上古籍方，后者只能给药典信息——混了就会出现
+        // 「可能是当归」，那是胡说。
+        const isState = HINT.test(state) && !llmDB[state];
+        const fangs = isState ? matchFangji([state]) : [];
+
+        if (fangs.length) {
+          // 有对应的古籍方：以方为主，药典的药作为补充。
+          const ff = formatFangji(fangs[0], state);
+          const lines = ff.lines.slice();
+          lines.push('');
+          lines.push(`药典里对得上的：${t.picks.join('、')}`);
+          out = {
+            patch: {
+              title: ff.title,
+              detail: t.why ? '依据：' + t.why : `按${state}检索`,
+              answer: lines.join('\n'),
+              status: '按证型查',
+              tone: 'ok',
+              source: fangs[0].source,
+            },
+            say: ff.speak,
+            sayMax: 110,
+            tail: fangs[0].source,
+          };
+        } else {
+          // 没有对应方（或 state 是药名）：退回原来的药典清单，
+          // 但标题也要说人话，不能再是「主治对得上的」。
+          out = {
+            patch: {
+              title: isState ? `可能是${state}` : `和${state}有关`,
+              detail: t.why ? '依据：' + t.why : '按药典主治检索',
+              answer: text,
+              status: '按主治查',
+              tone: 'ok',
+              source: '《中国药典》主治项',
+            },
+            say: t.picks.join('、') + '，这几味的主治对得上。想细看哪味，说名字就行',
+            sayMax: 72,
+            tail: '《中国药典》主治项',
+          };
+        }
       }
     }
 
