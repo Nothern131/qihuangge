@@ -71,8 +71,8 @@
         var resultEl = document.getElementById('bianzheng-result');
         if (!resultEl) return;
 
-        var html = '<h3>辨证结果</h3>';
-        html += '<div class="result-item"><span class="result-label">辨证结论</span><span class="result-value">' + result.final_syndrome + '</span><span style="margin-left:12px;color:#b8945c;font-size:12px;">（置信度：' + result.confidence + '%）</span></div>';
+        var html = '<h3>体质倾向参考（辨证推演）</h3>';
+        html += '<div class="result-item"><span class="result-label">推演结果</span><span class="result-value">' + result.final_syndrome + '</span><span style="margin-left:12px;color:#b8945c;font-size:12px;">（置信度：' + result.confidence + '%）</span></div>';
 
         var biaoganHtml = '<table class="score-table"><thead><tr><th>阴阳</th><th>表里</th><th>寒热</th><th>虚实</th></tr></thead><tbody><tr>';
         Object.keys(result.biaogan).forEach(function(k) {
@@ -101,8 +101,8 @@
         }
         if (zangfuHtml) html += '<div class="result-section"><h5>脏腑辨证</h5>' + zangfuHtml + '</div>';
 
-        html += '<div class="result-section"><h5>治则建议</h5><p>' + (result.zhize || '请结合六经辨证结果') + '</p></div>';
-        html += '<div class="result-section" style="margin-top:12px;padding:10px;background:rgba(184,148,92,0.08);border-radius:6px;"><p style="font-size:12px;color:#8a7a5a;">⚠️ 本系统仅供学习参考，不构成医疗建议。请前往正规医疗机构就诊。</p></div>';
+        html += '<div class="result-section"><h5>调养方向参考</h5><p>' + (result.zhize || '请结合六经辨证结果') + '</p></div>';
+        html += QiuhuangApp.medDisclaimer();
 
         resultEl.innerHTML = html;
     }

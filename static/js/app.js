@@ -68,6 +68,7 @@
                 </div>
                 <div class="disclaimer">
                     <p><strong>⚠️ 重要声明</strong></p>
+                    <p><strong>本工具用于中医药知识学习与健康记录，不提供诊断、处方或治疗建议，如有不适请咨询执业医师。</strong></p>
                     <p>本系统仅供中医药文化学习与知识科普使用，不构成任何医疗建议。</p>
                     <p>中医辨证论治需结合四诊合参，线上系统无法替代专业医师面诊。</p>
                     <p>所有方剂、剂量、用法仅供参考，请在执业中医师指导下使用。</p>
@@ -80,11 +81,20 @@
         return html;
     }
 
+    // ========== 统一医疗合规提示 ==========
+    function medDisclaimer() {
+        var text = (typeof Qiuhuang !== 'undefined' && Qiuhuang.DISCLAIMER_TEXT)
+            ? Qiuhuang.DISCLAIMER_TEXT
+            : '本工具用于中医药知识学习与健康记录，不提供诊断、处方或治疗建议，如有不适请咨询执业医师。';
+        return '<div class="med-disclaimer">' + text + '</div>';
+    }
+
     // ========== 全局 API ==========
     global.QiuhuangApp = {
         routes: routes,
         registerRoute: registerRoute,
         navigate: navigateTo,
+        medDisclaimer: medDisclaimer,
         _renderHome: renderHome
     };
 

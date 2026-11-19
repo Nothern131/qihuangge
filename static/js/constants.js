@@ -211,6 +211,8 @@
     };
 
     // ========== 声明常量 ==========
+    Qiuhuang.DISCLAIMER_TEXT = '本工具用于中医药知识学习与健康记录，不提供诊断、处方或治疗建议，如有不适请咨询执业医师。';
+
     Qiuhuang.DISCLAIMER = {
         title: '重要声明',
         content: [

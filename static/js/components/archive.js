@@ -10,6 +10,8 @@
     var currentProfileId = null;
     var currentRecordId = null;
     var currentProfile = null;
+    var detailOrigin = VIEW.profile;
+    var compareRecordId = null;
 
     function formatTime(isoStr) {
         if (!isoStr) return '—';
@@ -44,6 +46,21 @@
 
     function getGenderIcon(g) {
         return g === '男' ? '♂' : g === '女' ? '♀' : '';
+    }
+
+    function getRecordSummary(r) {
+        var data = r.data || {};
+        if (r.type === 'bianzheng') return data.final_syndrome || data.type || '—';
+        if (r.type === 'tizhi') {
+            return (data.type || data.tizhi || '—') + (data.confidence ? ' · ' + data.confidence + '% 置信度' : '');
+        }
+        if (r.type === 'master') return data.master || '—';
+        return '—';
+    }
+
+    function timeValue(ts) {
+        var t = new Date(ts).getTime();
+        return isNaN(t) ? 0 : t;
     }
 
     // ========== 视图渲染 ==========
@@ -107,6 +124,43 @@
             html += '</div>';
         }
 
+        html += renderRecentRecords(profiles);
+
+        html += '</div>';
+        return html;
+    }
+
+    // 档案首页的最近健康记录（跨档案、按时间倒序）
+    function renderRecentRecords(profiles) {
+        if (!profiles || profiles.length === 0) return '';
+
+        var profileMap = {};
+        profiles.forEach(function(p) { profileMap[p.id] = p; });
+        var entries = ArchiveEngine.listAllRecords()
+            .filter(function(r) { return !!profileMap[r.profileId]; })
+            .map(function(r) { return { record: r, profile: profileMap[r.profileId] }; });
+        if (entries.length === 0) return '';
+
+        var html = '<div class="recent-records-section">';
+        html += '<div class="recent-records-header">';
+        html += '<h4>🕘 最近健康记录</h4>';
+        html += '<span class="records-order-hint">按时间倒序 · 点击查看详情与前后对比</span>';
+        html += '</div>';
+        html += '<div class="record-list">';
+        entries.slice(0, 8).forEach(function(entry, idx) {
+            var r = entry.record;
+            html += '<div class="record-item" onclick="window.archiveOpenRecord(\'' + r.id + '\')">';
+            html += '<div class="record-icon">' + getTypeIcon(r.type) + '</div>';
+            html += '<div class="record-info">';
+            html += '<div class="record-title">' + escHtml(r.title) + (idx === 0 ? '<span class="record-latest-badge">最新</span>' : '') + '</div>';
+            html += '<div class="record-summary">' + escHtml(getRecordSummary(r)) + '</div>';
+            html += '<div class="record-profile-tag">档案：' + escHtml(entry.profile.name) + '</div>';
+            html += '</div>';
+            html += '<div class="record-time">' + formatTime(r.timestamp) + '</div>';
+            html += '<span class="record-detail-link">详情 ›</span>';
+            html += '</div>';
+        });
+        html += '</div>';
         html += '</div>';
         return html;
     }
@@ -311,29 +365,21 @@
             html += renderTrendSection(profile.id, 'tizhi', tizhiRecs, '体质辨识趋势');
         }
 
-        // 记录列表
-        html += '<div class="records-section"><h4>历史记录（' + records.length + ' 条）</h4>';
+        // 记录列表（按时间倒序）
+        html += '<div class="records-section"><h4>历史记录（' + records.length + ' 条）<span class="records-order-hint">按时间倒序</span></h4>';
         if (records.length === 0) {
-            html += '<div class="empty-hint">暂无历史记录。完成辨证推理或体质辨识后会自动归档。</div>';
+            html += '<div class="empty-hint">暂无历史记录。完成体质辨识后会自动归档到当前档案。</div>';
         } else {
             html += '<div class="record-list">';
-            records.forEach(function(r) {
-                var data = r.data || {};
-                var summary = '';
-                if (r.type === 'bianzheng') {
-                    summary = data.final_syndrome || data.type || '—';
-                } else if (r.type === 'tizhi') {
-                    summary = data.type || data.tizhi || '—';
-                } else if (r.type === 'master') {
-                    summary = data.master || '—';
-                }
+            records.forEach(function(r, idx) {
                 html += '<div class="record-item" onclick="window.archiveOpenRecord(\'' + r.id + '\')">';
                 html += '<div class="record-icon">' + getTypeIcon(r.type) + '</div>';
                 html += '<div class="record-info">';
-                html += '<div class="record-title">' + r.title + '</div>';
-                html += '<div class="record-summary">' + summary + '</div>';
+                html += '<div class="record-title">' + escHtml(r.title) + (idx === 0 ? '<span class="record-latest-badge">最新</span>' : '') + '</div>';
+                html += '<div class="record-summary">' + escHtml(getRecordSummary(r)) + '</div>';
                 html += '</div>';
                 html += '<div class="record-time">' + formatTime(r.timestamp) + '</div>';
+                html += '<span class="record-detail-link">详情 ›</span>';
                 html += '<button class="btn-small btn-danger record-delete" onclick="event.stopPropagation();window.archiveDeleteRecord(\'' + r.id + '\')">删除</button>';
                 html += '</div>';
             });
@@ -454,11 +500,11 @@
         currentRecordId = record.id;
         var data = record.data || {};
         var html = '<div class="archive-page">';
-        html += '<div class="back-nav"><button class="btn-back" onclick="window.archiveBack()">← 返回</button></div>';
+        html += '<div class="back-nav"><button class="btn-back" onclick="window.archiveBack()">← ' + (detailOrigin === VIEW.list ? '返回档案列表' : '返回档案') + '</button></div>';
         html += '<div class="record-detail-card">';
         html += '<div class="record-detail-header">';
         html += '<span class="record-detail-icon">' + getTypeIcon(record.type) + '</span>';
-        html += '<div><h3>' + record.title + '</h3><div class="record-detail-meta">' + getTypeLabel(record.type) + ' · ' + formatTime(record.timestamp) + '</div></div>';
+        html += '<div><h3>' + escHtml(record.title) + '</h3><div class="record-detail-meta">' + getTypeLabel(record.type) + ' · ' + formatTime(record.timestamp) + '</div></div>';
         html += '</div>';
 
         // 根据类型渲染不同内容
@@ -471,6 +517,161 @@
         }
 
         html += '</div>';
+
+        // 同类型记录前后对比
+        html += renderComparePanel(record, ArchiveEngine.listRecords(record.profileId));
+
+        html += '</div>';
+        return html;
+    }
+
+    // ========== 前后对比 ==========
+    function formatShortTime(isoStr) {
+        if (!isoStr) return '—';
+        var d = new Date(isoStr);
+        return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' +
+            String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    }
+
+    function deltaInfo(current, previous, suffix) {
+        if (current === undefined || current === null || previous === undefined || previous === null) return null;
+        var d = Number(current) - Number(previous);
+        if (isNaN(d)) return null;
+        if (d === 0) return { text: '无变化', cls: 'delta-zero' };
+        return { text: (d > 0 ? '+' : '') + d + (suffix || ''), cls: d > 0 ? 'delta-up' : 'delta-down' };
+    }
+
+    function changedInfo(changed) {
+        return changed ? { text: '已变化', cls: 'delta-change' } : { text: '无变化', cls: 'delta-zero' };
+    }
+
+    function getDefaultCompareTarget(record, sameType) {
+        var idx = sameType.findIndex(function(r) { return r.id === record.id; });
+        if (idx === -1) return null;
+        if (idx + 1 < sameType.length) return sameType[idx + 1]; // 更早的一条
+        if (idx - 1 >= 0) return sameType[idx - 1];              // 没有更早的，则对比更新的一条
+        return null;
+    }
+
+    function buildCompareRows(earlier, later) {
+        var rows = [];
+        var aData = earlier.data || {};
+        var bData = later.data || {};
+        var type = later.type;
+
+        if (type === 'tizhi') {
+            rows.push({ label: '体质类型', a: aData.type || '—', b: bData.type || '—', delta: changedInfo(aData.type !== bData.type) });
+            rows.push({ label: '置信度', a: (aData.confidence || 0) + '%', b: (bData.confidence || 0) + '%', delta: deltaInfo(bData.confidence, aData.confidence, '%') });
+            rows.push({ label: '答题数', a: (aData.answeredCount || '—') + (aData.answeredCount ? '/8' : ''), b: (bData.answeredCount || '—') + (bData.answeredCount ? '/8' : ''), delta: deltaInfo(bData.answeredCount, aData.answeredCount) });
+
+            var aScores = aData.scores || aData.score || {};
+            var bScores = bData.scores || bData.score || {};
+            var keys = Object.keys(bScores);
+            Object.keys(aScores).forEach(function(k) { if (keys.indexOf(k) === -1) keys.push(k); });
+            keys.sort(function(k1, k2) {
+                return (bScores[k2] || 0) - (bScores[k1] || 0);
+            });
+            keys.forEach(function(k) {
+                rows.push({ label: k, a: aScores[k] || 0, b: bScores[k] || 0, delta: deltaInfo(bScores[k] || 0, aScores[k] || 0) });
+            });
+        } else if (type === 'bianzheng') {
+            rows.push({ label: '辨证结论', a: aData.final_syndrome || '—', b: bData.final_syndrome || '—', delta: changedInfo(aData.final_syndrome !== bData.final_syndrome) });
+            rows.push({ label: '置信度', a: (aData.confidence || 0) + '%', b: (bData.confidence || 0) + '%', delta: deltaInfo(bData.confidence, aData.confidence, '%') });
+            var bgKeys = ['表', '里', '寒', '热', '虚', '实', '阴', '阳'];
+            bgKeys.forEach(function(k) {
+                var av = (aData.biaogan || {})[k] || 0;
+                var bv = (bData.biaogan || {})[k] || 0;
+                rows.push({ label: '八纲 · ' + k, a: av, b: bv, delta: deltaInfo(bv, av) });
+            });
+            rows.push({ label: '六经辨证', a: aData.liujing ? aData.liujing.jing + '证（' + aData.liujing.score + '）' : '—', b: bData.liujing ? bData.liujing.jing + '证（' + bData.liujing.score + '）' : '—', delta: changedInfo((aData.liujing || {}).jing !== (bData.liujing || {}).jing) });
+            rows.push({ label: '主要症状', a: (aData.symptoms || []).join('、') || '—', b: (bData.symptoms || []).join('、') || '—', delta: changedInfo((aData.symptoms || []).join('、') !== (bData.symptoms || []).join('、')) });
+            rows.push({ label: '治则', a: aData.zhize || '—', b: bData.zhize || '—', delta: changedInfo(aData.zhize !== bData.zhize) });
+        }
+        return rows;
+    }
+
+    function renderCompareRow(row) {
+        var deltaHtml = row.delta
+            ? '<span class="compare-delta ' + row.delta.cls + '">' + row.delta.text + '</span>'
+            : '<span class="compare-delta delta-zero">—</span>';
+        return '<div class="compare-row">' +
+            '<span class="compare-cell compare-label">' + escHtml(row.label) + '</span>' +
+            '<span class="compare-cell">' + escHtml(String(row.a)) + '</span>' +
+            '<span class="compare-cell compare-cell-current">' + escHtml(String(row.b)) + '</span>' +
+            '<span class="compare-cell compare-delta-cell">' + deltaHtml + '</span>' +
+            '</div>';
+    }
+
+    function renderCompareSummary(earlier, later) {
+        var aData = earlier.data || {};
+        var bData = later.data || {};
+        var text = '';
+        if (later.type === 'tizhi') {
+            if (aData.type && bData.type && aData.type !== bData.type) {
+                text = '体质类型从「' + aData.type + '」变为「' + bData.type + '」，建议关注变化原因与近期作息饮食。';
+            } else if (bData.type) {
+                text = '体质类型保持「' + bData.type + '」；置信度 ' + (aData.confidence || 0) + '% → ' + (bData.confidence || 0) + '%。';
+            }
+        } else if (later.type === 'bianzheng') {
+            if (aData.final_syndrome && bData.final_syndrome && aData.final_syndrome !== bData.final_syndrome) {
+                text = '辨证结论从「' + aData.final_syndrome + '」变为「' + bData.final_syndrome + '」，建议结合近期症状复诊对比。';
+            } else if (bData.final_syndrome) {
+                text = '辨证结论保持「' + bData.final_syndrome + '」；置信度 ' + (aData.confidence || 0) + '% → ' + (bData.confidence || 0) + '%。';
+            }
+        }
+        return text ? '<div class="compare-summary">' + escHtml(text) + '</div>' : '';
+    }
+
+    function renderComparePanel(record, records) {
+        if (record.type !== 'tizhi' && record.type !== 'bianzheng') return '';
+
+        var sameType = records.filter(function(r) { return r.type === record.type; });
+        var others = sameType.filter(function(r) { return r.id !== record.id; });
+
+        if (others.length === 0) {
+            return '<div class="compare-card compare-empty-card">' +
+                '<div class="compare-card-header"><h4>📊 前后对比</h4></div>' +
+                '<p class="compare-empty-text">这是该档案第一条「' + getTypeLabel(record.type) + '」记录。再测一次即可生成前后对比。</p>' +
+                '<button class="btn-primary btn-small" onclick="QiuhuangApp.navigate(\'#/tizhi\')">再测一次</button>' +
+                '</div>';
+        }
+
+        var target = null;
+        if (compareRecordId) {
+            target = others.find(function(r) { return r.id === compareRecordId; }) || null;
+        }
+        if (!target) target = getDefaultCompareTarget(record, sameType);
+        if (!target) return '';
+
+        // 按时间先后排列：左列较早，右列较新
+        var earlier = timeValue(target.timestamp) <= timeValue(record.timestamp) ? target : record;
+        var later = earlier.id === target.id ? record : target;
+
+        var html = '<div class="compare-card">';
+        html += '<div class="compare-card-header"><h4>📊 前后对比</h4>';
+        html += '<span class="compare-hint">同类型记录 · 左早右新</span></div>';
+
+        // 可切换对比对象（最多展示 5 条）
+        html += '<div class="compare-targets"><span class="compare-targets-label">对比对象</span>';
+        others.slice(0, 5).forEach(function(r) {
+            html += '<button class="compare-chip' + (r.id === target.id ? ' active' : '') + '" onclick="window.archiveCompareWith(\'' + record.id + '\',\'' + r.id + '\')">' + formatShortTime(r.timestamp) + '</button>';
+        });
+        html += '</div>';
+
+        html += '<div class="compare-table-wrap"><div class="compare-table">';
+        html += '<div class="compare-row compare-row-head">' +
+            '<span class="compare-cell compare-label">项目</span>' +
+            '<span class="compare-cell">较早 · ' + formatShortTime(earlier.timestamp) + (earlier.id === record.id ? '<span class="compare-self-badge">本条</span>' : '') + '</span>' +
+            '<span class="compare-cell compare-cell-current">较新 · ' + formatShortTime(later.timestamp) + (later.id === record.id ? '<span class="compare-self-badge">本条</span>' : '') + '</span>' +
+            '<span class="compare-cell compare-delta-cell">变化</span>' +
+            '</div>';
+
+        buildCompareRows(earlier, later).forEach(function(row) {
+            html += renderCompareRow(row);
+        });
+        html += '</div></div>';
+
+        html += renderCompareSummary(earlier, later);
         html += '</div>';
         return html;
     }
@@ -506,14 +707,31 @@
         var html = '<div class="record-detail-body">';
         if (data.type) html += '<div class="detail-field"><strong>体质类型：</strong>' + data.type + '</div>';
         if (data.confidence) html += '<div class="detail-field"><strong>置信度：</strong>' + data.confidence + '%</div>';
-        if (data.description) html += '<div class="detail-field"><strong>体质描述：</strong>' + data.description + '</div>';
-        if (data.score) {
-            html += '<div class="detail-field"><strong>各维度得分：</strong>';
+        if (data.answeredCount) html += '<div class="detail-field"><strong>答题数：</strong>' + data.answeredCount + ' / 8</div>';
+
+        // 兼容 tizhi-engine 的 scores 字段与旧记录的 score 字段
+        var scores = data.scores || data.score;
+        if (scores && Object.keys(scores).length > 0) {
+            var sortedKeys = Object.keys(scores).sort(function(a, b) { return scores[b] - scores[a]; });
+            html += '<div class="detail-field"><strong>九种体质得分：</strong>';
             html += '<div class="score-mini">';
-            Object.keys(data.score).forEach(function(k) {
-                html += '<span class="score-mini-item">' + k + '：' + data.score[k] + '</span>';
+            sortedKeys.forEach(function(k) {
+                html += '<span class="score-mini-item' + (k === data.type ? ' score-mini-active' : '') + '">' + k + '：' + scores[k] + '</span>';
             });
             html += '</div></div>';
+        }
+
+        // 体质调养建议按现有规则回显，不修改测评算法
+        if (data.type && typeof TizhiEngine !== 'undefined') {
+            var regimen = TizhiEngine.getRegimen(data.type);
+            if (regimen) {
+                if (regimen.description) html += '<div class="detail-field"><strong>体质描述：</strong>' + regimen.description + '</div>';
+                html += '<div class="detail-field"><strong>调养建议：</strong><div class="detail-regimen">' +
+                    '<div>饮食：' + regimen.diet + '</div>' +
+                    '<div>运动：' + regimen.exercise + '</div>' +
+                    '<div>起居：' + regimen.life + '</div>' +
+                    '</div></div>';
+            }
         }
         html += '</div>';
         return html;
@@ -640,15 +858,27 @@
     window.archiveOpenProfile = function(id) {
         currentView = VIEW.profile;
         currentProfileId = id;
+        compareRecordId = null;
+        detailOrigin = VIEW.profile;
         document.getElementById('page-container').innerHTML = renderProfileView(ArchiveEngine.getProfile(id));
     };
 
     window.archiveOpenRecord = function(id) {
         var record = ArchiveEngine.getRecord(id);
         if (!record) return;
+        detailOrigin = currentView === VIEW.list ? VIEW.list : VIEW.profile;
+        compareRecordId = null;
         currentView = VIEW.detail;
         currentRecordId = id;
+        if (detailOrigin === VIEW.profile) currentProfileId = record.profileId;
         document.getElementById('page-container').innerHTML = renderRecordDetailView(record);
+    };
+
+    // 切换对比对象后重渲染当前记录详情
+    window.archiveCompareWith = function(recordId, targetId) {
+        compareRecordId = targetId;
+        var record = ArchiveEngine.getRecord(recordId);
+        if (record) document.getElementById('page-container').innerHTML = renderRecordDetailView(record);
     };
 
     window.archiveDeleteRecord = function(id) {
@@ -663,7 +893,18 @@
     };
 
     window.archiveBack = function() {
-        if (currentView === VIEW.detail || currentView === VIEW.edit || currentView === VIEW.create) {
+        if (currentView === VIEW.detail) {
+            compareRecordId = null;
+            if (detailOrigin === VIEW.list || !currentProfileId) {
+                currentView = VIEW.list;
+                document.getElementById('page-container').innerHTML = renderListView();
+            } else {
+                currentView = VIEW.profile;
+                document.getElementById('page-container').innerHTML = renderProfileView(ArchiveEngine.getProfile(currentProfileId));
+            }
+            return;
+        }
+        if (currentView === VIEW.edit || currentView === VIEW.create) {
             currentView = currentProfileId ? VIEW.profile : VIEW.list;
             if (currentProfileId) {
                 document.getElementById('page-container').innerHTML = renderProfileView(ArchiveEngine.getProfile(currentProfileId));
@@ -690,13 +931,16 @@
     };
 
     // 自动归档函数（供 tizhi.js 调用）
+    // 没有档案时自动创建「我的档案」，避免首次测评结果丢失
     window.archiveResult = function(type, title, result) {
-        var profileId = ArchiveEngine.getCurrentProfileId();
-        if (!profileId) {
-            alert('请先创建或选择档案，结果将不会归档');
-            return null;
+        var profile = ArchiveEngine.getOrCreateDefaultProfile();
+        if (!profile) return null;
+        var record = ArchiveEngine.autoArchive(profile.id, type, title, result);
+        if (record) {
+            currentProfileId = profile.id;
+            currentProfile = profile;
         }
-        return ArchiveEngine.autoArchive(profileId, type, title, result);
+        return record;
     };
 
     // ========== 保健品内联管理 ==========
@@ -911,6 +1155,12 @@
     function render() {
         // 初始化：处理体验链接
         ArchiveEngine.initData();
+
+        // 路由重新进入时收起临时子视图（详情/表单），避免上次状态残留
+        if (currentView === VIEW.detail || currentView === VIEW.edit || currentView === VIEW.create) {
+            currentView = currentProfileId ? VIEW.profile : VIEW.list;
+            compareRecordId = null;
+        }
 
         if (currentView === VIEW.list || !currentProfileId) {
             return renderListView();

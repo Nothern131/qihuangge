@@ -94,44 +94,34 @@ function monarch(f) {
  * lines 给屏幕（完整，含原文）
  */
 export function formatFangji(f, state) {
-  const plain = STATE_PLAIN[state] || '';
   const title = `可能是${state}`;
 
+  // 播报压到 40 字内。
+  //
+  // 第一版是「血虚，也就是血不够用。古籍里有个方叫当归补血汤，出自
+  // 《内外伤辨惑论》。主药是黄芪。这是古籍记载，不是给你开的方。」
+  // —— 63 字，念十几秒。用户站在那儿等一句话等这么久，就划走了。
+  //
+  // 现在只留三样：是什么、方叫什么、主药是谁。
+  // 出处和君臣佐使全部交给屏幕——那些是需要看的，不是需要听的。
   const speak = [
-    plain ? `${state}，也就是${plain}。` : `${state}。`,
-    `古籍里有个方叫${f.fangming}，出自${f.source}。`,
-    `主药是${monarch(f) || '（见组成）'}。`,
-    // 这句必须在播报里，不能只在屏幕上——不播出来等于没说。
-    '这是古籍记载，不是给你开的方。',
+    `${state}。`,
+    `古籍里有个方，${f.fangming}。`,
+    monarch(f) ? `主药${monarch(f)}。` : '',
+    '看屏幕。',
   ].join('');
 
+  // 屏幕压到 5 行。480×400 一屏放得下，不用滚。
+  //
+  // 取舍：留方名、出处、君臣佐使、免责；砍掉主治、用法、禁忌、原文。
+  // 理由——用户此刻要知道的是「我可能是什么状况、古书里有什么方」，
+  // 不是照着方子去抓药。真要看细节，问「这个方怎么用」再给。
   const lines = [
-    plain ? `${state}，也就是${plain}。` : `${state}。`,
-    '',
-    `古籍里的方：${f.fangming}`,
+    f.fangming,
     `${f.source}${f.category ? ' · ' + f.category : ''}`,
-    '',
-    `组成：${roleLine(f)}`,
-    f.indication ? `主治：${f.indication}` : '',
-    f.yongfa ? `用法：${String(f.yongfa).split(/[。；]/)[0]}。` : '',
+    roleLine(f),
+    '※ 古籍记载，非用药建议',
   ].filter(Boolean);
-
-  // 原文单独一节。这是差异化——别的产品给不出"这句话出自哪本书第几条"。
-  if (Array.isArray(f.shanghan_wenyi) && f.shanghan_wenyi.length) {
-    const w = f.shanghan_wenyi[0];
-    lines.push('');
-    lines.push(`原文（${w.source}）：`);
-    lines.push(String(w.text).slice(0, 80) + (String(w.text).length > 80 ? '…' : ''));
-  }
-
-  const taboo = (f.禁忌 || [])[0];
-  if (taboo) {
-    lines.push('');
-    lines.push(`忌：${taboo}`);
-  }
-
-  lines.push('');
-  lines.push('※ 古籍记载，不作为用药建议。要用请找医生。');
 
   return { title, speak, lines };
 }

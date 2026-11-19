@@ -361,6 +361,7 @@
 
         html += peiwuHtml + yongfaHtml + jianfuHtml + zhuyiHtml;
         html += _renderSuiZhengJianYi(result);
+        html += QiuhuangApp.medDisclaimer();
         html += '</div>';
 
         var resultEl = document.getElementById('fangji-result');

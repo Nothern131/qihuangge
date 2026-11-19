@@ -19,6 +19,12 @@
         return new Date().toISOString();
     }
 
+    // 统一时间比较：timestamp/updatedAt 均为 ISO 字符串，直接相减会得到 NaN
+    function _timeValue(value) {
+        var t = new Date(value).getTime();
+        return isNaN(t) ? 0 : t;
+    }
+
     // ========== URL 参数解析 ==========
     function _getUidFromUrl() {
         var params = new URLSearchParams(window.location.search);
@@ -119,7 +125,7 @@
 
     // ========== 档案 CRUD ==========
     function listProfiles() {
-        return _load().profiles.sort(function(a, b) { return b.updatedAt - a.updatedAt; });
+        return _load().profiles.sort(function(a, b) { return _timeValue(b.updatedAt) - _timeValue(a.updatedAt); });
     }
 
     function getProfile(id) {
@@ -197,7 +203,14 @@
     function listRecords(profileId) {
         return _load().records
             .filter(function(r) { return r.profileId === profileId; })
-            .sort(function(a, b) { return b.timestamp - a.timestamp; });
+            .sort(function(a, b) { return _timeValue(b.timestamp) - _timeValue(a.timestamp); });
+    }
+
+    // 所有档案的记录，统一按时间倒序（供档案页「最近健康记录」使用）
+    function listAllRecords() {
+        return _load().records.slice().sort(function(a, b) {
+            return _timeValue(b.timestamp) - _timeValue(a.timestamp);
+        });
     }
 
     function getRecord(id) {
@@ -272,9 +285,40 @@
     }
 
     // ========== 自动归档 ==========
+
+    /**
+     * 获取当前档案；没有档案时自动创建一个「我的档案」。
+     * 保证首次使用者在测评后也能直接归档，不丢结果。
+     */
+    function getOrCreateDefaultProfile() {
+        var current = getCurrentProfile();
+        if (current) return current;
+
+        var profiles = listProfiles();
+        if (profiles.length > 0) {
+            setCurrentProfileId(profiles[0].id);
+            return profiles[0];
+        }
+
+        var profile = createProfile({ name: '我的档案' });
+        setCurrentProfileId(profile.id);
+        return profile;
+    }
+
     function autoArchive(profileId, type, title, result) {
-        if (!profileId) return null;
-        return addRecord(profileId, type, title, result);
+        var targetId = profileId;
+        if (!targetId) {
+            var fallback = getOrCreateDefaultProfile();
+            if (!fallback) return null;
+            targetId = fallback.id;
+        }
+        var record = addRecord(targetId, type, title, result);
+
+        // 体质测评结果同时回填健康画像，档案页展示最新体质
+        if (type === 'tizhi' && result && result.type) {
+            updateProfile(targetId, { healthProfile: { constitution: result.type } });
+        }
+        return record;
     }
 
     // ========== 健康画像管理 ==========
@@ -476,6 +520,7 @@
         updateProfile: updateProfile,
         deleteProfile: deleteProfile,
         listRecords: listRecords,
+        listAllRecords: listAllRecords,
         getRecord: getRecord,
         addRecord: addRecord,
         deleteRecord: deleteRecord,
@@ -483,6 +528,7 @@
         setCurrentProfileId: setCurrentProfileId,
         getCurrentProfileId: getCurrentProfileId,
         getCurrentProfile: getCurrentProfile,
+        getOrCreateDefaultProfile: getOrCreateDefaultProfile,
         autoArchive: autoArchive,
         generateShareLink: generateShareLink,
         generateExperienceLink: generateExperienceLink,
@@ -491,7 +537,10 @@
         // 健康画像
         updateHealthProfile: updateHealthProfile,
         addSupplement: addSupplement,
-        removeSupplement: removeSupplement
+        removeSupplement: removeSupplement,
+        // 健康评估（档案详情仪表盘 / 报告引擎依赖）
+        calculateHealthCompleteness: calculateHealthCompleteness,
+        assessHealthRisk: assessHealthRisk
     };
 
 })(typeof global !== 'undefined' ? global : (typeof window !== 'undefined' ? window : this));

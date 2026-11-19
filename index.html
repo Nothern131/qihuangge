@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>岐黄阁 · 中医药古籍知识推理系统</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="static/css/style.css?v=20260813a">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- 字体异步加载：外网字体不可用时不再阻塞整页脚本与渲染 -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap"></noscript>
+    <link rel="stylesheet" href="static/css/style.css?v=20261119b">
     <link rel="stylesheet" href="static/css/health-exercises.css?v=20260813a">
     <!-- PWA支持 -->
     <link rel="manifest" href="/manifest.json">
@@ -45,25 +48,25 @@
             <p>仅供学习参考，不构成医疗建议</p>
         </footer>
     </div>
-    <script src="static/js/constants.js?v=20250806n"></script>
+    <script src="static/js/constants.js?v=20261119b"></script>
     <script src="static/js/engine-registry.js?v=20250806n"></script>
     <script src="static/js/engines/bianzheng-engine.js?v=20250806n"></script>
     <script src="static/js/engines/fangji-engine.js?v=20250806n"></script>
     <script src="static/js/engines/bencao-engine.js?v=20260808c"></script>
     <script src="static/js/engines/tizhi-engine.js?v=20250806n"></script>
     <script src="static/js/engines/masters-engine.js?v=20250806n"></script>
-    <script src="static/js/engines/archive-engine.js?v=20250807b"></script>
+    <script src="static/js/engines/archive-engine.js?v=20261119a"></script>
     <script src="static/js/engines/symptom-engine.js?v=20250807a"></script>
     <script src="static/js/engines/vitamin-engine.js?v=20260813a"></script>
     <script src="static/js/engines/interaction-engine.js?v=20260813a"></script>
-    <script src="static/js/app.js?v=20260813a"></script>
-    <script src="static/js/components/bianzheng.js?v=20250806n"></script>
-    <script src="static/js/components/fangji.js?v=20250806n"></script>
+    <script src="static/js/app.js?v=20261119b"></script>
+    <script src="static/js/components/bianzheng.js?v=20261119b"></script>
+    <script src="static/js/components/fangji.js?v=20261119b"></script>
     <script src="static/js/components/bencao.js?v=20250806n"></script>
-    <script src="static/js/components/tizhi.js?v=20250806n"></script>
+    <script src="static/js/components/tizhi.js?v=20261119b"></script>
     <script src="static/js/components/masters.js?v=20250806n"></script>
     <script src="static/js/components/shipu.js?v=20250806n"></script>
-    <script src="static/js/components/archive.js?v=20250807b"></script>
+    <script src="static/js/components/archive.js?v=20261119a"></script>
     <script src="static/js/components/regimen.js?v=20250807a"></script>
     <script src="static/js/components/vitamin.js?v=20260813a"></script>
     <script src="static/js/components/interaction.js?v=20260813a"></script>
@@ -214,6 +217,7 @@
                         </div>
                         <div class="disclaimer">
                             <p><strong>⚠️ 重要声明</strong></p>
+                            <p><strong>本工具用于中医药知识学习与健康记录，不提供诊断、处方或治疗建议，如有不适请咨询执业医师。</strong></p>
                             <p>本系统仅供中医药文化学习与知识科普使用，不构成任何医疗建议。</p>
                             <p>中医辨证论治需结合四诊合参，线上系统无法替代专业医师面诊。</p>
                             <p>所有方剂、剂量、用法仅供参考，请在执业中医师指导下使用。</p>
