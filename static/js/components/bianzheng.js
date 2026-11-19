@@ -105,6 +105,11 @@
         html += QiuhuangApp.medDisclaimer();
 
         resultEl.innerHTML = html;
+
+        // 辨证结果同样归档，保证「分析 → 档案」链路完整；无档案时自动创建
+        if (window.archiveResult) {
+            window.archiveResult('bianzheng', '辨证推演：' + (result.final_syndrome || '结果'), result);
+        }
     }
 
     window.runBianzheng = runBianzheng;
