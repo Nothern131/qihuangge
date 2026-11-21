@@ -10,7 +10,7 @@
     var expandedId = null;
 
     function loadExercises() {
-        return fetch('static/data/health-exercises.json')
+        return fetch('static/data/health-exercises.json?v=20261121a')
             .then(function(res) { return res.json(); })
             .then(function(data) {
                 EXERCISES = data;

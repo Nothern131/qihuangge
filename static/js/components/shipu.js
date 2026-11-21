@@ -345,6 +345,10 @@
             <div class="shipu-page">
                 <h2>药膳食谱</h2>
                 <p class="desc">药食同源，辨证施膳（本系统仅供科普，不可替代药物或营养干预）</p>
+                <div class="shipu-search">
+                    <input id="shipu-search-input" type="search" placeholder="搜索药膳名、食材或功效，如：黄芪、失眠" oninput="filterShipu(this.value)">
+                    <span id="shipu-search-count"></span>
+                </div>
                 <div class="tab-nav">${tabs}</div>
                 <div id="shipu-content" class="result-section">
                     <p style="color:#a09888;">请选择上方体质标签，查看对应药膳食谱</p>
@@ -458,6 +462,9 @@
                 return;
             }
 
+            var tabsEl = document.querySelector('.shipu-page .tab-nav');
+            if (tabsEl) tabsEl.style.display = '';
+
             window.showShipu(found.tizhi);
             window.showRecipeDetail(found.tizhi, found.index);
 
@@ -494,6 +501,64 @@
             location.hash = '#/food';
             setTimeout(runWhenReady, 100);
         }
+    };
+
+    function esc(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // 药膳自由搜索：按名称、食材、适宜人群、体质匹配
+    window.filterShipu = function(keyword) {
+        var q = String(keyword || '').trim();
+        var content = document.getElementById('shipu-content');
+        var tabsEl = document.querySelector('.shipu-page .tab-nav');
+        var countEl = document.getElementById('shipu-search-count');
+        if (!content) return;
+
+        if (!q) {
+            if (tabsEl) tabsEl.style.display = '';
+            content.innerHTML = '<p style="color:#a09888;">请选择上方体质标签，查看对应药膳食谱</p>';
+            if (countEl) countEl.textContent = '';
+            return;
+        }
+
+        if (tabsEl) tabsEl.style.display = 'none';
+
+        var hits = [];
+        Object.keys(SHIPU_DB).forEach(function(tizhi) {
+            (SHIPU_DB[tizhi] || []).forEach(function(r, i) {
+                var hay = [r.name, r.ingredients, r.suitability, tizhi].join(' ');
+                if (hay.indexOf(q) >= 0) hits.push({ tizhi: tizhi, index: i, recipe: r });
+            });
+        });
+
+        if (countEl) countEl.textContent = '找到 ' + hits.length + ' 条';
+
+        if (!hits.length) {
+            content.innerHTML = '<div class="shipu-notice">没有找到与“' + esc(q) + '”相关的药膳，可试试“黄芪”“失眠”“气虚”。</div>';
+            return;
+        }
+
+        content.innerHTML = hits.map(function(h) {
+            return '<div class="shipu-search-item" onclick="openShipuHit(\'' + h.tizhi + '\',' + h.index + ')">' +
+                '<div class="shipu-search-name">' + esc(h.recipe.name) + '<span class="shipu-search-tizhi">' + esc(h.tizhi) + '</span></div>' +
+                '<div class="shipu-search-meta">' + esc(h.recipe.ingredients) + '</div>' +
+                '<div class="shipu-search-suit">' + esc(h.recipe.suitability) + '</div>' +
+                '</div>';
+        }).join('');
+    };
+
+    // 点击搜索结果：恢复体质标签并展开对应食谱
+    window.openShipuHit = function(tizhi, index) {
+        var tabsEl = document.querySelector('.shipu-page .tab-nav');
+        if (tabsEl) tabsEl.style.display = '';
+        document.querySelectorAll('.shipu-page .tab-nav .tab-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.textContent.trim() === tizhi);
+        });
+        window.showShipu(tizhi);
+        window.showRecipeDetail(tizhi, index);
+        var c = document.getElementById('shipu-content');
+        if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
     global.ShipuComponent = { render: render };

@@ -2073,6 +2073,82 @@ button:hover {
     color: #7a6420;
 }
 
+/* 药膳自由搜索 */
+.shipu-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 14px 0 10px;
+}
+
+.shipu-search input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid #e0d8c8;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fffdf8;
+    color: #4a3f30;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.shipu-search input:focus {
+    border-color: var(--gold-light);
+}
+
+.shipu-search input::placeholder {
+    color: #b0a794;
+}
+
+#shipu-search-count {
+    font-size: 12px;
+    color: #8a7a5c;
+    white-space: nowrap;
+}
+
+.shipu-search-item {
+    padding: 12px 14px;
+    border: 1px solid #e0d8c8;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    background: #fffdf8;
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.shipu-search-item:hover {
+    border-color: var(--gold-light);
+    transform: translateY(-1px);
+}
+
+.shipu-search-name {
+    font-weight: 600;
+    color: #4a3f30;
+    margin-bottom: 4px;
+}
+
+.shipu-search-tizhi {
+    float: right;
+    font-size: 12px;
+    font-weight: 400;
+    color: #8a6d3b;
+    background: #f5efe0;
+    border-radius: 10px;
+    padding: 1px 8px;
+}
+
+.shipu-search-meta {
+    font-size: 12px;
+    color: #8a7a5c;
+    margin-bottom: 2px;
+}
+
+.shipu-search-suit {
+    font-size: 12px;
+    color: #a09888;
+}
+
 .recipe-name {
     font-weight: 600;
     color: var(--ink);
