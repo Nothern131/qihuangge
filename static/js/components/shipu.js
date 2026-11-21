@@ -475,11 +475,24 @@
             if (container) container.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
 
+        // 等待路由渲染出药膳页容器后再定位，避免被后续渲染覆盖
+        var tries = 0;
+        var runWhenReady = function() {
+            var container = document.getElementById('shipu-content');
+            var tabNav = document.querySelector('.tab-nav');
+            if ((!container || !tabNav) && tries < 30) {
+                tries++;
+                setTimeout(runWhenReady, 100);
+                return;
+            }
+            apply();
+        };
+
         if (location.hash === '#/shipu') {
-            setTimeout(apply, 80);
+            setTimeout(runWhenReady, 50);
         } else {
             location.hash = '#/shipu';
-            setTimeout(apply, 300);
+            setTimeout(runWhenReady, 100);
         }
     };
 
