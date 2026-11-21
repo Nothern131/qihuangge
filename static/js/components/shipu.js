@@ -488,10 +488,10 @@
             apply();
         };
 
-        if (location.hash === '#/shipu') {
+        if (location.hash === '#/food') {
             setTimeout(runWhenReady, 50);
         } else {
-            location.hash = '#/shipu';
+            location.hash = '#/food';
             setTimeout(runWhenReady, 100);
         }
     };
