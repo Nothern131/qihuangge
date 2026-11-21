@@ -409,5 +409,79 @@
         if (container) container.innerHTML = html;
     };
 
+    // 从本草页「推荐药膳」跳转：按名称或所含药材匹配，并展开对应食谱详情
+    window.gotoShipu = function(name, herb) {
+        var found = null;
+        var exact = false;
+
+        // 1. 同名精确匹配
+        Object.keys(SHIPU_DB).forEach(function(tizhi) {
+            (SHIPU_DB[tizhi] || []).forEach(function(r, i) {
+                if (!found && r.name === name) {
+                    found = { tizhi: tizhi, index: i };
+                    exact = true;
+                }
+            });
+        });
+
+        // 2. 名称互相包含
+        if (!found) {
+            Object.keys(SHIPU_DB).forEach(function(tizhi) {
+                (SHIPU_DB[tizhi] || []).forEach(function(r, i) {
+                    if (found) return;
+                    if (r.name.indexOf(name) >= 0 || name.indexOf(r.name) >= 0) {
+                        found = { tizhi: tizhi, index: i };
+                    }
+                });
+            });
+        }
+
+        // 3. 按所含药材匹配
+        if (!found && herb) {
+            Object.keys(SHIPU_DB).forEach(function(tizhi) {
+                (SHIPU_DB[tizhi] || []).forEach(function(r, i) {
+                    if (found) return;
+                    if (r.ingredients && r.ingredients.indexOf(herb) >= 0) {
+                        found = { tizhi: tizhi, index: i };
+                    }
+                });
+            });
+        }
+
+        var apply = function() {
+            var container = document.getElementById('shipu-content');
+
+            if (!found) {
+                if (container) {
+                    container.innerHTML = '<div class="shipu-notice">暂未收录“' + name + '”的完整食谱，可在上方按体质选择相近药膳。</div>';
+                }
+                return;
+            }
+
+            window.showShipu(found.tizhi);
+            window.showRecipeDetail(found.tizhi, found.index);
+
+            document.querySelectorAll('.tab-nav .tab-btn').forEach(function(btn) {
+                btn.classList.toggle('active', btn.textContent.trim() === found.tizhi);
+            });
+
+            if (!exact && container) {
+                var tip = document.createElement('div');
+                tip.className = 'shipu-notice';
+                tip.textContent = '未收录“' + name + '”的同名食谱，已为你匹配含' + herb + '的相近药膳，做法与注意事项见下方。';
+                container.insertBefore(tip, container.firstChild);
+            }
+
+            if (container) container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+
+        if (location.hash === '#/shipu') {
+            setTimeout(apply, 80);
+        } else {
+            location.hash = '#/shipu';
+            setTimeout(apply, 300);
+        }
+    };
+
     global.ShipuComponent = { render: render };
 })(typeof window !== 'undefined' ? window : this);

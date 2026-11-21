@@ -102,7 +102,10 @@
         var recipeHtml = recipes.length > 0 ?
             '<div class="recipe-section"><h5>推荐药膳</h5>' +
             recipes.map(function(r) {
-                return '<div class="recipe-item"><div class="recipe-name">' + r.name + '</div><div class="recipe-suit">' + r.suitability + '</div><div class="recipe-how">' + r.recipe + '</div></div>';
+                return '<div class="recipe-item recipe-link" onclick="gotoShipu(\'' + r.name + '\', \'' + name + '\')">' +
+                    '<div class="recipe-name">' + r.name + '<span class="recipe-arrow">查看完整做法 ›</span></div>' +
+                    '<div class="recipe-suit">' + r.suitability + '</div>' +
+                    '<div class="recipe-how">' + r.recipe + '</div></div>';
             }).join('') +
             '</div>' : '';
 
